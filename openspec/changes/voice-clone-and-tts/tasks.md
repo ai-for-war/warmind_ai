@@ -34,8 +34,8 @@
 
 ## 6. Domain Schemas
 
-- [ ] 6.1 Create `app/domain/schemas/voice.py` — `CloneVoiceRequest`, `PreviewVoiceRequest`, `VoiceRecord`, `SystemVoiceRecord`, `VoiceDetailResponse`, `VoiceListResponse`, `CloneVoiceResponse`
-- [ ] 6.2 Create `app/domain/schemas/tts.py` — `SynthesizeRequest`, `GenerateAudioRequest`, `AudioFileRecord`, `AudioDetailResponse`, `AudioListResponse`, `GenerateAudioResponse`
+- [x] 6.1 Create `app/domain/schemas/voice.py` — `CloneVoiceRequest`, `PreviewVoiceRequest`, `VoiceRecord`, `SystemVoiceRecord`, `VoiceDetailResponse`, `VoiceListResponse`, `CloneVoiceResponse`
+- [x] 6.2 Create `app/domain/schemas/tts.py` — `SynthesizeRequest`, `GenerateAudioRequest`, `AudioFileRecord`, `AudioDetailResponse`, `AudioListResponse`, `GenerateAudioResponse`
 
 ## 7. Repositories
 
