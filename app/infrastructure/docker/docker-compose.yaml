@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:latest
+    container_name: redis_kiro
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - redis_net
+
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: redisinsight_kiro
+    restart: unless-stopped
+    ports:
+      - "5540:5540"
+    volumes:
+      - redisinsight_data:/data
+    networks:
+      - redis_net
+
+volumes:
+  redis_data:
+  redisinsight_data:
+
+networks:
+  redis_net:
+    driver: bridge

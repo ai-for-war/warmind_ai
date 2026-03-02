@@ -1,0 +1,1 @@
+python -m app.workers.sheet_sync_worker

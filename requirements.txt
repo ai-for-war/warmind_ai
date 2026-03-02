@@ -1,0 +1,36 @@
+fastapi
+uvicorn
+pydantic-settings
+python-dotenv
+pytest
+pytest-asyncio
+httpx
+hypothesis
+python-socketio
+
+# Authentication
+python-jose[cryptography]
+passlib[bcrypt]
+
+# MongoDB
+motor
+email-validator
+
+# Google Sheets
+gspread
+gspread-asyncio
+google-auth
+python-dateutil
+
+# Redis
+redis
+
+# LangChain
+langchain-core
+langchain-community
+langchain-openai
+langchain
+langgraph
+
+# MCP Integration
+langchain-mcp-adapters>=0.1.0
