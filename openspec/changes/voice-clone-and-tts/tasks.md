@@ -1,7 +1,7 @@
 ## 1. Configuration & Dependencies
 
-- [ ] 1.1 Add `httpx` to `requirements.txt`
-- [ ] 1.2 Add `MINIMAX_API_KEY: str` to `Settings` class in `app/config/settings.py`
+- [x] 1.1 Add `httpx` to `requirements.txt`
+- [x] 1.2 Add `MINIMAX_API_KEY: str` to `Settings` class in `app/config/settings.py`
 
 ## 2. Custom Exceptions
 

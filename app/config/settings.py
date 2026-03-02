@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str  # Required for LLM operations
     OPENAI_API_BASE: str | None = None  # Optional custom API base URL
 
+    # MiniMax
+    MINIMAX_API_KEY: str
+
     # Cloudinary
     CLOUDINARY_CLOUD_NAME: str
     CLOUDINARY_API_KEY: str
