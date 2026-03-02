@@ -29,8 +29,8 @@
 
 ## 5. Domain Models
 
-- [ ] 5.1 Create `app/domain/models/voice.py` — `VoiceType` enum, `Voice` model with fields: id, voice_id, name, voice_type, organization_id, created_by, source_audio_url, source_audio_public_id, language, created_at, deleted_at
-- [ ] 5.2 Create `app/domain/models/audio_file.py` — `AudioFile` model with fields: id, organization_id, created_by, voice_id, source_text, audio_url, audio_public_id, duration_ms, size_bytes, format, created_at, deleted_at
+- [x] 5.1 Create `app/domain/models/voice.py` — `VoiceType` enum, `Voice` model with fields: id, voice_id, name, voice_type, organization_id, created_by, source_audio_url, source_audio_public_id, language, created_at, deleted_at
+- [x] 5.2 Create `app/domain/models/audio_file.py` — `AudioFile` model with fields: id, organization_id, created_by, voice_id, source_text, audio_url, audio_public_id, duration_ms, size_bytes, format, created_at, deleted_at
 
 ## 6. Domain Schemas
 

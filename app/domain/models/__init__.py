@@ -1,5 +1,6 @@
 """Domain models for the application."""
 
+from app.domain.models.audio_file import AudioFile
 from app.domain.models.conversation import (
     Conversation,
     ConversationStatus,
@@ -24,8 +25,11 @@ from app.domain.models.sheet_connection import (
     SheetSyncState,
 )
 from app.domain.models.user import User, UserRole
+from app.domain.models.voice import Voice, VoiceType
 
 __all__ = [
+    # Audio file models
+    "AudioFile",
     # Conversation models
     "Conversation",
     "ConversationStatus",
@@ -48,4 +52,7 @@ __all__ = [
     # User models
     "User",
     "UserRole",
+    # Voice models
+    "Voice",
+    "VoiceType",
 ]
