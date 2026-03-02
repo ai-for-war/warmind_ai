@@ -15,12 +15,12 @@
 
 ## 4. Infrastructure — Cloudinary Client
 
-- [ ] 4.1 Create `app/infrastructure/cloudinary/client.py` with `CloudinaryClient` class
-- [ ] 4.2 Implement `configure()` method to initialize Cloudinary SDK from settings
-- [ ] 4.3 Implement `async upload(file_bytes, filename, folder, org_id)` wrapping `cloudinary.uploader.upload` with `asyncio.to_thread`, using `type="authenticated"`
-- [ ] 4.4 Implement `async delete(public_id)` wrapping `cloudinary.uploader.destroy` with `asyncio.to_thread` and `invalidate=True`
-- [ ] 4.5 Implement `generate_signed_url(public_id, expiry_seconds=7200)` using `cloudinary.utils.cloudinary_url` with `sign_url=True` and `type="authenticated"`
-- [ ] 4.6 Add `get_cloudinary_client()` factory function to `app/common/service.py`
+- [x] 4.1 Create `app/infrastructure/cloudinary/client.py` with `CloudinaryClient` class
+- [x] 4.2 Implement `configure()` method to initialize Cloudinary SDK from settings
+- [x] 4.3 Implement `async upload(file_bytes, filename, folder, org_id)` wrapping `cloudinary.uploader.upload` with `asyncio.to_thread`, using `type="authenticated"`
+- [x] 4.4 Implement `async delete(public_id)` wrapping `cloudinary.uploader.destroy` with `asyncio.to_thread` and `invalidate=True`
+- [x] 4.5 Implement `generate_signed_url(public_id, expiry_seconds=7200)` using `cloudinary.utils.cloudinary_url` with `sign_url=True` and `type="authenticated"`
+- [x] 4.6 Add `get_cloudinary_client()` factory function to `app/common/service.py`
 
 ## 5. Repository
 

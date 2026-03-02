@@ -12,6 +12,7 @@ from app.common.repo import (
     get_sheet_sync_state_repo,
     get_user_repo,
 )
+from app.infrastructure.cloudinary.client import CloudinaryClient
 from app.infrastructure.google_sheets.client import GoogleSheetClient
 from app.infrastructure.redis.client import RedisClient
 from app.infrastructure.redis.redis_queue import RedisQueue
@@ -176,3 +177,9 @@ def get_data_query_service() -> DataQueryService:
         data_repo=get_sheet_data_repo(),
         pipeline_validator=get_pipeline_validator(),
     )
+
+
+@lru_cache
+def get_cloudinary_client() -> CloudinaryClient:
+    """Get singleton CloudinaryClient instance."""
+    return CloudinaryClient()
