@@ -5,8 +5,8 @@
 
 ## 2. Custom Exceptions
 
-- [ ] 2.1 Add `VoiceNotFoundError`, `AudioFileNotFoundError`, `VoiceCloneError`, `InvalidAudioTypeError`, `AudioFileSizeLimitExceededError` to `app/common/exceptions.py`
-- [ ] 2.2 Add `MiniMaxAPIError`, `MiniMaxRateLimitError`, `MiniMaxStreamError` to `app/common/exceptions.py`
+- [x] 2.1 Add `VoiceNotFoundError`, `AudioFileNotFoundError`, `VoiceCloneError`, `InvalidAudioTypeError`, `AudioFileSizeLimitExceededError` to `app/common/exceptions.py`
+- [x] 2.2 Add `MiniMaxAPIError`, `MiniMaxRateLimitError`, `MiniMaxStreamError` to `app/common/exceptions.py`
 
 ## 3. MiniMax Infrastructure Client
 
