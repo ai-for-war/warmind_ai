@@ -4,6 +4,7 @@ from functools import lru_cache
 
 from app.common.repo import (
     get_conversation_repo,
+    get_image_repo,
     get_member_repo,
     get_message_repo,
     get_org_repo,
@@ -12,6 +13,7 @@ from app.common.repo import (
     get_sheet_sync_state_repo,
     get_user_repo,
 )
+from app.infrastructure.cloudinary.client import CloudinaryClient
 from app.infrastructure.google_sheets.client import GoogleSheetClient
 from app.infrastructure.redis.client import RedisClient
 from app.infrastructure.redis.redis_queue import RedisQueue
@@ -22,6 +24,7 @@ from app.services.ai.pipeline_validator import PipelineValidator
 from app.services.analytics.analytics_service import AnalyticsService
 from app.services.analytics.cache_manager import AnalyticsCacheManager
 from app.services.auth.auth_service import AuthService
+from app.services.image.image_service import ImageService
 from app.services.organization.organization_service import OrganizationService
 from app.services.sheet_crawler.crawler_service import SheetCrawlerService
 from app.services.user.user_service import UserService
@@ -175,4 +178,19 @@ def get_data_query_service() -> DataQueryService:
         connection_repo=get_sheet_connection_repo(),
         data_repo=get_sheet_data_repo(),
         pipeline_validator=get_pipeline_validator(),
+    )
+
+
+@lru_cache
+def get_cloudinary_client() -> CloudinaryClient:
+    """Get singleton CloudinaryClient instance."""
+    return CloudinaryClient()
+
+
+@lru_cache
+def get_image_service() -> ImageService:
+    """Get singleton ImageService instance."""
+    return ImageService(
+        image_repo=get_image_repo(),
+        cloudinary_client=get_cloudinary_client(),
     )

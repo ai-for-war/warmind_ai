@@ -12,6 +12,7 @@ from app.api.v1.router import router as v1_router
 from app.common.exceptions import AppException
 from app.config.mcp import MCP_SERVERS
 from app.config.settings import get_settings
+from app.infrastructure.cloudinary.client import CloudinaryClient
 from app.infrastructure.database.mongodb import MongoDB
 from app.infrastructure.mcp.manager import get_mcp_tools_manager
 from app.infrastructure.redis.client import RedisClient
@@ -31,6 +32,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(_app: FastAPI):
     """Lifespan context manager for startup and shutdown events."""
     # Startup
+    CloudinaryClient.configure()
     await MongoDB.connect(settings.MONGODB_URI, settings.MONGODB_DB_NAME)
     await MongoDB.create_indexes()
     await RedisClient.connect(settings.REDIS_URL)

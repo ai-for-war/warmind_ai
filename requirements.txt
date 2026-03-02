@@ -25,6 +25,10 @@ python-dateutil
 # Redis
 redis
 
+# Image Upload
+cloudinary
+python-magic-bin
+
 # LangChain
 langchain-core
 langchain-community
