@@ -73,3 +73,31 @@ class PermissionDeniedError(AppException):
 
     default_message = "Permission denied"
     status_code = 403
+
+
+class ImageNotFoundError(AppException):
+    """Raised when image is not found or already deleted."""
+
+    default_message = "Image not found"
+    status_code = 404
+
+
+class ImageUploadError(AppException):
+    """Raised when image upload to external storage fails."""
+
+    default_message = "Image upload failed"
+    status_code = 500
+
+
+class InvalidImageTypeError(AppException):
+    """Raised when uploaded file MIME type is not allowed."""
+
+    default_message = "Invalid image type"
+    status_code = 400
+
+
+class FileSizeLimitExceededError(AppException):
+    """Raised when uploaded file exceeds maximum allowed size."""
+
+    default_message = "File size exceeds 25MB limit"
+    status_code = 413

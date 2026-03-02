@@ -11,7 +11,7 @@
 
 ## 3. Exceptions
 
-- [ ] 3.1 Add `ImageNotFoundError`, `ImageUploadError`, `InvalidImageTypeError`, `FileSizeLimitExceededError` to `app/common/exceptions.py`
+- [x] 3.1 Add `ImageNotFoundError`, `ImageUploadError`, `InvalidImageTypeError`, `FileSizeLimitExceededError` to `app/common/exceptions.py`
 
 ## 4. Infrastructure — Cloudinary Client
 
