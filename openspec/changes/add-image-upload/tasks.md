@@ -24,13 +24,13 @@
 
 ## 5. Repository
 
-- [ ] 5.1 Create `app/repo/image_repo.py` with `ImageRepository` class
-- [ ] 5.2 Implement `create(image_data)` — insert image metadata into `images` collection
-- [ ] 5.3 Implement `find_by_id(image_id)` — find non-deleted image by ID
-- [ ] 5.4 Implement `find_by_id_and_org(image_id, org_id)` — find non-deleted image scoped to organization
-- [ ] 5.5 Implement `list_by_organization(org_id, skip, limit)` — paginated list with total count, sorted by `created_at` desc, excluding deleted
-- [ ] 5.6 Implement `soft_delete(image_id)` — set `deleted_at` timestamp
-- [ ] 5.7 Add `get_image_repo()` factory function to `app/common/repo.py`
+- [x] 5.1 Create `app/repo/image_repo.py` with `ImageRepository` class
+- [x] 5.2 Implement `create(image_data)` — insert image metadata into `images` collection
+- [x] 5.3 Implement `find_by_id(image_id)` — find non-deleted image by ID
+- [x] 5.4 Implement `find_by_id_and_org(image_id, org_id)` — find non-deleted image scoped to organization
+- [x] 5.5 Implement `list_by_organization(org_id, skip, limit)` — paginated list with total count, sorted by `created_at` desc, excluding deleted
+- [x] 5.6 Implement `soft_delete(image_id)` — set `deleted_at` timestamp
+- [x] 5.7 Add `get_image_repo()` factory function to `app/common/repo.py`
 
 ## 6. Service
 

@@ -4,6 +4,7 @@ from functools import lru_cache
 
 from app.infrastructure.database.mongodb import MongoDB
 from app.repo.conversation_repo import ConversationRepository
+from app.repo.image_repo import ImageRepository
 from app.repo.message_repo import MessageRepository
 from app.repo.organization_member_repo import OrganizationMemberRepository
 from app.repo.organization_repo import OrganizationRepository
@@ -99,3 +100,14 @@ def get_message_repo() -> MessageRepository:
     """
     db = MongoDB.get_db()
     return MessageRepository(db)
+
+
+@lru_cache
+def get_image_repo() -> ImageRepository:
+    """Get singleton ImageRepository instance.
+
+    Returns:
+        ImageRepository instance with database connection
+    """
+    db = MongoDB.get_db()
+    return ImageRepository(db)
