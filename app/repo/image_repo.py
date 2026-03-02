@@ -96,6 +96,32 @@ class ImageRepository:
 
         return ImageListResult(items=items, total=total)
 
+    async def list_by_uploader_and_organization(
+        self,
+        org_id: str,
+        uploaded_by: str,
+        skip: int = 0,
+        limit: int = 20,
+    ) -> ImageListResult:
+        """List non-deleted images uploaded by a specific user in an organization."""
+        query = {
+            "organization_id": org_id,
+            "uploaded_by": uploaded_by,
+            "deleted_at": None,
+        }
+
+        total = await self.collection.count_documents(query)
+        cursor = (
+            self.collection.find(query).sort("created_at", -1).skip(skip).limit(limit)
+        )
+
+        items: list[Image] = []
+        async for doc in cursor:
+            doc["_id"] = str(doc["_id"])
+            items.append(Image(**doc))
+
+        return ImageListResult(items=items, total=total)
+
     async def soft_delete(self, image_id: str) -> bool:
         """Soft delete image by setting deleted_at timestamp."""
         try:
@@ -112,4 +138,3 @@ class ImageRepository:
             {"$set": {"deleted_at": now}},
         )
         return result.modified_count > 0
-

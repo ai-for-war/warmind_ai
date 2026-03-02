@@ -10,7 +10,8 @@ from app.api.deps import (
 from app.common.exceptions import AppException
 from app.common.repo import get_member_repo
 from app.common.service import get_image_service
-from app.domain.models.user import User, UserRole
+from app.common.utils import resolve_user_and_org_role
+from app.domain.models.user import User
 from app.domain.schemas.image import (
     ImageDetailResponse,
     ImageListResponse,
@@ -46,13 +47,22 @@ async def upload_images(
 async def list_images(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
-    _: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     org_context: OrganizationContext = Depends(get_current_organization_context),
+    member_repo: OrganizationMemberRepository = Depends(get_member_repo),
     image_service: ImageService = Depends(get_image_service),
 ) -> ImageListResponse:
     """List organization images with pagination."""
+    user_role, org_role = await resolve_user_and_org_role(
+        current_user=current_user,
+        organization_id=org_context.organization_id,
+        member_repo=member_repo,
+    )
     return await image_service.list_images(
+        user_id=current_user.id,
+        user_role=user_role,
         org_id=org_context.organization_id,
+        org_role=org_role,
         skip=skip,
         limit=limit,
     )
@@ -61,18 +71,29 @@ async def list_images(
 @router.get("/{image_id}", response_model=ImageDetailResponse)
 async def get_image(
     image_id: str,
-    _: User = Depends(get_current_active_user),
+    current_user: User = Depends(get_current_active_user),
     org_context: OrganizationContext = Depends(get_current_organization_context),
+    member_repo: OrganizationMemberRepository = Depends(get_member_repo),
     image_service: ImageService = Depends(get_image_service),
 ) -> ImageDetailResponse:
     """Get image details and a signed URL."""
+    user_role, org_role = await resolve_user_and_org_role(
+        current_user=current_user,
+        organization_id=org_context.organization_id,
+        member_repo=member_repo,
+    )
     return await image_service.get_image(
         image_id=image_id,
+        user_id=current_user.id,
+        user_role=user_role,
         org_id=org_context.organization_id,
+        org_role=org_role,
     )
 
 
-@router.delete("/{image_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+@router.delete(
+    "/{image_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response
+)
 async def delete_image(
     image_id: str,
     current_user: User = Depends(get_current_active_user),
@@ -81,16 +102,11 @@ async def delete_image(
     image_service: ImageService = Depends(get_image_service),
 ) -> Response:
     """Delete image if actor is owner, org admin, or super admin."""
-    user_role = current_user.role if isinstance(current_user.role, str) else current_user.role.value
-
-    org_role = None
-    if user_role != UserRole.SUPER_ADMIN.value:
-        membership = await member_repo.find_by_user_and_org(
-            user_id=current_user.id,
-            organization_id=org_context.organization_id,
-            is_active=True,
-        )
-        org_role = membership.role if membership is not None else None
+    user_role, org_role = await resolve_user_and_org_role(
+        current_user=current_user,
+        organization_id=org_context.organization_id,
+        member_repo=member_repo,
+    )
 
     await image_service.delete_image(
         image_id=image_id,
@@ -100,4 +116,3 @@ async def delete_image(
         org_role=org_role,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-

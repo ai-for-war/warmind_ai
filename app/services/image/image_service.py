@@ -14,6 +14,7 @@ from app.common.exceptions import (
     InvalidImageTypeError,
     PermissionDeniedError,
 )
+from app.common.utils import is_org_admin, is_super_admin
 from app.domain.models.image import Image
 from app.domain.models.organization import OrganizationRole
 from app.domain.models.user import UserRole
@@ -151,11 +152,32 @@ class ImageService:
             failures=failed_images,
         )
 
-    async def get_image(self, image_id: str, org_id: str) -> ImageDetailResponse:
+    async def get_image(
+        self,
+        image_id: str,
+        user_id: str,
+        user_role: UserRole | str,
+        org_id: str,
+        org_role: OrganizationRole | str | None,
+    ) -> ImageDetailResponse:
         """Get image metadata and generate a 2-hour signed URL."""
-        image = await self.image_repo.find_by_id_and_org(image_id=image_id, org_id=org_id)
+        is_super_admin_role = is_super_admin(user_role)
+        is_org_admin_role = is_org_admin(org_role)
+
+        if is_super_admin_role:
+            image = await self.image_repo.find_by_id(image_id=image_id)
+        else:
+            image = await self.image_repo.find_by_id_and_org(
+                image_id=image_id,
+                org_id=org_id,
+            )
+
         if image is None:
             raise ImageNotFoundError()
+
+        is_owner = image.uploaded_by == user_id
+        if not (is_owner or is_org_admin_role or is_super_admin_role):
+            raise PermissionDeniedError()
 
         signed_url = await self.cloudinary_client.generate_signed_url(
             public_id=image.public_id,
@@ -169,16 +191,31 @@ class ImageService:
 
     async def list_images(
         self,
+        user_id: str,
+        user_role: UserRole | str,
         org_id: str,
+        org_role: OrganizationRole | str | None,
         skip: int = 0,
         limit: int = 20,
     ) -> ImageListResponse:
         """List images for an organization with pagination."""
-        result = await self.image_repo.list_by_organization(
-            org_id=org_id,
-            skip=skip,
-            limit=limit,
-        )
+        is_super_admin_role = is_super_admin(user_role)
+        is_org_admin_role = is_org_admin(org_role)
+
+        if is_super_admin_role or is_org_admin_role:
+            result = await self.image_repo.list_by_organization(
+                org_id=org_id,
+                skip=skip,
+                limit=limit,
+            )
+        else:
+            result = await self.image_repo.list_by_uploader_and_organization(
+                org_id=org_id,
+                uploaded_by=user_id,
+                skip=skip,
+                limit=limit,
+            )
+
         return ImageListResponse(
             items=[self._to_image_record(item) for item in result.items],
             total=result.total,
@@ -195,9 +232,9 @@ class ImageService:
         org_role: OrganizationRole | str | None,
     ) -> None:
         """Delete image with permission check and storage cleanup."""
-        is_super_admin = self._is_super_admin(user_role)
+        is_super_admin_role = is_super_admin(user_role)
 
-        if is_super_admin:
+        if is_super_admin_role:
             image = await self.image_repo.find_by_id(image_id)
         else:
             image = await self.image_repo.find_by_id_and_org(image_id=image_id, org_id=org_id)
@@ -206,8 +243,8 @@ class ImageService:
             raise ImageNotFoundError()
 
         is_owner = image.uploaded_by == user_id
-        is_org_admin = self._is_org_admin(org_role)
-        if not (is_owner or is_org_admin or is_super_admin):
+        is_org_admin_role = is_org_admin(org_role)
+        if not (is_owner or is_org_admin_role or is_super_admin_role):
             raise PermissionDeniedError()
 
         soft_deleted = await self.image_repo.soft_delete(image.id)
@@ -217,18 +254,6 @@ class ImageService:
         delete_result = await self.cloudinary_client.delete(image.public_id)
         if delete_result.get("result") not in {"ok", "not found"}:
             raise ImageUploadError("Failed to delete image from Cloudinary")
-
-    def _is_super_admin(self, user_role: UserRole | str) -> bool:
-        """Check if system-level role is super admin."""
-        role = user_role if isinstance(user_role, str) else user_role.value
-        return role == UserRole.SUPER_ADMIN.value
-
-    def _is_org_admin(self, org_role: OrganizationRole | str | None) -> bool:
-        """Check if organization-level role is admin."""
-        if org_role is None:
-            return False
-        role = org_role if isinstance(org_role, str) else org_role.value
-        return role == OrganizationRole.ADMIN.value
 
     def _to_image_record(self, image: Image) -> ImageRecord:
         """Convert domain Image model to API ImageRecord schema."""
