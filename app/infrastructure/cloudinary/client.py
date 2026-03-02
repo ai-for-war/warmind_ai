@@ -5,8 +5,8 @@ import time
 from typing import Any
 
 import cloudinary
-import cloudinary.uploader  # type: ignore[import-untyped]
-from cloudinary.utils import cloudinary_url  # type: ignore[import-untyped]
+import cloudinary.uploader
+from cloudinary.utils import cloudinary_url
 
 from app.config.settings import get_settings
 

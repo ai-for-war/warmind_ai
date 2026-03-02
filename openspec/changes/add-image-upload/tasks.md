@@ -34,13 +34,13 @@
 
 ## 6. Service
 
-- [ ] 6.1 Create `app/services/image/image_service.py` with `ImageService` class
-- [ ] 6.2 Implement `validate_file(file)` — streaming chunk-based size check (25MB), magic bytes MIME validation via `python-magic`
-- [ ] 6.3 Implement `upload_images(files, user_id, org_id)` — validate each file, upload concurrently via `asyncio.gather`, store metadata, return successes/failures
-- [ ] 6.4 Implement `get_image(image_id, org_id)` — fetch metadata, generate signed URL (2h expiry), return combined response
-- [ ] 6.5 Implement `list_images(org_id, skip, limit)` — delegate to repository with pagination
-- [ ] 6.6 Implement `delete_image(image_id, user_id, user_role, org_id, org_role)` — check permission (owner OR org_admin OR super_admin), soft-delete in MongoDB, hard-delete in Cloudinary
-- [ ] 6.7 Add `get_image_service()` factory function to `app/common/service.py`
+- [x] 6.1 Create `app/services/image/image_service.py` with `ImageService` class
+- [x] 6.2 Implement `validate_file(file)` — streaming chunk-based size check (25MB), magic bytes MIME validation via `python-magic`
+- [x] 6.3 Implement `upload_images(files, user_id, org_id)` — validate each file, upload concurrently via `asyncio.gather`, store metadata, return successes/failures
+- [x] 6.4 Implement `get_image(image_id, org_id)` — fetch metadata, generate signed URL (2h expiry), return combined response
+- [x] 6.5 Implement `list_images(org_id, skip, limit)` — delegate to repository with pagination
+- [x] 6.6 Implement `delete_image(image_id, user_id, user_role, org_id, org_role)` — check permission (owner OR org_admin OR super_admin), soft-delete in MongoDB, hard-delete in Cloudinary
+- [x] 6.7 Add `get_image_service()` factory function to `app/common/service.py`
 
 ## 7. API Router
 
@@ -54,3 +54,4 @@
 ## 8. Cloudinary Initialization
 
 - [ ] 8.1 Add Cloudinary SDK configuration call in `app/main.py` lifespan startup (call `CloudinaryClient.configure()`)
+
