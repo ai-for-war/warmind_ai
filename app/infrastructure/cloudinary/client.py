@@ -49,6 +49,27 @@ class CloudinaryClient:
             filename_override=filename,
         )
 
+    async def upload_audio(
+        self,
+        file_bytes: bytes,
+        filename: str,
+        folder: str,
+        org_id: str,
+    ) -> dict[str, Any]:
+        """Upload audio bytes to Cloudinary using video resource type."""
+        if not self._configured:
+            self.configure()
+
+        target_folder = f"{org_id}/{folder}".strip("/")
+        return await asyncio.to_thread(
+            cloudinary.uploader.upload,
+            file_bytes,
+            resource_type="video",
+            type="authenticated",
+            folder=target_folder,
+            filename_override=filename,
+        )
+
     async def delete(self, public_id: str) -> dict[str, Any]:
         """Delete an image from Cloudinary and invalidate CDN cache."""
         if not self._configured:
@@ -58,6 +79,19 @@ class CloudinaryClient:
             cloudinary.uploader.destroy,
             public_id,
             resource_type="image",
+            type="authenticated",
+            invalidate=True,
+        )
+
+    async def delete_audio(self, public_id: str) -> dict[str, Any]:
+        """Delete an audio file from Cloudinary and invalidate CDN cache."""
+        if not self._configured:
+            self.configure()
+
+        return await asyncio.to_thread(
+            cloudinary.uploader.destroy,
+            public_id,
+            resource_type="video",
             type="authenticated",
             invalidate=True,
         )
@@ -77,6 +111,30 @@ class CloudinaryClient:
             url, _ = cloudinary_url(
                 public_id,
                 resource_type="image",
+                type="authenticated",
+                sign_url=True,
+                expires_at=expires_at,
+                secure=True,
+            )
+            return url
+
+        return await asyncio.to_thread(_generate)
+
+    async def generate_audio_signed_url(
+        self,
+        public_id: str,
+        expiry_seconds: int = 7200,
+    ) -> str:
+        """Generate a signed Cloudinary audio URL with limited validity."""
+        if not self._configured:
+            self.configure()
+
+        expires_at = int(time.time()) + expiry_seconds
+
+        def _generate() -> str:
+            url, _ = cloudinary_url(
+                public_id,
+                resource_type="video",
                 type="authenticated",
                 sign_url=True,
                 expires_at=expires_at,

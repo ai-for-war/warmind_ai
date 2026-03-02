@@ -23,9 +23,9 @@
 
 ## 4. Cloudinary Audio Support
 
-- [ ] 4.1 Add `upload_audio` method to `CloudinaryClient` — upload with `resource_type="video"`, `type="authenticated"`, wrapped in `asyncio.to_thread`
-- [ ] 4.2 Add `generate_audio_signed_url` method to `CloudinaryClient` — signed URL with `resource_type="video"`, wrapped in `asyncio.to_thread`
-- [ ] 4.3 Add `delete_audio` method to `CloudinaryClient` — destroy with `resource_type="video"`, `invalidate=True`, wrapped in `asyncio.to_thread`
+- [x] 4.1 Add `upload_audio` method to `CloudinaryClient` — upload with `resource_type="video"`, `type="authenticated"`, wrapped in `asyncio.to_thread`
+- [x] 4.2 Add `generate_audio_signed_url` method to `CloudinaryClient` — signed URL with `resource_type="video"`, wrapped in `asyncio.to_thread`
+- [x] 4.3 Add `delete_audio` method to `CloudinaryClient` — destroy with `resource_type="video"`, `invalidate=True`, wrapped in `asyncio.to_thread`
 
 ## 5. Domain Models
 
