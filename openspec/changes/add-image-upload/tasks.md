@@ -44,14 +44,15 @@
 
 ## 7. API Router
 
-- [ ] 7.1 Create `app/api/v1/images/router.py` with `APIRouter(prefix="/images", tags=["Images"])`
-- [ ] 7.2 Implement `POST /upload` endpoint — accept `list[UploadFile]` (max 10), require `get_current_active_user` + `get_current_organization_context`, return `ImageUploadResponse`
-- [ ] 7.3 Implement `GET /` endpoint — accept `skip` and `limit` query params, require auth + org context, return `ImageListResponse`
-- [ ] 7.4 Implement `GET /{image_id}` endpoint — require auth + org context, return `ImageDetailResponse` with signed URL
-- [ ] 7.5 Implement `DELETE /{image_id}` endpoint — require auth + org context, check delete permission, return 204
-- [ ] 7.6 Register image router in `app/api/v1/router.py`
+- [x] 7.1 Create `app/api/v1/images/router.py` with `APIRouter(prefix="/images", tags=["Images"])`
+- [x] 7.2 Implement `POST /upload` endpoint — accept `list[UploadFile]` (max 10), require `get_current_active_user` + `get_current_organization_context`, return `ImageUploadResponse`
+- [x] 7.3 Implement `GET /` endpoint — accept `skip` and `limit` query params, require auth + org context, return `ImageListResponse`
+- [x] 7.4 Implement `GET /{image_id}` endpoint — require auth + org context, return `ImageDetailResponse` with signed URL
+- [x] 7.5 Implement `DELETE /{image_id}` endpoint — require auth + org context, check delete permission, return 204
+- [x] 7.6 Register image router in `app/api/v1/router.py`
 
 ## 8. Cloudinary Initialization
 
 - [ ] 8.1 Add Cloudinary SDK configuration call in `app/main.py` lifespan startup (call `CloudinaryClient.configure()`)
+
 
