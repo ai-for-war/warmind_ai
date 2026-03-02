@@ -53,6 +53,7 @@
 
 ## 8. Cloudinary Initialization
 
-- [ ] 8.1 Add Cloudinary SDK configuration call in `app/main.py` lifespan startup (call `CloudinaryClient.configure()`)
+- [x] 8.1 Add Cloudinary SDK configuration call in `app/main.py` lifespan startup (call `CloudinaryClient.configure()`)
+
 
 
