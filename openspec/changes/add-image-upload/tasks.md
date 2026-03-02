@@ -6,8 +6,8 @@
 
 ## 2. Domain Models & Schemas
 
-- [ ] 2.1 Create `app/domain/models/image.py` with `Image` model (id, public_id, organization_id, uploaded_by, original_filename, mime_type, size_bytes, cloudinary_folder, created_at, deleted_at)
-- [ ] 2.2 Create `app/domain/schemas/image.py` with request/response schemas: `ImageUploadResponse`, `ImageDetailResponse` (with signed_url field), `ImageListResponse` (paginated), `ImageRecord`
+- [x] 2.1 Create `app/domain/models/image.py` with `Image` model (id, public_id, organization_id, uploaded_by, original_filename, mime_type, size_bytes, cloudinary_folder, created_at, deleted_at)
+- [x] 2.2 Create `app/domain/schemas/image.py` with request/response schemas: `ImageUploadResponse`, `ImageDetailResponse` (with signed_url field), `ImageListResponse` (paginated), `ImageRecord`
 
 ## 3. Exceptions
 
