@@ -10,16 +10,16 @@
 
 ## 3. MiniMax Infrastructure Client
 
-- [ ] 3.1 Create `app/infrastructure/minimax/__init__.py`
-- [ ] 3.2 Implement `MiniMaxClient` in `app/infrastructure/minimax/client.py` with `httpx.AsyncClient` setup, base URL, auth headers, and connection pooling
-- [ ] 3.3 Implement `upload_file` method — upload audio to MiniMax File API, return `file_id`
-- [ ] 3.4 Implement `clone_voice` method — invoke MiniMax Voice Clone API with `file_id` and `voice_id`
-- [ ] 3.5 Implement `synthesize_sync` method — call T2A API with `stream=false`, decode hex response, return MP3 bytes + metadata
-- [ ] 3.6 Implement `synthesize_stream` method — async generator calling T2A API with `stream=true`, parse SSE events, yield decoded binary audio chunks
-- [ ] 3.7 Implement `list_voices` method — call MiniMax get_voice API, return parsed voice list
-- [ ] 3.8 Implement `delete_voice` method — call MiniMax delete_voice API
-- [ ] 3.9 Add error handling: parse `base_resp.status_code`, map to `MiniMaxAPIError` / `MiniMaxRateLimitError` / `MiniMaxStreamError`
-- [ ] 3.10 Add timeout configuration: 30s for file upload/clone, 60s for sync T2A, 120s for streaming T2A
+- [x] 3.1 Create `app/infrastructure/minimax/__init__.py`
+- [x] 3.2 Implement `MiniMaxClient` in `app/infrastructure/minimax/client.py` with `httpx.AsyncClient` setup, base URL, auth headers, and connection pooling
+- [x] 3.3 Implement `upload_file` method — upload audio to MiniMax File API, return `file_id`
+- [x] 3.4 Implement `clone_voice` method — invoke MiniMax Voice Clone API with `file_id` and `voice_id`
+- [x] 3.5 Implement `synthesize_sync` method — call T2A API with `stream=false`, decode hex response, return MP3 bytes + metadata
+- [x] 3.6 Implement `synthesize_stream` method — async generator calling T2A API with `stream=true`, parse SSE events, yield decoded binary audio chunks
+- [x] 3.7 Implement `list_voices` method — call MiniMax get_voice API, return parsed voice list
+- [x] 3.8 Implement `delete_voice` method — call MiniMax delete_voice API
+- [x] 3.9 Add error handling: parse `base_resp.status_code`, map to `MiniMaxAPIError` / `MiniMaxRateLimitError` / `MiniMaxStreamError`
+- [x] 3.10 Add timeout configuration: 30s for file upload/clone, 60s for sync T2A, 120s for streaming T2A
 
 ## 4. Cloudinary Audio Support
 
