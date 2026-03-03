@@ -101,3 +101,63 @@ class FileSizeLimitExceededError(AppException):
 
     default_message = "File size exceeds 25MB limit"
     status_code = 413
+
+
+class VoiceNotFoundError(AppException):
+    """Raised when voice is not found or already deleted."""
+
+    default_message = "Voice not found"
+    status_code = 404
+
+
+class AudioFileNotFoundError(AppException):
+    """Raised when audio file is not found or already deleted."""
+
+    default_message = "Audio file not found"
+    status_code = 404
+
+
+class VoiceCloneError(AppException):
+    """Raised when voice cloning operation fails."""
+
+    default_message = "Voice cloning provider failed"
+    status_code = 502
+
+
+class InvalidAudioTypeError(AppException):
+    """Raised when uploaded audio MIME type is not allowed."""
+
+    default_message = "Invalid audio type"
+    status_code = 400
+
+
+class AudioFileSizeLimitExceededError(AppException):
+    """Raised when uploaded audio file exceeds maximum allowed size."""
+
+    default_message = "Audio file size exceeds 20MB limit"
+    status_code = 413
+
+
+class MiniMaxAPIError(AppException):
+    """Raised when MiniMax API returns an error response."""
+
+    default_message = "MiniMax API request failed"
+    status_code = 502
+
+    def __init__(self, message: str = None, minimax_status_code: int | None = None):
+        self.minimax_status_code = minimax_status_code
+        super().__init__(message)
+
+
+class MiniMaxRateLimitError(MiniMaxAPIError):
+    """Raised when MiniMax API rate limit is exceeded."""
+
+    default_message = "MiniMax rate limit exceeded"
+    status_code = 429
+
+
+class MiniMaxStreamError(MiniMaxAPIError):
+    """Raised when MiniMax streaming synthesis fails."""
+
+    default_message = "MiniMax audio stream failed"
+    status_code = 502
