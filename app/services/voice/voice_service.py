@@ -331,9 +331,32 @@ class VoiceService:
         return SystemVoiceRecord(
             voice_id=str(data.get("voice_id") or ""),
             voice_name=str(data.get("voice_name") or data.get("name") or ""),
-            description=data.get("description"),
+            description=self._normalize_minimax_description(data.get("description")),
             created_time=created_time,
         )
+
+    @staticmethod
+    def _normalize_minimax_description(value: object) -> list[str]:
+        """Normalize MiniMax `description` field to the documented array-of-strings form."""
+        if value is None:
+            return []
+        if isinstance(value, str):
+            text = value.strip()
+            return [text] if text else []
+        if isinstance(value, list):
+            items: list[str] = []
+            for item in value:
+                if item is None:
+                    continue
+                if isinstance(item, str):
+                    text = item.strip()
+                else:
+                    text = str(item).strip()
+                if text:
+                    items.append(text)
+            return items
+        text = str(value).strip()
+        return [text] if text else []
 
     @staticmethod
     def _parse_created_time(value: object) -> datetime | None:

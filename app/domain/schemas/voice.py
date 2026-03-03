@@ -47,7 +47,7 @@ class SystemVoiceRecord(BaseModel):
 
     voice_id: str
     voice_name: str
-    description: Optional[str] = None
+    description: list[str] = Field(default_factory=list)
     created_time: Optional[datetime] = None
 
 
