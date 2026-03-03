@@ -39,9 +39,9 @@
 
 ## 7. Repositories
 
-- [ ] 7.1 Create `app/repo/voice_repo.py` — `VoiceRepository` with methods: create, find_by_id, find_by_id_and_org, find_by_minimax_voice_id, list_by_organization, list_by_creator_and_organization, soft_delete
-- [ ] 7.2 Create `app/repo/audio_file_repo.py` — `AudioFileRepository` with methods: create, find_by_id, find_by_id_and_org, list_by_organization, list_by_creator_and_organization, soft_delete
-- [ ] 7.3 Register `get_voice_repo` and `get_audio_file_repo` factories in `app/common/repo.py`
+- [x] 7.1 Create `app/repo/voice_repo.py` — `VoiceRepository` with methods: create, find_by_id, find_by_id_and_org, find_by_minimax_voice_id, list_by_organization, list_by_creator_and_organization, soft_delete
+- [x] 7.2 Create `app/repo/audio_file_repo.py` — `AudioFileRepository` with methods: create, find_by_id, find_by_id_and_org, list_by_organization, list_by_creator_and_organization, soft_delete
+- [x] 7.3 Register `get_voice_repo` and `get_audio_file_repo` factories in `app/common/repo.py`
 
 ## 8. Voice Service
 

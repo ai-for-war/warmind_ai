@@ -3,6 +3,7 @@
 from functools import lru_cache
 
 from app.infrastructure.database.mongodb import MongoDB
+from app.repo.audio_file_repo import AudioFileRepository
 from app.repo.conversation_repo import ConversationRepository
 from app.repo.image_repo import ImageRepository
 from app.repo.message_repo import MessageRepository
@@ -12,6 +13,7 @@ from app.repo.sheet_connection_repo import SheetConnectionRepository
 from app.repo.sheet_data_repo import SheetDataRepository
 from app.repo.sheet_sync_state_repo import SheetSyncStateRepository
 from app.repo.user_repo import UserRepository
+from app.repo.voice_repo import VoiceRepository
 
 
 @lru_cache
@@ -111,3 +113,25 @@ def get_image_repo() -> ImageRepository:
     """
     db = MongoDB.get_db()
     return ImageRepository(db)
+
+
+@lru_cache
+def get_voice_repo() -> VoiceRepository:
+    """Get singleton VoiceRepository instance.
+
+    Returns:
+        VoiceRepository instance with database connection
+    """
+    db = MongoDB.get_db()
+    return VoiceRepository(db)
+
+
+@lru_cache
+def get_audio_file_repo() -> AudioFileRepository:
+    """Get singleton AudioFileRepository instance.
+
+    Returns:
+        AudioFileRepository instance with database connection
+    """
+    db = MongoDB.get_db()
+    return AudioFileRepository(db)
