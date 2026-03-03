@@ -55,13 +55,13 @@
 
 ## 9. TTS Service
 
-- [ ] 9.1 Create `app/services/tts/__init__.py`
-- [ ] 9.2 Implement `TTSService.synthesize_stream` — validate voice access, call MiniMax streaming T2A, yield binary chunks, accumulate, upload to Cloudinary after completion, save metadata to MongoDB, return completion info
-- [ ] 9.3 Implement `TTSService.generate_audio` — validate voice access, call MiniMax sync T2A, upload to Cloudinary, save metadata, return audio record with signed URL
-- [ ] 9.4 Implement `TTSService.get_audio` — fetch audio metadata with 3-tier access control, return with signed URL
-- [ ] 9.5 Implement `TTSService.list_audio` — paginated list with role-based filtering (admin sees all, user sees own)
-- [ ] 9.6 Implement `TTSService.delete_audio` — 3-tier access control, soft-delete MongoDB, delete from Cloudinary
-- [ ] 9.7 Register `get_tts_service` factory in `app/common/service.py`
+- [x] 9.1 Create `app/services/tts/__init__.py`
+- [x] 9.2 Implement `TTSService.synthesize_stream` — validate voice access, call MiniMax streaming T2A, yield binary chunks, accumulate, upload to Cloudinary after completion, save metadata to MongoDB, return completion info
+- [x] 9.3 Implement `TTSService.generate_audio` — validate voice access, call MiniMax sync T2A, upload to Cloudinary, save metadata, return audio record with signed URL
+- [x] 9.4 Implement `TTSService.get_audio` — fetch audio metadata with 3-tier access control, return with signed URL
+- [x] 9.5 Implement `TTSService.list_audio` — paginated list with role-based filtering (admin sees all, user sees own)
+- [x] 9.6 Implement `TTSService.delete_audio` — 3-tier access control, soft-delete MongoDB, delete from Cloudinary
+- [x] 9.7 Register `get_tts_service` factory in `app/common/service.py`
 
 ## 10. Voice API Router
 

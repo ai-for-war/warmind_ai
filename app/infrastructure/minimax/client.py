@@ -77,7 +77,8 @@ class MiniMaxClient:
             "file_id": file_id,
             "voice_id": voice_id,
             "need_noise_reduction": need_noise_reduction,
-            # Keep MiniMax's documented field name ("volumn") for compatibility.
+            # Latest docs use "need_volume_normalization"; keep legacy key for compatibility.
+            "need_volume_normalization": need_volume_normalization,
             "need_volumne_normalization": need_volume_normalization,
         }
 

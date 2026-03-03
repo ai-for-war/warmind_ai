@@ -3,6 +3,7 @@
 from functools import lru_cache
 
 from app.common.repo import (
+    get_audio_file_repo,
     get_conversation_repo,
     get_image_repo,
     get_member_repo,
@@ -30,6 +31,7 @@ from app.services.image.image_service import ImageService
 from app.services.organization.organization_service import OrganizationService
 from app.services.sheet_crawler.crawler_service import SheetCrawlerService
 from app.services.user.user_service import UserService
+from app.services.tts.tts_service import TTSService
 from app.services.voice.voice_service import VoiceService
 
 
@@ -209,6 +211,17 @@ def get_minimax_client() -> MiniMaxClient:
 def get_voice_service() -> VoiceService:
     """Get singleton VoiceService instance."""
     return VoiceService(
+        voice_repo=get_voice_repo(),
+        cloudinary_client=get_cloudinary_client(),
+        minimax_client=get_minimax_client(),
+    )
+
+
+@lru_cache
+def get_tts_service() -> TTSService:
+    """Get singleton TTSService instance."""
+    return TTSService(
+        audio_file_repo=get_audio_file_repo(),
         voice_repo=get_voice_repo(),
         cloudinary_client=get_cloudinary_client(),
         minimax_client=get_minimax_client(),
