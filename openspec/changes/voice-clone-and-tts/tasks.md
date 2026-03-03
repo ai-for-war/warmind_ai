@@ -65,20 +65,20 @@
 
 ## 10. Voice API Router
 
-- [ ] 10.1 Create `app/api/v1/voices/__init__.py`
-- [ ] 10.2 Implement `POST /api/v1/voices/clone` endpoint — accept multipart/form-data (audio file + name + voice_id), call VoiceService.clone_voice
-- [ ] 10.3 Implement `GET /api/v1/voices` endpoint — call VoiceService.list_voices with role resolution
-- [ ] 10.4 Implement `GET /api/v1/voices/{voice_id}` endpoint — call VoiceService.get_voice with role resolution
-- [ ] 10.5 Implement `DELETE /api/v1/voices/{voice_id}` endpoint — call VoiceService.delete_voice with role resolution
-- [ ] 10.6 Implement `POST /api/v1/voices/{voice_id}/preview` endpoint — call VoiceService.preview_voice, return audio/mpeg response
+- [x] 10.1 Create `app/api/v1/voices/__init__.py`
+- [x] 10.2 Implement `POST /api/v1/voices/clone` endpoint — accept multipart/form-data (audio file + name + voice_id), call VoiceService.clone_voice
+- [x] 10.3 Implement `GET /api/v1/voices` endpoint — call VoiceService.list_voices with role resolution
+- [x] 10.4 Implement `GET /api/v1/voices/{voice_id}` endpoint — call VoiceService.get_voice with role resolution
+- [x] 10.5 Implement `DELETE /api/v1/voices/{voice_id}` endpoint — call VoiceService.delete_voice with role resolution
+- [x] 10.6 Implement `POST /api/v1/voices/{voice_id}/preview` endpoint — call VoiceService.preview_voice, return audio/mpeg response
 
 ## 11. TTS API Router
 
-- [ ] 11.1 Create `app/api/v1/tts/__init__.py`
-- [ ] 11.2 Implement `POST /api/v1/tts/generate` endpoint — accept JSON, call TTSService.generate_audio
-- [ ] 11.3 Implement `GET /api/v1/tts/audio` endpoint — call TTSService.list_audio with pagination and role resolution
-- [ ] 11.4 Implement `GET /api/v1/tts/audio/{audio_id}` endpoint — call TTSService.get_audio with role resolution
-- [ ] 11.5 Implement `DELETE /api/v1/tts/audio/{audio_id}` endpoint — call TTSService.delete_audio with role resolution
+- [x] 11.1 Create `app/api/v1/tts/__init__.py`
+- [x] 11.2 Implement `POST /api/v1/tts/generate` endpoint — accept JSON, call TTSService.generate_audio
+- [x] 11.3 Implement `GET /api/v1/tts/audio` endpoint — call TTSService.list_audio with pagination and role resolution
+- [x] 11.4 Implement `GET /api/v1/tts/audio/{audio_id}` endpoint — call TTSService.get_audio with role resolution
+- [x] 11.5 Implement `DELETE /api/v1/tts/audio/{audio_id}` endpoint — call TTSService.delete_audio with role resolution
 
 ## 12. TTS WebSocket Endpoint
 
