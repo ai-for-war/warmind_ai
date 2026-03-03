@@ -23,3 +23,13 @@ class ChatEvents:
     MESSAGE_TOOL_END = "chat:message:tool_end"
     MESSAGE_COMPLETED = "chat:message:completed"
     MESSAGE_FAILED = "chat:message:failed"
+
+
+class TTSEvents:
+    """Socket events for TTS streaming over the shared Socket.IO connection."""
+
+    REQUEST = "tts:request"
+    STARTED = "tts:started"
+    AUDIO_CHUNK = "tts:audio:chunk"
+    COMPLETED = "tts:completed"
+    ERROR = "tts:error"

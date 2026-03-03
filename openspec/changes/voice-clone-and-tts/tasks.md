@@ -80,23 +80,23 @@
 - [x] 11.4 Implement `GET /api/v1/tts/audio/{audio_id}` endpoint — call TTSService.get_audio with role resolution
 - [x] 11.5 Implement `DELETE /api/v1/tts/audio/{audio_id}` endpoint — call TTSService.delete_audio with role resolution
 
-## 12. TTS WebSocket Endpoint
+## 12. TTS Streaming on Shared Socket Connection
 
-- [ ] 12.1 Create `app/api/v1/tts/ws.py` — WebSocket endpoint at `/ws/tts`
-- [ ] 12.2 Implement WebSocket authentication — validate JWT from `token` query parameter on connection upgrade, reject with close code 4001 if invalid
-- [ ] 12.3 Implement message loop — accept JSON messages with `action: "synthesize"`, `text`, `voice_id`, `organization_id`, and optional params
-- [ ] 12.4 Implement streaming relay — call TTSService.synthesize_stream, send binary frames to client, send JSON completion event with audio_id and audio_url
-- [ ] 12.5 Implement error handling — send JSON error events for validation errors, MiniMax failures, and Cloudinary failures without closing connection
-- [ ] 12.6 Handle client disconnect — cancel MiniMax stream, discard accumulated audio
+- [x] 12.1 Reuse existing shared Socket.IO connection (no dedicated `/ws/tts` endpoint)
+- [x] 12.2 Implement HTTP trigger endpoint to start async TTS streaming and return `request_id`
+- [x] 12.3 Implement streaming relay in TTS service layer - call `TTSService.synthesize_stream` and emit chunk events to `user:{user_id}` room
+- [x] 12.4 Emit completion event with persisted audio metadata (`audio_id`, `signed_url`, `duration_ms`, `size_bytes`)
+- [x] 12.5 Emit structured error event for validation/provider/storage failures without disconnecting socket
+- [x] 12.6 Add `request_id` correlation in started/chunk/completed/error events
 
 ## 13. Router Registration & App Wiring
 
-- [ ] 13.1 Register voice router and TTS router in `app/api/v1/router.py`
-- [ ] 13.2 Mount WebSocket endpoint on the FastAPI app in `app/main.py`
+- [x] 13.1 Register voice router and TTS router in `app/api/v1/router.py`
+- [x] 13.2 Reuse existing shared Socket.IO app mount in `app/main.py` (no dedicated TTS socket mount)
 
 ## 14. Verification
 
-- [ ] 14.1 Verify all new endpoints respond correctly with valid auth and org context
-- [ ] 14.2 Verify 3-tier access control works for voice and audio CRUD operations
-- [ ] 14.3 Verify WebSocket streaming delivers binary audio frames and completion event
-- [ ] 14.4 Verify audio files persist to Cloudinary and metadata saves to MongoDB after both streaming and sync generation
+- [x] 14.1 Verify all new endpoints respond correctly with valid auth and org context
+- [x] 14.2 Verify 3-tier access control works for voice and audio CRUD operations
+- [x] 14.3 Verify shared-socket streaming delivers chunk events and completion event
+- [x] 14.4 Verify audio files persist to Cloudinary and metadata saves to MongoDB after both streaming and sync generation

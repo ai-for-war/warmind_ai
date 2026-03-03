@@ -41,6 +41,8 @@ async def connect(sid: str, environ: dict, auth: dict | None = None) -> None:
         raise ConnectionRefusedError("Unauthorized")
 
     user_id = user_data["user_id"]
+    # Save user_id in socket session for later event handlers.
+    await sio.save_session(sid, {"user_id": user_id})
     # Auto-join user to personal room
     await sio.enter_room(sid, f"user:{user_id}")
 

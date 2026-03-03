@@ -1,6 +1,8 @@
 """Text-to-speech API endpoints."""
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from uuid import uuid4
+
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Response, status
 
 from app.api.deps import (
     OrganizationContext,
@@ -16,11 +18,52 @@ from app.domain.schemas.tts import (
     AudioListResponse,
     GenerateAudioRequest,
     GenerateAudioResponse,
+    StreamAudioRequest,
+    StreamAudioResponse,
 )
 from app.repo.organization_member_repo import OrganizationMemberRepository
 from app.services.tts.tts_service import TTSService
 
 router = APIRouter(prefix="/tts", tags=["TTS"])
+
+
+@router.post(
+    "/stream",
+    response_model=StreamAudioResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def stream_audio(
+    request: StreamAudioRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_active_user),
+    org_context: OrganizationContext = Depends(get_current_organization_context),
+    member_repo: OrganizationMemberRepository = Depends(get_member_repo),
+    tts_service: TTSService = Depends(get_tts_service),
+) -> StreamAudioResponse:
+    """Trigger async TTS streaming over the shared Socket.IO connection."""
+    user_role, org_role = await resolve_user_and_org_role(
+        current_user=current_user,
+        organization_id=org_context.organization_id,
+        member_repo=member_repo,
+    )
+    request_id = uuid4().hex
+
+    background_tasks.add_task(
+        tts_service.stream_audio_to_socket,
+        request_id=request_id,
+        text=request.text,
+        voice_id=request.voice_id,
+        user_id=current_user.id,
+        user_role=user_role,
+        org_id=org_context.organization_id,
+        org_role=org_role,
+        speed=request.speed,
+        volume=request.volume,
+        pitch=request.pitch,
+        emotion=request.emotion,
+    )
+
+    return StreamAudioResponse(request_id=request_id)
 
 
 @router.post("/generate", response_model=GenerateAudioResponse, status_code=status.HTTP_201_CREATED)

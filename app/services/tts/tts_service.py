@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import logging
 from collections.abc import AsyncGenerator, Awaitable, Callable
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -12,11 +14,11 @@ from app.common.exceptions import (
     PermissionDeniedError,
     VoiceNotFoundError,
 )
+from app.common.event_socket import TTSEvents
 from app.common.utils import is_org_admin, is_super_admin
 from app.domain.models.audio_file import AudioFile
 from app.domain.models.organization import OrganizationRole
 from app.domain.models.user import UserRole
-from app.domain.models.voice import Voice
 from app.domain.schemas.tts import (
     AudioDetailResponse,
     AudioFileRecord,
@@ -27,6 +29,9 @@ from app.infrastructure.cloudinary.client import CloudinaryClient
 from app.infrastructure.minimax.client import MiniMaxClient
 from app.repo.audio_file_repo import AudioFileRepository
 from app.repo.voice_repo import VoiceRepository
+from app.socket_gateway import gateway
+
+logger = logging.getLogger(__name__)
 
 
 class TTSService:
@@ -44,6 +49,91 @@ class TTSService:
         self.voice_repo = voice_repo
         self.cloudinary_client = cloudinary_client
         self.minimax_client = minimax_client
+
+    async def stream_audio_to_socket(
+        self,
+        *,
+        request_id: str,
+        text: str,
+        voice_id: str,
+        user_id: str,
+        user_role: UserRole | str,
+        org_id: str,
+        org_role: OrganizationRole | str | None,
+        speed: float | None = None,
+        volume: float | None = None,
+        pitch: int | None = None,
+        emotion: str | None = None,
+    ) -> None:
+        """Stream TTS audio chunks and completion events via shared Socket.IO room."""
+        try:
+            await gateway.emit_to_user(
+                user_id=user_id,
+                event=TTSEvents.STARTED,
+                data={
+                    "request_id": request_id,
+                    "voice_id": voice_id,
+                    "organization_id": org_id,
+                },
+            )
+
+            completed_response: GenerateAudioResponse | None = None
+
+            async def _on_completed(response: GenerateAudioResponse) -> None:
+                nonlocal completed_response
+                completed_response = response
+
+            sequence = 0
+            async for chunk in self.synthesize_stream(
+                text=text,
+                voice_id=voice_id,
+                user_id=user_id,
+                user_role=user_role,
+                org_id=org_id,
+                org_role=org_role,
+                speed=speed,
+                volume=volume,
+                pitch=pitch,
+                emotion=emotion,
+                on_completed=_on_completed,
+            ):
+                sequence += 1
+                await gateway.emit_to_user(
+                    user_id=user_id,
+                    event=TTSEvents.AUDIO_CHUNK,
+                    data={
+                        "request_id": request_id,
+                        "sequence": sequence,
+                        "audio_chunk_base64": base64.b64encode(chunk).decode("ascii"),
+                    },
+                )
+
+            if completed_response is None:
+                raise AppException("Synthesis completion metadata missing")
+
+            audio_record = completed_response.audio
+            await gateway.emit_to_user(
+                user_id=user_id,
+                event=TTSEvents.COMPLETED,
+                data={
+                    "request_id": request_id,
+                    "audio_id": audio_record.id,
+                    "signed_url": completed_response.signed_url,
+                    "duration_ms": audio_record.duration_ms,
+                    "size_bytes": audio_record.size_bytes,
+                    "format": audio_record.format,
+                },
+            )
+        except Exception as exc:
+            logger.exception("Failed to stream TTS audio for request %s", request_id)
+            await gateway.emit_to_user(
+                user_id=user_id,
+                event=TTSEvents.ERROR,
+                data={
+                    "request_id": request_id,
+                    "error": str(exc),
+                },
+            )
 
     async def synthesize_stream(
         self,

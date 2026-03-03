@@ -30,6 +30,17 @@ class GenerateAudioRequest(BaseModel):
     emotion: Optional[str] = None
 
 
+class StreamAudioRequest(BaseModel):
+    """Schema for async TTS streaming trigger request body."""
+
+    text: str = Field(..., min_length=1, max_length=10000)
+    voice_id: str
+    speed: Optional[float] = None
+    volume: Optional[float] = None
+    pitch: Optional[int] = None
+    emotion: Optional[str] = None
+
+
 class AudioFileRecord(BaseModel):
     """Schema representing generated audio metadata."""
 
@@ -67,3 +78,10 @@ class GenerateAudioResponse(BaseModel):
 
     audio: AudioFileRecord
     signed_url: str
+
+
+class StreamAudioResponse(BaseModel):
+    """Schema for async stream trigger response."""
+
+    request_id: str
+    status: str = "accepted"
