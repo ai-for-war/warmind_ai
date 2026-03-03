@@ -77,7 +77,8 @@ class MiniMaxClient:
             "file_id": file_id,
             "voice_id": voice_id,
             "need_noise_reduction": need_noise_reduction,
-            "need_volume_normalization": need_volume_normalization,
+            # Keep MiniMax's documented field name ("volumn") for compatibility.
+            "need_volumne_normalization": need_volume_normalization,
         }
 
         try:
@@ -133,7 +134,8 @@ class MiniMaxClient:
                 timeout=self.TTS_SYNC_TIMEOUT,
             )
             parsed = self._parse_json_response(response, stream=False)
-            data = parsed.get("data", {})
+            data = parsed.get("data") or {}
+            extra_info = parsed.get("extra_info") or {}
             audio_hex = self._extract_audio_hex(data)
             if not audio_hex:
                 raise MiniMaxAPIError("MiniMax synthesis response missing audio data")
@@ -141,27 +143,39 @@ class MiniMaxClient:
             try:
                 audio_bytes = bytes.fromhex(audio_hex)
             except ValueError as exc:
-                raise MiniMaxAPIError("MiniMax returned invalid hex audio data") from exc
+                raise MiniMaxAPIError(
+                    "MiniMax returned invalid hex audio data"
+                ) from exc
 
             usage = parsed.get("usage", {})
             usage_characters = (
-                usage.get("total_characters")
+                extra_info.get("usage_characters")
+                or extra_info.get("word_count")
+                or usage.get("total_characters")
                 or usage.get("characters")
                 or data.get("usage_characters")
             )
-            duration_ms = data.get("duration_ms") or data.get("duration")
+            duration_ms = (
+                data.get("duration_ms")
+                or data.get("duration")
+                or extra_info.get("audio_length")
+            )
+            size_bytes = extra_info.get("audio_size") or len(audio_bytes)
 
             return {
                 "audio_bytes": audio_bytes,
                 "duration_ms": duration_ms,
-                "size_bytes": len(audio_bytes),
+                "size_bytes": size_bytes,
                 "usage_characters": usage_characters,
+                "trace_id": parsed.get("trace_id"),
                 "raw": parsed,
             }
         except httpx.TimeoutException as exc:
             raise MiniMaxAPIError("MiniMax synchronous synthesis timed out") from exc
         except httpx.HTTPError as exc:
-            raise MiniMaxAPIError("MiniMax synchronous synthesis request failed") from exc
+            raise MiniMaxAPIError(
+                "MiniMax synchronous synthesis request failed"
+            ) from exc
 
     async def synthesize_stream(
         self,
@@ -242,7 +256,9 @@ class MiniMaxClient:
         except httpx.TimeoutException as exc:
             raise MiniMaxStreamError("MiniMax streaming synthesis timed out") from exc
         except httpx.HTTPError as exc:
-            raise MiniMaxStreamError("MiniMax streaming synthesis request failed") from exc
+            raise MiniMaxStreamError(
+                "MiniMax streaming synthesis request failed"
+            ) from exc
 
     async def list_voices(self, voice_type: str = "all") -> list[dict[str, Any]]:
         """List voices from MiniMax get_voice API."""
@@ -255,9 +271,30 @@ class MiniMaxClient:
                 headers={"Content-Type": "application/json"},
             )
             parsed = self._parse_json_response(response, stream=False)
-            data = parsed.get("data", {})
-            voices = data.get("voices") or data.get("voice_list")
-            return voices if isinstance(voices, list) else []
+            if voice_type == "system":
+                voices = parsed.get("system_voice")
+                return voices if isinstance(voices, list) else []
+            if voice_type == "voice_cloning":
+                voices = parsed.get("voice_cloning")
+                return voices if isinstance(voices, list) else []
+            if voice_type == "voice_generation":
+                voices = parsed.get("voice_generation")
+                return voices if isinstance(voices, list) else []
+
+            # voice_type == "all": flatten all categories and preserve source type.
+            merged: list[dict[str, Any]] = []
+            for key, kind in (
+                ("system_voice", "system"),
+                ("voice_cloning", "voice_cloning"),
+                ("voice_generation", "voice_generation"),
+            ):
+                values = parsed.get(key)
+                if not isinstance(values, list):
+                    continue
+                for item in values:
+                    if isinstance(item, dict):
+                        merged.append({"voice_type": kind, **item})
+            return merged
         except httpx.TimeoutException as exc:
             raise MiniMaxAPIError("MiniMax list voices request timed out") from exc
         except httpx.HTTPError as exc:
@@ -324,19 +361,25 @@ class MiniMaxClient:
             payload["voice_setting"]["emotion"] = emotion
         return payload
 
-    def _parse_json_response(self, response: httpx.Response, *, stream: bool) -> dict[str, Any]:
+    def _parse_json_response(
+        self, response: httpx.Response, *, stream: bool
+    ) -> dict[str, Any]:
         if response.status_code >= 400:
             if stream:
                 raise MiniMaxStreamError(
                     f"MiniMax request failed with HTTP {response.status_code}"
                 )
-            raise MiniMaxAPIError(f"MiniMax request failed with HTTP {response.status_code}")
+            raise MiniMaxAPIError(
+                f"MiniMax request failed with HTTP {response.status_code}"
+            )
 
         try:
             payload: dict[str, Any] = response.json()
         except ValueError as exc:
             if stream:
-                raise MiniMaxStreamError("MiniMax returned invalid JSON response") from exc
+                raise MiniMaxStreamError(
+                    "MiniMax returned invalid JSON response"
+                ) from exc
             raise MiniMaxAPIError("MiniMax returned invalid JSON response") from exc
 
         self._raise_for_base_resp(payload, stream=stream)
@@ -366,12 +409,16 @@ class MiniMaxClient:
         candidates = [
             payload.get("file_id"),
             data.get("file_id") if isinstance(data, dict) else None,
-            payload.get("file", {}).get("file_id")
-            if isinstance(payload.get("file"), dict)
-            else None,
-            data.get("file", {}).get("file_id")
-            if isinstance(data, dict) and isinstance(data.get("file"), dict)
-            else None,
+            (
+                payload.get("file", {}).get("file_id")
+                if isinstance(payload.get("file"), dict)
+                else None
+            ),
+            (
+                data.get("file", {}).get("file_id")
+                if isinstance(data, dict) and isinstance(data.get("file"), dict)
+                else None
+            ),
         ]
         for value in candidates:
             if isinstance(value, int):

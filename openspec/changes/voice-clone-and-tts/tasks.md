@@ -45,13 +45,13 @@
 
 ## 8. Voice Service
 
-- [ ] 8.1 Create `app/services/voice/__init__.py`
-- [ ] 8.2 Implement `VoiceService.clone_voice` — validate audio file (magic bytes, size), upload source audio to Cloudinary, upload to MiniMax, clone voice, save metadata to MongoDB
-- [ ] 8.3 Implement `VoiceService.list_voices` — fetch system voices from MiniMax + cloned voices from MongoDB (filtered by role/org), return combined response
-- [ ] 8.4 Implement `VoiceService.get_voice` — fetch voice metadata with 3-tier access control, return with signed URL for source audio
-- [ ] 8.5 Implement `VoiceService.delete_voice` — 3-tier access control, soft-delete MongoDB, delete from MiniMax, delete source audio from Cloudinary
-- [ ] 8.6 Implement `VoiceService.preview_voice` — call MiniMax T2A sync with max 200-char text, return raw MP3 bytes (no persistence)
-- [ ] 8.7 Register `get_minimax_client` and `get_voice_service` factories in `app/common/service.py`
+- [x] 8.1 Create `app/services/voice/__init__.py`
+- [x] 8.2 Implement `VoiceService.clone_voice` — validate audio file (magic bytes, size), upload source audio to Cloudinary, upload to MiniMax, clone voice, save metadata to MongoDB
+- [x] 8.3 Implement `VoiceService.list_voices` — fetch system voices from MiniMax + cloned voices from MongoDB (filtered by role/org), return combined response
+- [x] 8.4 Implement `VoiceService.get_voice` — fetch voice metadata with 3-tier access control, return with signed URL for source audio
+- [x] 8.5 Implement `VoiceService.delete_voice` — 3-tier access control, soft-delete MongoDB, delete from MiniMax, delete source audio from Cloudinary
+- [x] 8.6 Implement `VoiceService.preview_voice` — call MiniMax T2A sync with max 200-char text, return raw MP3 bytes (no persistence)
+- [x] 8.7 Register `get_minimax_client` and `get_voice_service` factories in `app/common/service.py`
 
 ## 9. TTS Service
 
