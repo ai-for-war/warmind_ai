@@ -12,10 +12,10 @@
 
 ## 3. Branch invocation and normalization
 
-- [ ] 3.1 Add the chat branch wrapper node that invokes the chat handling path and maps its result into the parent envelope
-- [ ] 3.2 Add the strategic branch wrapper node that invokes the strategic planning handling path and maps its result into the parent envelope
-- [ ] 3.3 Reuse or adapt the clarification node as the top-level unclear handling path
-- [ ] 3.4 Add a normalization step so every branch returns `intent`, `response_type`, `agent_response`, `final_payload`, `tool_calls`, and `error`
+- [x] 3.1 Add the chat branch wrapper node that invokes the chat handling path and maps its result into the parent envelope
+- [x] 3.2 Add the strategic branch wrapper node that invokes the strategic planning handling path and maps its result into the parent envelope
+- [x] 3.3 Reuse or adapt the clarification node as the top-level unclear handling path
+- [x] 3.4 Add a normalization step so every branch returns `intent`, `response_type`, `agent_response`, `final_payload`, `tool_calls`, and `error`
 
 ## 4. Workflow assembly and integration
 
