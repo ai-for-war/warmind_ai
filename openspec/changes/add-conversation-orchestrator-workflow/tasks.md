@@ -19,14 +19,14 @@
 
 ## 4. Workflow assembly and integration
 
-- [ ] 4.1 Build the orchestrator graph with explicit conditional routing
-- [ ] 4.2 Register `conversation_orchestrator_workflow` as a workflow that can be created through the graph registry
-- [ ] 4.3 Update the service entrypoint to invoke the orchestrator instead of calling `chat_workflow` directly
+- [x] 4.1 Build the orchestrator graph with explicit conditional routing
+- [x] 4.2 Register `conversation_orchestrator_workflow` as a workflow that can be created through the graph registry
+- [x] 4.3 Update the service entrypoint to invoke the orchestrator instead of calling `chat_workflow` directly
 
 ## 5. Validation and hardening
 
-- [ ] 5.1 Add tests for routing `chat` requests to the chat handling path
-- [ ] 5.2 Add tests for routing `strategic_planning` requests to the strategic handling path
-- [ ] 5.3 Add tests for routing ambiguous or failed classification to the clarification handling path
-- [ ] 5.4 Add tests that verify all routes return the normalized orchestrator output envelope
-- [ ] 5.5 Add lightweight logging or route metadata for selected intent, selected path, and normalized response type
+- [x] 5.1 Add tests for routing `chat` requests to the chat handling path
+- [x] 5.2 Add tests for routing `strategic_planning` requests to the strategic handling path
+- [x] 5.3 Add tests for routing ambiguous or failed classification to the clarification handling path
+- [x] 5.4 Add tests that verify all routes return the normalized orchestrator output envelope
+- [x] 5.5 Add lightweight logging or route metadata for selected intent, selected path, and normalized response type

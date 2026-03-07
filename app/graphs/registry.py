@@ -67,5 +67,18 @@ def get_chat_workflow(user_connections: list[dict] | None = None) -> CompiledSta
     return create_chat_workflow(user_connections)
 
 
+def get_conversation_orchestrator_workflow() -> CompiledStateGraph:
+    """Get a compiled conversation orchestrator workflow instance."""
+    from app.graphs.workflows.conversation_orchestrator_workflow.graph import (
+        create_conversation_orchestrator_workflow,
+    )
+
+    return create_conversation_orchestrator_workflow()
+
+
 # Register built-in workflows using lazy factory
 register_graph("chat_workflow", get_chat_workflow)
+register_graph(
+    "conversation_orchestrator_workflow",
+    get_conversation_orchestrator_workflow,
+)
