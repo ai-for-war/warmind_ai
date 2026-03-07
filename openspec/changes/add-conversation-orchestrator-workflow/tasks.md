@@ -6,9 +6,9 @@
 
 ## 2. Top-level routing
 
-- [ ] 2.1 Implement the top-level intent classifier for `chat`, `strategic_planning`, and `unclear`
-- [ ] 2.2 Add conservative fallback behavior so ambiguous or invalid classification routes to `unclear`
-- [ ] 2.3 Implement the route function that maps top-level intent to the correct handling path
+- [x] 2.1 Implement the top-level intent classifier for `chat`, `strategic_planning`, and `unclear`
+- [x] 2.2 Add conservative fallback behavior so ambiguous or invalid classification routes to `unclear`
+- [x] 2.3 Implement the route function that maps top-level intent to the correct handling path
 
 ## 3. Branch invocation and normalization
 
