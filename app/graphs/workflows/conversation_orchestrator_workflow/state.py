@@ -4,7 +4,7 @@ from typing import Annotated, Any, Literal, Optional, TypedDict
 
 from langgraph.graph.message import add_messages
 
-TopLevelIntent = Literal["chat", "strategic_planning", "unclear"]
+TopLevelIntent = Literal["normal_chat", "strategic_planning", "unclear"]
 ResponseType = Literal["chat_message", "clarification_request", "strategic_package"]
 
 

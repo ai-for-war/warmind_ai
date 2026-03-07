@@ -9,7 +9,7 @@ from app.graphs.workflows.conversation_orchestrator_workflow.state import (
     TopLevelIntent,
 )
 
-_VALID_INTENTS: set[str] = {"chat", "strategic_planning", "unclear"}
+_VALID_INTENTS: set[str] = {"normal_chat", "strategic_planning", "unclear"}
 _VALID_RESPONSE_TYPES: set[str] = {
     "chat_message",
     "clarification_request",
@@ -69,7 +69,7 @@ async def normalize_output_node(
     fallback_intent: TopLevelIntent = state.get("intent", "unclear") or "unclear"
 
     fallback_response_type: ResponseType = "clarification_request"
-    if fallback_intent == "chat":
+    if fallback_intent == "normal_chat":
         fallback_response_type = "chat_message"
     elif fallback_intent == "strategic_planning":
         fallback_response_type = "strategic_package"

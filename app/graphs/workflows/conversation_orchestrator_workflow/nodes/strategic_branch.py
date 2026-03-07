@@ -4,12 +4,8 @@ import logging
 from typing import Any
 
 from app.graphs.registry import get_graph
-from app.graphs.workflows.conversation_orchestrator_workflow.nodes.normalization import (
-    normalize_orchestrator_result,
-)
 from app.graphs.workflows.conversation_orchestrator_workflow.state import (
     ConversationOrchestratorWorkflowState,
-    OrchestratorOutputEnvelope,
 )
 
 logger = logging.getLogger(__name__)
@@ -19,8 +15,8 @@ STRATEGIC_WORKFLOW_NAME = "strategic_planning_workflow"
 
 async def strategic_branch_node(
     state: ConversationOrchestratorWorkflowState,
-) -> OrchestratorOutputEnvelope:
-    """Invoke strategic planning path and map output to orchestrator envelope."""
+) -> dict[str, Any]:
+    """Invoke strategic planning path and return branch-local result fields."""
     try:
         strategic_graph = get_graph(STRATEGIC_WORKFLOW_NAME)
         strategic_result: dict[str, Any] = await strategic_graph.ainvoke(
@@ -54,15 +50,10 @@ async def strategic_branch_node(
             "error": str(exc),
         }
 
-    return normalize_orchestrator_result(
-        raw={
-            "intent": "strategic_planning",
-            "response_type": strategic_result.get("response_type", "strategic_package"),
-            "agent_response": strategic_result.get("agent_response"),
-            "final_payload": strategic_result.get("final_payload", {}),
-            "tool_calls": strategic_result.get("tool_calls", []),
-            "error": strategic_result.get("error"),
-        },
-        fallback_intent="strategic_planning",
-        fallback_response_type="strategic_package",
-    )
+    return {
+        "agent_response": strategic_result.get("agent_response", ""),
+        "final_payload": strategic_result.get("final_payload", {}),
+        "tool_calls": strategic_result.get("tool_calls", []),
+        "error": strategic_result.get("error"),
+        "response_type": strategic_result.get("response_type", "strategic_package"),
+    }

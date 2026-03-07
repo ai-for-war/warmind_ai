@@ -17,14 +17,20 @@ from app.prompts.system.conversation_orchestrator_intent_classifier import (
 
 logger = logging.getLogger(__name__)
 
-SUPPORTED_TOP_LEVEL_INTENTS: set[str] = {"chat", "strategic_planning", "unclear"}
+SUPPORTED_TOP_LEVEL_INTENTS: set[str] = {
+    "normal_chat",
+    "strategic_planning",
+    "unclear",
+}
 
 
 class TopLevelIntentClassification(BaseModel):
     """Structured schema for top-level intent classification."""
 
     intent: TopLevelIntent = Field(
-        description=("Top-level routing intent: chat, strategic_planning, or unclear.")
+        description=(
+            "Top-level routing intent: normal_chat, strategic_planning, or unclear."
+        )
     )
 
 

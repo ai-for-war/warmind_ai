@@ -6,10 +6,11 @@ Emits Socket.IO events directly for real-time streaming to clients.
 import logging
 from typing import Any
 
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage
 
 from app.agents.implementations.data_agent.agent import create_data_agent
 from app.common.event_socket import ChatEvents
+from app.graphs.workflows.message_utils import build_agent_messages
 from app.graphs.workflows.chat_workflow.state import ChatWorkflowState, ToolCallRecord
 from app.socket_gateway import gateway
 
@@ -51,7 +52,7 @@ async def data_agent_node(state: ChatWorkflowState) -> dict:
     agent = create_data_agent(user_connections)
 
     # Build input messages for agent
-    agent_messages = _build_agent_messages(messages)
+    agent_messages = build_agent_messages(messages)
 
     # Execute agent with retries
     agent_response = None
@@ -218,28 +219,3 @@ async def _stream_agent_execution(
                         break
 
     return agent_response
-
-
-def _build_agent_messages(messages: list[Any]) -> list[Any]:
-    """Build message list for agent from workflow state messages.
-
-    Args:
-        messages: List of messages from workflow state
-
-    Returns:
-        List of messages suitable for agent input
-    """
-    agent_messages = []
-
-    for msg in messages[-10:]:  # Last 10 messages for context
-        if hasattr(msg, "content"):
-            if isinstance(msg, HumanMessage) or (
-                hasattr(msg, "type") and msg.type == "human"
-            ):
-                agent_messages.append(HumanMessage(content=msg.content))
-            elif isinstance(msg, AIMessage) or (
-                hasattr(msg, "type") and msg.type == "ai"
-            ):
-                agent_messages.append(AIMessage(content=msg.content))
-
-    return agent_messages

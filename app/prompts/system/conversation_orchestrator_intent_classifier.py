@@ -12,7 +12,7 @@ If context remains ambiguous, choose unclear.
 </context_policy>
 
 <intent_taxonomy>
-- chat: General conversation, greeting, small talk, broad Q&A, non-operational requests.
+- normal_chat: General conversation, greeting, small talk, broad Q&A, non-operational requests.
 - strategic_planning: Military/law-enforcement planning, mission/operation design,
   COA generation, force allocation, strategic or tactical decision-support.
 - unclear: Ambiguous, incomplete, malformed, conflicting, or low-confidence request.
@@ -20,14 +20,14 @@ If context remains ambiguous, choose unclear.
 
 <decision_policy>
 - Choose strategic_planning only when strategic intent is explicit or strongly implied.
-- Choose chat for normal non-strategic interactions.
-- If uncertain between chat and strategic_planning, return unclear.
+- Choose normal_chat for normal non-strategic interactions.
+- If uncertain between normal_chat and strategic_planning, return unclear.
 - Never output labels outside this taxonomy.
 </decision_policy>
 
 <output_contract>
 Return exactly one token:
-chat
+normal_chat
 strategic_planning
 unclear
 
