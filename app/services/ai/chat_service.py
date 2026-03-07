@@ -13,7 +13,7 @@ from typing import Optional
 from app.common.event_socket import ChatEvents
 from app.domain.models.conversation import ConversationStatus
 from app.domain.models.message import MessageMetadata, MessageRole
-from app.graphs.registry import get_chat_workflow
+from app.graphs.registry import get_conversation_orchestrator_workflow
 from app.repo.conversation_repo import SearchResult
 from app.services.ai.conversation_service import ConversationService
 from app.services.ai.data_query_service import DataQueryService
@@ -127,19 +127,18 @@ class ChatService:
         conversation_id: str,
         organization_id: Optional[str] = None,
     ) -> None:
-        """Process agent response using ChatWorkflow and stream via socket events.
+        """Process agent response using orchestrator workflow and stream via socket events.
 
         This method is designed to run as a background task.
-        It loads conversation history and user connections, runs the ChatWorkflow.
+        It loads conversation history and runs the top-level orchestrator workflow.
         Token streaming and tool events are emitted directly from workflow nodes.
 
         The workflow:
         1. Emit MESSAGE_STARTED event
-        2. Load user's sheet connections for data queries
-        3. Load conversation history as LangChain messages
-        4. Run ChatWorkflow (nodes emit token/tool events directly)
-        5. Save assistant response to database
-        6. Emit MESSAGE_COMPLETED or MESSAGE_FAILED event
+        2. Load conversation history as LangChain messages
+        3. Run conversation_orchestrator_workflow (nodes emit token/tool events directly)
+        4. Save assistant response to database
+        5. Emit MESSAGE_COMPLETED or MESSAGE_FAILED event
 
         Args:
             user_id: ID of the user (for socket room targeting)
@@ -155,27 +154,25 @@ class ChatService:
                 data={"conversation_id": conversation_id},
             )
 
-            # Load user's sheet connections with schemas
-            user_connections = await self.data_query_service.get_user_connections(
-                user_id=user_id,
-                organization_id=organization_id,
-            )
-
             # Load conversation history as LangChain messages
             messages = await self.conversation_service.get_langchain_messages(
                 conversation_id=conversation_id,
             )
 
-            # Create ChatWorkflow from registry
-            graph = get_chat_workflow(user_connections=user_connections)
+            # Create orchestrator workflow from registry
+            graph = get_conversation_orchestrator_workflow()
 
             # Prepare initial state
             initial_state = {
                 "messages": messages,
                 "user_id": user_id,
                 "conversation_id": conversation_id,
-                "user_connections": user_connections,
+                "intent": None,
+                "response_type": None,
+                "agent_response": None,
+                "final_payload": {},
                 "tool_calls": [],
+                "error": None,
             }
 
             # Run workflow - nodes emit Socket.IO events directly
