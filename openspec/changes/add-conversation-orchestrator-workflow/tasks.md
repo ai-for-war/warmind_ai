@@ -1,8 +1,8 @@
 ## 1. Orchestrator foundations
 
-- [ ] 1.1 Create the `conversation_orchestrator_workflow` module structure under `app/graphs/workflows/`
-- [ ] 1.2 Define the parent workflow state with only shared orchestrator fields
-- [ ] 1.3 Define the normalized orchestrator output envelope fields and route result contract
+- [x] 1.1 Create the `conversation_orchestrator_workflow` module structure under `app/graphs/workflows/`
+- [x] 1.2 Define the parent workflow state with only shared orchestrator fields
+- [x] 1.3 Define the normalized orchestrator output envelope fields and route result contract
 
 ## 2. Top-level routing
 
