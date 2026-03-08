@@ -17,9 +17,9 @@
 
 ## 4. Sheet Sync Worker Propagation
 
-- [ ] 4.1 Extend queued sheet sync task contracts to preserve `organization_id`
-- [ ] 4.2 Update worker and crawler service emit paths so started, completed, and failed events include `organization_id`
-- [ ] 4.3 Handle backward compatibility for older queued tasks that may not yet carry `organization_id`
+- [x] 4.1 Extend queued sheet sync task contracts to preserve `organization_id`
+- [x] 4.2 Update worker and crawler service emit paths so started, completed, and failed events include `organization_id`
+- [x] 4.3 Handle backward compatibility for older queued tasks that may not yet carry `organization_id`
 
 ## 5. Verification
 
