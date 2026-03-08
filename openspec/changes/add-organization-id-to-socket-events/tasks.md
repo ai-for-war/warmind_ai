@@ -1,8 +1,8 @@
 ## 1. Shared Socket Payload Contract
 
-- [ ] 1.1 Audit all outbound Socket.IO business emitters in server and worker paths
-- [ ] 1.2 Standardize payload enrichment so covered events add top-level `organization_id` without removing existing fields
-- [ ] 1.3 Confirm event names, socket auth flow, and user-room routing remain unchanged
+- [x] 1.1 Audit all outbound Socket.IO business emitters in server and worker paths
+- [x] 1.2 Standardize payload enrichment so covered events add top-level `organization_id` without removing existing fields
+- [x] 1.3 Confirm event names, socket auth flow, and user-room routing remain unchanged
 
 ## 2. Chat Event Propagation
 
