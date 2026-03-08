@@ -6,9 +6,9 @@
 
 ## 2. Chat Event Propagation
 
-- [ ] 2.1 Add `organization_id` to chat lifecycle payloads emitted from `ChatService`
-- [ ] 2.2 Extend orchestrator and chat workflow state/contracts to preserve `organization_id`
-- [ ] 2.3 Update chat token and tool event emitters to include `organization_id` on every emitted payload
+- [x] 2.1 Add `organization_id` to chat lifecycle payloads emitted from `ChatService`
+- [x] 2.2 Extend orchestrator and chat workflow state/contracts to preserve `organization_id`
+- [x] 2.3 Update chat token and tool event emitters to include `organization_id` on every emitted payload
 
 ## 3. TTS Event Propagation
 

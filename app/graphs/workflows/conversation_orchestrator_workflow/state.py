@@ -35,6 +35,7 @@ class ConversationOrchestratorWorkflowState(TypedDict):
     messages: Annotated[list, add_messages]
     user_id: str
     conversation_id: str
+    organization_id: Optional[str]
     intent: Optional[TopLevelIntent]
     response_type: Optional[ResponseType]
     agent_response: Optional[str]

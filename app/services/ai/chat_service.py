@@ -152,6 +152,7 @@ class ChatService:
                 user_id=user_id,
                 event=ChatEvents.MESSAGE_STARTED,
                 data={"conversation_id": conversation_id},
+                organization_id=organization_id,
             )
 
             # Load conversation history as LangChain messages
@@ -172,6 +173,7 @@ class ChatService:
                 "agent_response": None,
                 "final_payload": {},
                 "tool_calls": [],
+                "organization_id": organization_id,
                 "error": None,
             }
 
@@ -200,6 +202,7 @@ class ChatService:
                     "content": response_content,
                     "metadata": None,
                 },
+                organization_id=organization_id,
             )
 
         except Exception as e:
@@ -215,4 +218,5 @@ class ChatService:
                     "conversation_id": conversation_id,
                     "error": str(e),
                 },
+                organization_id=organization_id,
             )

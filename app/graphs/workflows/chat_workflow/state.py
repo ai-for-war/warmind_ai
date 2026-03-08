@@ -40,6 +40,7 @@ class ChatWorkflowState(TypedDict):
     messages: Annotated[list, add_messages]
     user_id: str
     conversation_id: str
+    organization_id: Optional[str]
     user_connections: list[dict]
     intent: Optional[str]
     agent_response: Optional[str]

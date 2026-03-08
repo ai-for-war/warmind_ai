@@ -17,6 +17,7 @@ async def clarify_node(state: dict[str, Any]) -> dict[str, str]:
     """Ask the user for clarification when top-level intent is unclear."""
     user_id = state.get("user_id", "")
     conversation_id = state.get("conversation_id", "")
+    organization_id = state.get("organization_id")
 
     try:
         llm = get_chat_openai(temperature=0.7, streaming=True)
@@ -48,6 +49,7 @@ async def clarify_node(state: dict[str, Any]) -> dict[str, str]:
                         "conversation_id": conversation_id,
                         "token": token,
                     },
+                    organization_id=organization_id,
                 )
 
         logger.info(
