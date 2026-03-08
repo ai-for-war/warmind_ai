@@ -29,6 +29,7 @@ class SyncTask:
 
     connection_id: str
     user_id: str
+    organization_id: Optional[str]
     queued_at: str
     retry_count: int = 0
 
@@ -45,6 +46,7 @@ class SyncTask:
         return cls(
             connection_id=data["connection_id"],
             user_id=data["user_id"],
+            organization_id=data.get("organization_id"),
             queued_at=data.get("queued_at", datetime.now(timezone.utc).isoformat()),
             retry_count=data.get("retry_count", 0),
         )
@@ -58,6 +60,7 @@ class SyncTask:
         return {
             "connection_id": self.connection_id,
             "user_id": self.user_id,
+            "organization_id": self.organization_id,
             "queued_at": self.queued_at,
             "retry_count": self.retry_count,
         }
@@ -112,6 +115,7 @@ class SheetSyncWorker:
             task: The failed sync task
             error_message: Error description
         """
+        effective_org_id = await self._resolve_task_organization_id(task)
         await worker_gateway.emit_to_user(
             user_id=task.user_id,
             event=SheetSyncEvents.FAILED,
@@ -119,7 +123,25 @@ class SheetSyncWorker:
                 "connection_id": task.connection_id,
                 "error": f"Sync failed after {self.MAX_RETRIES} retries: {error_message}",
             },
+            organization_id=effective_org_id,
         )
+
+    async def _resolve_task_organization_id(self, task: SyncTask) -> Optional[str]:
+        """Resolve organization_id for queued tasks, including legacy payloads."""
+        if task.organization_id:
+            return task.organization_id
+
+        try:
+            connection = await self.crawler_service.get_connection(task.connection_id)
+            if connection is not None:
+                return connection.organization_id
+        except Exception:
+            logger.exception(
+                "Failed to resolve organization_id for connection %s",
+                task.connection_id,
+            )
+
+        return None
 
     async def process_task(self, task: SyncTask) -> bool:
         """Process a single sync task.
@@ -141,6 +163,7 @@ class SheetSyncWorker:
             result = await self.crawler_service.sync_sheet(
                 connection_id=task.connection_id,
                 user_id=task.user_id,
+                organization_id=task.organization_id,
             )
 
             if result.success:

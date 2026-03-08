@@ -7,6 +7,7 @@ This module provides:
 
 import socketio
 
+from app.common.socket_payload_contract import enrich_socket_payload
 from app.socket_gateway.server import sio
 
 # ASGI app for mounting with FastAPI
@@ -23,35 +24,58 @@ class SocketGateway:
     use worker_gateway from app.socket_gateway.worker_gateway.
     """
 
-    async def emit_to_user(self, user_id: str, event: str, data: dict) -> None:
+    async def emit_to_user(
+        self,
+        user_id: str,
+        event: str,
+        data: dict,
+        organization_id: str | None = None,
+    ) -> None:
         """Emit event to a specific user via their personal room.
 
         Args:
             user_id: The user's ID
             event: Event name
             data: Event payload data
+            organization_id: Optional organization context for payload enrichment
         """
         room = f"user:{user_id}"
-        await sio.emit(event, data, room=room)
+        payload = enrich_socket_payload(data, organization_id)
+        await sio.emit(event, payload, room=room)
 
-    async def emit_to_room(self, room: str, event: str, data: dict) -> None:
+    async def emit_to_room(
+        self,
+        room: str,
+        event: str,
+        data: dict,
+        organization_id: str | None = None,
+    ) -> None:
         """Emit event to all clients in a room.
 
         Args:
             room: Room name
             event: Event name
             data: Event payload data
+            organization_id: Optional organization context for payload enrichment
         """
-        await sio.emit(event, data, room=room)
+        payload = enrich_socket_payload(data, organization_id)
+        await sio.emit(event, payload, room=room)
 
-    async def broadcast(self, event: str, data: dict) -> None:
+    async def broadcast(
+        self,
+        event: str,
+        data: dict,
+        organization_id: str | None = None,
+    ) -> None:
         """Emit event to all connected clients.
 
         Args:
             event: Event name
             data: Event payload data
+            organization_id: Optional organization context for payload enrichment
         """
-        await sio.emit(event, data)
+        payload = enrich_socket_payload(data, organization_id)
+        await sio.emit(event, payload)
 
     async def join_room(self, sid: str, room: str) -> None:
         """Add a connection to a room.

@@ -79,7 +79,12 @@ class SheetCrawlerService:
         self.cache_manager = cache_manager
         self.column_mapper = ColumnMapper()
 
-    async def _emit_sync_started(self, user_id: str, connection_id: str) -> None:
+    async def _emit_sync_started(
+        self,
+        user_id: str,
+        connection_id: str,
+        organization_id: Optional[str] = None,
+    ) -> None:
         """Emit sync started event via WebSocket.
 
         Args:
@@ -90,6 +95,7 @@ class SheetCrawlerService:
             user_id=user_id,
             event=SheetSyncEvents.STARTED,
             data={"connection_id": connection_id},
+            organization_id=organization_id,
         )
 
     async def _emit_sync_completed(
@@ -98,6 +104,7 @@ class SheetCrawlerService:
         connection_id: str,
         rows_synced: int,
         total_rows: int,
+        organization_id: Optional[str] = None,
     ) -> None:
         """Emit sync completed event via WebSocket.
 
@@ -115,6 +122,7 @@ class SheetCrawlerService:
                 "rows_synced": rows_synced,
                 "total_rows": total_rows,
             },
+            organization_id=organization_id,
         )
 
     async def _emit_sync_failed(
@@ -122,6 +130,7 @@ class SheetCrawlerService:
         user_id: str,
         connection_id: str,
         error_message: str,
+        organization_id: Optional[str] = None,
     ) -> None:
         """Emit sync failed event via WebSocket.
 
@@ -137,12 +146,14 @@ class SheetCrawlerService:
                 "connection_id": connection_id,
                 "error": error_message,
             },
+            organization_id=organization_id,
         )
 
     async def sync_sheet(
         self,
         connection_id: str,
         user_id: Optional[str] = None,
+        organization_id: Optional[str] = None,
     ) -> SyncResult:
         """Sync a single sheet connection.
 
@@ -165,8 +176,9 @@ class SheetCrawlerService:
                 error_message="Connection not found",
             )
 
-        # Use provided user_id or get from connection
+        # Use provided identifiers or resolve from connection for backward compatibility.
         effective_user_id = user_id or connection.user_id
+        effective_organization_id = organization_id or connection.organization_id
 
         # Get current sync state
         sync_state = await self.sync_state_repo.find_by_connection_id(connection_id)
@@ -174,7 +186,11 @@ class SheetCrawlerService:
         total_rows_synced = sync_state.total_rows_synced if sync_state else 0
 
         # Notify sync started
-        await self._emit_sync_started(effective_user_id, connection_id)
+        await self._emit_sync_started(
+            effective_user_id,
+            connection_id,
+            effective_organization_id,
+        )
 
         # Update status to syncing
         await self.sync_state_repo.update_state(
@@ -279,6 +295,7 @@ class SheetCrawlerService:
                 connection_id=connection_id,
                 rows_synced=rows_synced,
                 total_rows=new_total_rows,
+                organization_id=effective_organization_id,
             )
 
             logger.info(
@@ -314,6 +331,7 @@ class SheetCrawlerService:
                 user_id=effective_user_id,
                 connection_id=connection_id,
                 error_message=error_message,
+                organization_id=effective_organization_id,
             )
 
             return SyncResult(
@@ -343,6 +361,7 @@ class SheetCrawlerService:
                 user_id=effective_user_id,
                 connection_id=connection_id,
                 error_message=error_message,
+                organization_id=effective_organization_id,
             )
 
             return SyncResult(
@@ -370,6 +389,7 @@ class SheetCrawlerService:
                 user_id=effective_user_id,
                 connection_id=connection_id,
                 error_message=error_message,
+                organization_id=effective_organization_id,
             )
 
             return SyncResult(

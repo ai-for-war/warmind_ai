@@ -15,6 +15,7 @@ from typing import Optional
 
 import socketio
 
+from app.common.socket_payload_contract import enrich_socket_payload
 from app.socket_gateway.manager import get_worker_manager
 
 logger = logging.getLogger(__name__)
@@ -48,54 +49,77 @@ class WorkerSocketGateway:
             self._initialized = True
         return self._manager
 
-    async def emit_to_user(self, user_id: str, event: str, data: dict) -> None:
+    async def emit_to_user(
+        self,
+        user_id: str,
+        event: str,
+        data: dict,
+        organization_id: str | None = None,
+    ) -> None:
         """Emit event to a specific user via their personal room.
 
         Args:
             user_id: The user's ID
             event: Event name
             data: Event payload data
+            organization_id: Optional organization context for payload enrichment
         """
         if self.manager is None:
             logger.warning("Cannot emit %s: Redis manager not available", event)
             return
 
         room = f"user:{user_id}"
+        payload = enrich_socket_payload(data, organization_id)
         try:
-            await self.manager.emit(event, data, room=room)
+            await self.manager.emit(event, payload, room=room)
         except Exception:
             logger.exception("Failed to emit %s to user %s", event, user_id)
 
-    async def emit_to_room(self, room: str, event: str, data: dict) -> None:
+    async def emit_to_room(
+        self,
+        room: str,
+        event: str,
+        data: dict,
+        organization_id: str | None = None,
+    ) -> None:
         """Emit event to all clients in a room.
 
         Args:
             room: Room name
             event: Event name
             data: Event payload data
+            organization_id: Optional organization context for payload enrichment
         """
         if self.manager is None:
             logger.warning("Cannot emit %s: Redis manager not available", event)
             return
 
+        payload = enrich_socket_payload(data, organization_id)
         try:
-            await self.manager.emit(event, data, room=room)
+            await self.manager.emit(event, payload, room=room)
         except Exception:
             logger.exception("Failed to emit %s to room %s", event, room)
 
-    async def broadcast(self, event: str, data: dict) -> None:
+    async def broadcast(
+        self,
+        event: str,
+        data: dict,
+        organization_id: str | None = None,
+    ) -> None:
         """Emit event to all connected clients.
 
         Args:
             event: Event name
             data: Event payload data
+            organization_id: Optional organization context for payload enrichment
         """
         if self.manager is None:
             logger.warning("Cannot broadcast %s: Redis manager not available", event)
             return
 
+        payload = enrich_socket_payload(data, organization_id)
         try:
-            await self.manager.emit(event, data)
+            await self.manager.emit(event, payload)
         except Exception:
             logger.exception("Failed to broadcast %s", event)
 

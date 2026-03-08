@@ -38,6 +38,7 @@ async def data_agent_node(state: ChatWorkflowState) -> dict:
     messages = state.get("messages", [])
     user_id = state.get("user_id", "")
     conversation_id = state.get("conversation_id", "")
+    organization_id = state.get("organization_id")
     tool_calls: list[ToolCallRecord] = []
 
     # Check if user has any connections
@@ -69,6 +70,7 @@ async def data_agent_node(state: ChatWorkflowState) -> dict:
                 tool_calls=tool_calls,
                 user_id=user_id,
                 conversation_id=conversation_id,
+                organization_id=organization_id,
             )
 
             if agent_response:
@@ -101,6 +103,7 @@ async def _stream_agent_execution(
     tool_calls: list[ToolCallRecord],
     user_id: str,
     conversation_id: str,
+    organization_id: str | None = None,
 ) -> str | None:
     """Stream agent execution, emit Socket.IO events, and capture final response.
 
@@ -136,6 +139,7 @@ async def _stream_agent_execution(
                         "conversation_id": conversation_id,
                         "token": token,
                     },
+                    organization_id=organization_id,
                 )
 
         # Handle tool start events
@@ -178,6 +182,7 @@ async def _stream_agent_execution(
                     "tool_call_id": run_id,
                     "arguments": serializable_input,
                 },
+                organization_id=organization_id,
             )
             logger.info("Tool started: %s", tool_name)
 
@@ -202,6 +207,7 @@ async def _stream_agent_execution(
                     "tool_call_id": run_id,
                     "result": result,
                 },
+                organization_id=organization_id,
             )
             logger.info("Tool ended: %s", event.get("name", "unknown"))
 

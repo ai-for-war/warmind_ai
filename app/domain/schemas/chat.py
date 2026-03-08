@@ -30,6 +30,7 @@ class MessageStartedPayload(BaseModel):
     """Payload for chat:message:started event."""
 
     conversation_id: str
+    organization_id: Optional[str] = None
 
 
 class MessageTokenPayload(BaseModel):
@@ -37,6 +38,7 @@ class MessageTokenPayload(BaseModel):
 
     conversation_id: str
     token: str
+    organization_id: Optional[str] = None
 
 
 class MessageToolStartPayload(BaseModel):
@@ -45,6 +47,7 @@ class MessageToolStartPayload(BaseModel):
     conversation_id: str
     tool_name: str
     tool_call_id: str
+    organization_id: Optional[str] = None
 
 
 class MessageToolEndPayload(BaseModel):
@@ -53,6 +56,7 @@ class MessageToolEndPayload(BaseModel):
     conversation_id: str
     tool_call_id: str
     result: str
+    organization_id: Optional[str] = None
 
 
 class MessageCompletedPayload(BaseModel):
@@ -62,6 +66,7 @@ class MessageCompletedPayload(BaseModel):
     message_id: str
     content: str
     metadata: Optional[dict] = None
+    organization_id: Optional[str] = None
 
 
 class MessageFailedPayload(BaseModel):
@@ -69,6 +74,7 @@ class MessageFailedPayload(BaseModel):
 
     conversation_id: str
     error: str
+    organization_id: Optional[str] = None
 
 
 # Response Schemas for List/Get Endpoints

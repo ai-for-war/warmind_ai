@@ -18,6 +18,7 @@ async def chat_node(state: dict[str, Any]) -> dict[str, Any]:
     """Handle normal chat requests for orchestrator normal_chat branch."""
     user_id = state.get("user_id", "")
     conversation_id = state.get("conversation_id", "")
+    organization_id = state.get("organization_id")
     tool_calls: list[ToolCallRecord] = []
 
     try:
@@ -31,6 +32,7 @@ async def chat_node(state: dict[str, Any]) -> dict[str, Any]:
             tool_calls=tool_calls,
             user_id=user_id,
             conversation_id=conversation_id,
+            organization_id=organization_id,
         )
 
         if not agent_response:
@@ -56,6 +58,7 @@ async def _stream_chat_agent_execution(
     tool_calls: list[ToolCallRecord],
     user_id: str,
     conversation_id: str,
+    organization_id: str | None = None,
 ) -> str | None:
     """Stream chat agent execution and emit chat/tool events."""
     agent_response = None
@@ -74,6 +77,7 @@ async def _stream_chat_agent_execution(
                         "conversation_id": conversation_id,
                         "token": token,
                     },
+                    organization_id=organization_id,
                 )
         elif event_kind == "on_tool_start":
             tool_name = event.get("name", "unknown")
@@ -113,6 +117,7 @@ async def _stream_chat_agent_execution(
                     "tool_call_id": run_id,
                     "arguments": serializable_input,
                 },
+                organization_id=organization_id,
             )
         elif event_kind == "on_tool_end":
             tool_output = event.get("data", {}).get("output", "")
@@ -132,6 +137,7 @@ async def _stream_chat_agent_execution(
                     "tool_call_id": run_id,
                     "result": result,
                 },
+                organization_id=organization_id,
             )
         elif event_kind == "on_chain_end":
             output = event.get("data", {}).get("output", {})

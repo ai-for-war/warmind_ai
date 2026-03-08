@@ -24,6 +24,7 @@ async def strategic_branch_node(
                 "messages": state.get("messages", []),
                 "user_id": state.get("user_id", ""),
                 "conversation_id": state.get("conversation_id", ""),
+                "organization_id": state.get("organization_id"),
                 "tool_calls": state.get("tool_calls", []),
             }
         )
