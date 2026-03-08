@@ -12,8 +12,8 @@
 
 ## 3. TTS Event Propagation
 
-- [ ] 3.1 Update TTS chunk, completed, and error payloads to include `organization_id`
-- [ ] 3.2 Verify TTS started payload remains aligned with the shared contract
+- [x] 3.1 Update TTS chunk, completed, and error payloads to include `organization_id`
+- [x] 3.2 Verify TTS started payload remains aligned with the shared contract
 
 ## 4. Sheet Sync Worker Propagation
 

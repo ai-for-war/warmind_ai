@@ -73,8 +73,8 @@ class TTSService:
                 data={
                     "request_id": request_id,
                     "voice_id": voice_id,
-                    "organization_id": org_id,
                 },
+                organization_id=org_id,
             )
 
             completed_response: GenerateAudioResponse | None = None
@@ -106,6 +106,7 @@ class TTSService:
                         "sequence": sequence,
                         "audio_chunk_base64": base64.b64encode(chunk).decode("ascii"),
                     },
+                    organization_id=org_id,
                 )
 
             if completed_response is None:
@@ -123,6 +124,7 @@ class TTSService:
                     "size_bytes": audio_record.size_bytes,
                     "format": audio_record.format,
                 },
+                organization_id=org_id,
             )
         except Exception as exc:
             logger.exception("Failed to stream TTS audio for request %s", request_id)
@@ -133,6 +135,7 @@ class TTSService:
                     "request_id": request_id,
                     "error": str(exc),
                 },
+                organization_id=org_id,
             )
 
     async def synthesize_stream(
