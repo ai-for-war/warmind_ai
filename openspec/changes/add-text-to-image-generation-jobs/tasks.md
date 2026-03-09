@@ -65,12 +65,12 @@
 
 ## 8. Socket event integration
 
-- [ ] 8.1 Reuse the existing Socket.IO user-room model and `organization_id` payload enrichment for all generation lifecycle events
-- [ ] 8.2 Define a single payload shape shared across server-side and worker-side generation event emitters
-- [ ] 8.3 Emit `image:generation:created` from the API/server path after job creation has been persisted
-- [ ] 8.4 Emit `image:generation:processing`, `image:generation:succeeded`, and `image:generation:failed` from the worker path after each corresponding state transition is persisted
-- [ ] 8.5 Emit `image:generation:cancelled` from the API/server path only after the pending job has been atomically cancelled
-- [ ] 8.6 Verify that each event payload includes top-level `organization_id`, `job_id`, `status`, and any lifecycle metadata needed by the frontend to reconcile state
+- [x] 8.1 Reuse the existing Socket.IO user-room model and `organization_id` payload enrichment for all generation lifecycle events
+- [x] 8.2 Define a single payload shape shared across server-side and worker-side generation event emitters
+- [x] 8.3 Emit `image:generation:created` from the API/server path after job creation has been persisted
+- [x] 8.4 Emit `image:generation:processing`, `image:generation:succeeded`, and `image:generation:failed` from the worker path after each corresponding state transition is persisted
+- [x] 8.5 Emit `image:generation:cancelled` from the API/server path only after the pending job has been atomically cancelled
+- [x] 8.6 Verify that each event payload includes top-level `organization_id`, `job_id`, `status`, and any lifecycle metadata needed by the frontend to reconcile state
 
 ## 9. Access control and edge-case handling
 

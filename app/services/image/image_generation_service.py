@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from app.common.event_socket import TextToImageGenerationEvents
+from app.common.image_generation_socket import build_image_generation_lifecycle_payload
 from app.common.exceptions import (
     AppException,
     ImageGenerationCancellationConflictError,
@@ -28,7 +29,6 @@ from app.domain.schemas.image_generation import (
     ImageGenerationJobDetailResponse,
     ImageGenerationJobStatus,
     ImageGenerationJobSummaryItem,
-    ImageGenerationLifecycleEventPayload,
     TextToImageGenerationJobRecord,
 )
 from app.infrastructure.redis.redis_queue import RedisQueue
@@ -265,7 +265,7 @@ class ImageGenerationService:
 
     async def _emit_created_event(self, job: ImageGenerationJob) -> None:
         """Emit created event after job persistence."""
-        payload = ImageGenerationLifecycleEventPayload(
+        payload = build_image_generation_lifecycle_payload(
             job_id=job.id,
             organization_id=job.organization_id,
             status=ImageGenerationJobStatus.PENDING,
@@ -278,13 +278,13 @@ class ImageGenerationService:
         await gateway.emit_to_user(
             user_id=job.created_by,
             event=TextToImageGenerationEvents.CREATED,
-            data=payload.model_dump(),
+            data=payload,
             organization_id=job.organization_id,
         )
 
     async def _emit_cancelled_event(self, job: ImageGenerationJob) -> None:
         """Emit cancelled event after cancellation persistence."""
-        payload = ImageGenerationLifecycleEventPayload(
+        payload = build_image_generation_lifecycle_payload(
             job_id=job.id,
             organization_id=job.organization_id,
             status=ImageGenerationJobStatus.CANCELLED,
@@ -297,6 +297,6 @@ class ImageGenerationService:
         await gateway.emit_to_user(
             user_id=job.created_by,
             event=TextToImageGenerationEvents.CANCELLED,
-            data=payload.model_dump(),
+            data=payload,
             organization_id=job.organization_id,
         )

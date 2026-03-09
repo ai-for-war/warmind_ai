@@ -13,6 +13,7 @@ from typing import Any, Optional
 from uuid import uuid4
 
 from app.common.event_socket import TextToImageGenerationEvents
+from app.common.image_generation_socket import build_image_generation_lifecycle_payload
 from app.common.exceptions import (
     ImageGenerationNonRetryableProviderError,
     ImageGenerationRetryableProviderError,
@@ -238,15 +239,16 @@ class ImageGenerationWorker:
         await worker_gateway.emit_to_user(
             user_id=task.user_id,
             event=TextToImageGenerationEvents.FAILED,
-            data={
-                "job_id": job_id,
-                "status": failed.status,
-                "requested_count": failed.requested_count,
-                "success_count": failed.success_count,
-                "failed_count": failed.failed_count,
-                "image_ids": failed.output_image_ids,
-                "error_message": failed.error_message,
-            },
+            data=build_image_generation_lifecycle_payload(
+                job_id=job_id,
+                organization_id=task.organization_id,
+                status=failed.status,
+                requested_count=failed.requested_count,
+                success_count=failed.success_count,
+                failed_count=failed.failed_count,
+                image_ids=failed.output_image_ids,
+                error_message=failed.error_message,
+            ),
             organization_id=task.organization_id,
         )
 
@@ -255,14 +257,15 @@ class ImageGenerationWorker:
         await worker_gateway.emit_to_user(
             user_id=task.user_id,
             event=TextToImageGenerationEvents.PROCESSING,
-            data={
-                "job_id": task.job_id,
-                "status": status,
-                "requested_count": 1,
-                "success_count": 0,
-                "failed_count": 0,
-                "image_ids": [],
-            },
+            data=build_image_generation_lifecycle_payload(
+                job_id=task.job_id,
+                organization_id=task.organization_id,
+                status=status,
+                requested_count=1,
+                success_count=0,
+                failed_count=0,
+                image_ids=[],
+            ),
             organization_id=task.organization_id,
         )
 
@@ -279,14 +282,15 @@ class ImageGenerationWorker:
         await worker_gateway.emit_to_user(
             user_id=task.user_id,
             event=TextToImageGenerationEvents.SUCCEEDED,
-            data={
-                "job_id": task.job_id,
-                "status": status,
-                "requested_count": 1,
-                "success_count": success_count,
-                "failed_count": failed_count,
-                "image_ids": image_ids,
-            },
+            data=build_image_generation_lifecycle_payload(
+                job_id=task.job_id,
+                organization_id=task.organization_id,
+                status=status,
+                requested_count=1,
+                success_count=success_count,
+                failed_count=failed_count,
+                image_ids=image_ids,
+            ),
             organization_id=task.organization_id,
         )
 
