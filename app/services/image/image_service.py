@@ -266,5 +266,9 @@ class ImageService:
             mime_type=image.mime_type,
             size_bytes=image.size_bytes,
             cloudinary_folder=image.cloudinary_folder,
+            source=image.source,
+            generation_job_id=image.generation_job_id,
+            provider=image.provider,
+            provider_model=image.provider_model,
             created_at=image.created_at,
         )

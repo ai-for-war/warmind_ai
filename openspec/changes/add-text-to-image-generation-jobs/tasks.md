@@ -7,11 +7,11 @@
 
 ## 2. Job domain model and schemas
 
-- [ ] 2.1 Create `app/domain/models/image_generation_job.py` with the full persisted job model, status enum, timestamps, provider metadata, and output image references
-- [ ] 2.2 Extend `app/domain/models/image.py` with additive generated-image metadata such as `source`, `generation_job_id`, `provider`, and `provider_model`
-- [ ] 2.3 Create `app/domain/schemas/image_generation.py` request schemas for create-job input with strict validation for prompt length, supported aspect ratios, optional seed, and `prompt_optimizer`
-- [ ] 2.4 Create `app/domain/schemas/image_generation.py` response schemas for create response, detail response, summary list item, paginated history response, and cancel response
-- [ ] 2.5 Decide and encode the API-visible job status enum in schemas so REST and socket payloads use the same canonical values
+- [x] 2.1 Create `app/domain/models/image_generation_job.py` with the full persisted job model, status enum, timestamps, provider metadata, and output image references
+- [x] 2.2 Extend `app/domain/models/image.py` with additive generated-image metadata such as `source`, `generation_job_id`, `provider`, and `provider_model`
+- [x] 2.3 Create `app/domain/schemas/image_generation.py` request schemas for create-job input with strict validation for prompt length, supported aspect ratios, optional seed, and `prompt_optimizer`
+- [x] 2.4 Create `app/domain/schemas/image_generation.py` response schemas for create response, detail response, summary list item, paginated history response, and cancel response
+- [x] 2.5 Decide and encode the API-visible job status enum in schemas so REST and socket payloads use the same canonical values
 
 ## 3. Repository layer and MongoDB indexes
 

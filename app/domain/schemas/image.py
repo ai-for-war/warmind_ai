@@ -4,6 +4,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.domain.models.image import ImageSource
+
 
 class ImageRecord(BaseModel):
     """Schema representing image metadata in API responses."""
@@ -16,7 +18,14 @@ class ImageRecord(BaseModel):
     mime_type: str
     size_bytes: int
     cloudinary_folder: str
+    source: ImageSource = ImageSource.UPLOAD
+    generation_job_id: str | None = None
+    provider: str | None = None
+    provider_model: str | None = None
     created_at: datetime
+
+    class Config:
+        use_enum_values = True
 
 
 class ImageUploadFailure(BaseModel):
