@@ -1,6 +1,7 @@
 """Repository factory functions with singleton pattern."""
 
 from functools import lru_cache
+from typing import Any
 
 from app.infrastructure.database.mongodb import MongoDB
 from app.repo.audio_file_repo import AudioFileRepository
@@ -135,3 +136,21 @@ def get_audio_file_repo() -> AudioFileRepository:
     """
     db = MongoDB.get_db()
     return AudioFileRepository(db)
+
+
+@lru_cache
+def get_image_generation_job_repo() -> Any:
+    """Get singleton image generation job repository instance.
+
+    This placeholder is intentionally registered before the concrete
+    repository implementation lands.
+    """
+    try:
+        from app.repo.image_generation_job_repo import ImageGenerationJobRepository
+    except ModuleNotFoundError as exc:
+        raise NotImplementedError(
+            "ImageGenerationJobRepository is not implemented yet."
+        ) from exc
+
+    db = MongoDB.get_db()
+    return ImageGenerationJobRepository(db)

@@ -1,9 +1,9 @@
 ## 1. Configuration and shared contracts
 
-- [ ] 1.1 Add `IMAGE_GENERATION_QUEUE_NAME` to `app/config/settings.py` with a dedicated Redis queue name for text-to-image jobs
-- [ ] 1.2 Add a new `TextToImageGenerationEvents` group to `app/common/event_socket.py` for `created`, `processing`, `succeeded`, `failed`, and `cancelled` event names
-- [ ] 1.3 Add generation-specific exception classes to `app/common/exceptions.py` for job-not-found, invalid job state, cancellation conflict, and provider/storage failure mapping
-- [ ] 1.4 Register repository and service factory placeholders in `app/common/repo.py` and `app/common/service.py` for the new generation components
+- [x] 1.1 Add `IMAGE_GENERATION_QUEUE_NAME` to `app/config/settings.py` with a dedicated Redis queue name for text-to-image jobs
+- [x] 1.2 Add a new `TextToImageGenerationEvents` group to `app/common/event_socket.py` for `created`, `processing`, `succeeded`, `failed`, and `cancelled` event names
+- [x] 1.3 Add generation-specific exception classes to `app/common/exceptions.py` for job-not-found, invalid job state, cancellation conflict, and provider/storage failure mapping
+- [x] 1.4 Register repository and service factory placeholders in `app/common/repo.py` and `app/common/service.py` for the new generation components
 
 ## 2. Job domain model and schemas
 

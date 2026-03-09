@@ -33,3 +33,13 @@ class TTSEvents:
     AUDIO_CHUNK = "tts:audio:chunk"
     COMPLETED = "tts:completed"
     ERROR = "tts:error"
+
+
+class TextToImageGenerationEvents:
+    """Socket events for text-to-image generation lifecycle."""
+
+    CREATED = "image:generation:created"
+    PROCESSING = "image:generation:processing"
+    SUCCEEDED = "image:generation:succeeded"
+    FAILED = "image:generation:failed"
+    CANCELLED = "image:generation:cancelled"

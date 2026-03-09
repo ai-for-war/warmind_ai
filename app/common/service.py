@@ -1,10 +1,12 @@
 """Service factory functions with singleton pattern."""
 
 from functools import lru_cache
+from typing import Any
 
 from app.common.repo import (
     get_audio_file_repo,
     get_conversation_repo,
+    get_image_generation_job_repo,
     get_image_repo,
     get_member_repo,
     get_message_repo,
@@ -225,4 +227,44 @@ def get_tts_service() -> TTSService:
         voice_repo=get_voice_repo(),
         cloudinary_client=get_cloudinary_client(),
         minimax_client=get_minimax_client(),
+    )
+
+
+@lru_cache
+def get_minimax_image_client() -> Any:
+    """Get singleton MiniMax image client instance.
+
+    This placeholder is intentionally registered before the concrete
+    MiniMax image client implementation lands.
+    """
+    try:
+        from app.infrastructure.minimax.image_client import MiniMaxImageClient
+    except ModuleNotFoundError as exc:
+        raise NotImplementedError(
+            "MiniMaxImageClient is not implemented yet."
+        ) from exc
+
+    return MiniMaxImageClient()
+
+
+@lru_cache
+def get_image_generation_service() -> Any:
+    """Get singleton image generation service instance.
+
+    This placeholder is intentionally registered before the concrete
+    image generation service implementation lands.
+    """
+    try:
+        from app.services.image.image_generation_service import ImageGenerationService
+    except ModuleNotFoundError as exc:
+        raise NotImplementedError(
+            "ImageGenerationService is not implemented yet."
+        ) from exc
+
+    return ImageGenerationService(
+        image_generation_job_repo=get_image_generation_job_repo(),
+        image_repo=get_image_repo(),
+        redis_queue=get_redis_queue(),
+        cloudinary_client=get_cloudinary_client(),
+        minimax_image_client=get_minimax_image_client(),
     )
