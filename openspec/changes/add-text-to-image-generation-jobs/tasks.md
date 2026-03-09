@@ -15,13 +15,13 @@
 
 ## 3. Repository layer and MongoDB indexes
 
-- [ ] 3.1 Create `app/repo/image_generation_job_repo.py` with methods to create jobs, find job by id, list jobs by organization/creator scope, and update terminal state
-- [ ] 3.2 Implement atomic `claim_pending_job(job_id)` in the job repository using a single MongoDB compare-and-set update from `pending` to `processing`
-- [ ] 3.3 Implement atomic `cancel_pending_job(job_id, actor scope)` in the job repository using a single MongoDB compare-and-set update from `pending` to `cancelled`
-- [ ] 3.4 Add repository methods to mark job success, mark job failure, and persist provider trace IDs, output image IDs, and timestamps
-- [ ] 3.5 Register `get_image_generation_job_repo()` in `app/common/repo.py`
-- [ ] 3.6 Update MongoDB startup/index initialization to create indexes for `image_generation_jobs`
-- [ ] 3.7 Add any needed additive indexes on `images` for generated assets, especially `generation_job_id` if introduced
+- [x] 3.1 Create `app/repo/image_generation_job_repo.py` with methods to create jobs, find job by id, list jobs by organization/creator scope, and update terminal state
+- [x] 3.2 Implement atomic `claim_pending_job(job_id)` in the job repository using a single MongoDB compare-and-set update from `pending` to `processing`
+- [x] 3.3 Implement atomic `cancel_pending_job(job_id, actor scope)` in the job repository using a single MongoDB compare-and-set update from `pending` to `cancelled`
+- [x] 3.4 Add repository methods to mark job success, mark job failure, and persist provider trace IDs, output image IDs, and timestamps
+- [x] 3.5 Register `get_image_generation_job_repo()` in `app/common/repo.py`
+- [x] 3.6 Update MongoDB startup/index initialization to create indexes for `image_generation_jobs`
+- [x] 3.7 Add any needed additive indexes on `images` for generated assets, especially `generation_job_id` if introduced
 
 ## 4. MiniMax image provider client
 

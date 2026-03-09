@@ -151,3 +151,46 @@ class MongoDB:
             background=True,
         )
         logger.info("Created index: idx_messages_conversation_deleted_created")
+
+        # Indexes for image_generation_jobs collection
+        await cls.db.image_generation_jobs.create_index(
+            [
+                ("organization_id", ASCENDING),
+                ("requested_at", DESCENDING),
+                ("deleted_at", ASCENDING),
+            ],
+            name="idx_image_gen_jobs_org_requested_deleted",
+            background=True,
+        )
+        logger.info("Created index: idx_image_gen_jobs_org_requested_deleted")
+
+        await cls.db.image_generation_jobs.create_index(
+            [
+                ("created_by", ASCENDING),
+                ("organization_id", ASCENDING),
+                ("requested_at", DESCENDING),
+                ("deleted_at", ASCENDING),
+            ],
+            name="idx_image_gen_jobs_creator_org_requested_deleted",
+            background=True,
+        )
+        logger.info("Created index: idx_image_gen_jobs_creator_org_requested_deleted")
+
+        await cls.db.image_generation_jobs.create_index(
+            [
+                ("status", ASCENDING),
+                ("requested_at", DESCENDING),
+                ("deleted_at", ASCENDING),
+            ],
+            name="idx_image_gen_jobs_status_requested_deleted",
+            background=True,
+        )
+        logger.info("Created index: idx_image_gen_jobs_status_requested_deleted")
+
+        # Additive index for generated image linkage in images collection.
+        await cls.db.images.create_index(
+            [("generation_job_id", ASCENDING), ("deleted_at", ASCENDING)],
+            name="idx_images_generation_job_deleted",
+            background=True,
+        )
+        logger.info("Created index: idx_images_generation_job_deleted")
