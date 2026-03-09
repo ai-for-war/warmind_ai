@@ -25,11 +25,11 @@
 
 ## 4. MiniMax image provider client
 
-- [ ] 4.1 Create `app/infrastructure/minimax/image_client.py` as a dedicated MiniMax text-to-image client separate from the existing voice/TTS client
-- [ ] 4.2 Implement request payload construction for MiniMax `POST /v1/image_generation` with fixed `model=image-01`, fixed `response_format=base64`, and phase-1 output count fixed to one image
-- [ ] 4.3 Implement provider response normalization returning provider trace id, base64 image list, success count, failed count, and raw payload
-- [ ] 4.4 Map MiniMax provider and transport errors into retryable vs non-retryable application exceptions without exposing sensitive provider details to clients
-- [ ] 4.5 Register `get_minimax_image_client()` in `app/common/service.py`
+- [x] 4.1 Create `app/infrastructure/minimax/image_client.py` as a dedicated MiniMax text-to-image client separate from the existing voice/TTS client
+- [x] 4.2 Implement request payload construction for MiniMax `POST /v1/image_generation` with fixed `model=image-01`, fixed `response_format=base64`, and phase-1 output count fixed to one image
+- [x] 4.3 Implement provider response normalization returning provider trace id, base64 image list, success count, failed count, and raw payload
+- [x] 4.4 Map MiniMax provider and transport errors into retryable vs non-retryable application exceptions without exposing sensitive provider details to clients
+- [x] 4.5 Register `get_minimax_image_client()` in `app/common/service.py`
 
 ## 5. Image generation service
 

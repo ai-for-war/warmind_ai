@@ -20,6 +20,7 @@ from app.common.repo import (
 from app.infrastructure.cloudinary.client import CloudinaryClient
 from app.infrastructure.google_sheets.client import GoogleSheetClient
 from app.infrastructure.minimax.client import MiniMaxClient
+from app.infrastructure.minimax.image_client import MiniMaxImageClient
 from app.infrastructure.redis.client import RedisClient
 from app.infrastructure.redis.redis_queue import RedisQueue
 from app.services.ai.chat_service import ChatService
@@ -231,19 +232,8 @@ def get_tts_service() -> TTSService:
 
 
 @lru_cache
-def get_minimax_image_client() -> Any:
-    """Get singleton MiniMax image client instance.
-
-    This placeholder is intentionally registered before the concrete
-    MiniMax image client implementation lands.
-    """
-    try:
-        from app.infrastructure.minimax.image_client import MiniMaxImageClient
-    except ModuleNotFoundError as exc:
-        raise NotImplementedError(
-            "MiniMaxImageClient is not implemented yet."
-        ) from exc
-
+def get_minimax_image_client() -> MiniMaxImageClient:
+    """Get singleton MiniMax image client instance."""
     return MiniMaxImageClient()
 
 

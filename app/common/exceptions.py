@@ -191,6 +191,28 @@ class ImageGenerationProviderError(AppException):
     status_code = 502
 
 
+class ImageGenerationRetryableProviderError(ImageGenerationProviderError):
+    """Raised when provider failure is transient and safe to retry."""
+
+    default_message = "Image generation provider temporarily unavailable"
+    status_code = 502
+
+    def __init__(self, message: str = None, provider_code: int | None = None):
+        self.provider_code = provider_code
+        super().__init__(message)
+
+
+class ImageGenerationNonRetryableProviderError(ImageGenerationProviderError):
+    """Raised when provider rejects request and retry is not useful."""
+
+    default_message = "Image generation request rejected by provider"
+    status_code = 422
+
+    def __init__(self, message: str = None, provider_code: int | None = None):
+        self.provider_code = provider_code
+        super().__init__(message)
+
+
 class ImageGenerationStorageError(AppException):
     """Raised when storing generated image output fails."""
 
