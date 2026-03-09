@@ -72,7 +72,7 @@ class ImageGenerationService:
                 "provider_model": "image-01",
                 "status": JobStatusModel.PENDING.value,
                 "prompt": request.prompt,
-                "aspect_ratio": request.aspect_ratio.value,
+                "aspect_ratio": getattr(request.aspect_ratio, "value", request.aspect_ratio),
                 "seed": request.seed,
                 "prompt_optimizer": request.prompt_optimizer,
                 "requested_count": 1,
