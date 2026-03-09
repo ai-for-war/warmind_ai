@@ -43,16 +43,16 @@
 
 ## 6. Worker execution pipeline
 
-- [ ] 6.1 Create `app/workers/image_generation_worker.py` following the structure of `sheet_sync_worker.py`
-- [ ] 6.2 Define a worker task payload/dataclass carrying `job_id`, `organization_id`, `user_id`, `queued_at`, and `retry_count`
-- [ ] 6.3 Implement dequeue + stale-task handling so cancelled or already-terminal jobs are skipped without provider calls
-- [ ] 6.4 Implement the atomic worker-claim step that transitions `pending` to `processing` before provider execution
-- [ ] 6.5 Emit a `processing` socket event after the job state is persisted as `processing`
-- [ ] 6.6 Call the MiniMax image client, decode the returned base64 image bytes, and prepare the upload payload for authenticated Cloudinary storage
-- [ ] 6.7 Persist the generated image into Cloudinary and create the generated asset record in `images`
-- [ ] 6.8 Mark the job `succeeded` with provider trace id, output image id, success counters, and completion timestamp, then emit the `succeeded` event
-- [ ] 6.9 Mark the job `failed` with normalized error metadata and completion timestamp when provider or storage execution fails, then emit the `failed` event
-- [ ] 6.10 Add worker bootstrap and cleanup for MongoDB/Redis connections and graceful shutdown behavior consistent with existing workers
+- [x] 6.1 Create `app/workers/image_generation_worker.py` following the structure of `sheet_sync_worker.py`
+- [x] 6.2 Define a worker task payload/dataclass carrying `job_id`, `organization_id`, `user_id`, `queued_at`, and `retry_count`
+- [x] 6.3 Implement dequeue + stale-task handling so cancelled or already-terminal jobs are skipped without provider calls
+- [x] 6.4 Implement the atomic worker-claim step that transitions `pending` to `processing` before provider execution
+- [x] 6.5 Emit a `processing` socket event after the job state is persisted as `processing`
+- [x] 6.6 Call the MiniMax image client, decode the returned base64 image bytes, and prepare the upload payload for authenticated Cloudinary storage
+- [x] 6.7 Persist the generated image into Cloudinary and create the generated asset record in `images`
+- [x] 6.8 Mark the job `succeeded` with provider trace id, output image id, success counters, and completion timestamp, then emit the `succeeded` event
+- [x] 6.9 Mark the job `failed` with normalized error metadata and completion timestamp when provider or storage execution fails, then emit the `failed` event
+- [x] 6.10 Add worker bootstrap and cleanup for MongoDB/Redis connections and graceful shutdown behavior consistent with existing workers
 
 ## 7. REST API router
 
