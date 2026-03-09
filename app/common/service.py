@@ -1,7 +1,6 @@
 """Service factory functions with singleton pattern."""
 
 from functools import lru_cache
-from typing import Any
 
 from app.common.repo import (
     get_audio_file_repo,
@@ -31,6 +30,7 @@ from app.services.analytics.analytics_service import AnalyticsService
 from app.services.analytics.cache_manager import AnalyticsCacheManager
 from app.services.auth.auth_service import AuthService
 from app.services.image.image_service import ImageService
+from app.services.image.image_generation_service import ImageGenerationService
 from app.services.organization.organization_service import OrganizationService
 from app.services.sheet_crawler.crawler_service import SheetCrawlerService
 from app.services.user.user_service import UserService
@@ -238,23 +238,9 @@ def get_minimax_image_client() -> MiniMaxImageClient:
 
 
 @lru_cache
-def get_image_generation_service() -> Any:
-    """Get singleton image generation service instance.
-
-    This placeholder is intentionally registered before the concrete
-    image generation service implementation lands.
-    """
-    try:
-        from app.services.image.image_generation_service import ImageGenerationService
-    except ModuleNotFoundError as exc:
-        raise NotImplementedError(
-            "ImageGenerationService is not implemented yet."
-        ) from exc
-
+def get_image_generation_service() -> ImageGenerationService:
+    """Get singleton image generation service instance."""
     return ImageGenerationService(
         image_generation_job_repo=get_image_generation_job_repo(),
-        image_repo=get_image_repo(),
         redis_queue=get_redis_queue(),
-        cloudinary_client=get_cloudinary_client(),
-        minimax_image_client=get_minimax_image_client(),
     )

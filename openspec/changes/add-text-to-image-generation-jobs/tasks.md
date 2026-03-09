@@ -33,13 +33,13 @@
 
 ## 5. Image generation service
 
-- [ ] 5.1 Create `app/services/image/image_generation_service.py` with create, get detail, list history, and cancel methods
-- [ ] 5.2 Implement create-job flow: validate input, persist `pending` job, enqueue minimal queue payload, and return the created job response
-- [ ] 5.3 Implement list-history flow with organization-scoped filtering and role-aware visibility (regular user sees own jobs, org admin/super admin can see broader scope)
-- [ ] 5.4 Implement get-detail flow with permission checks and completed output image references
-- [ ] 5.5 Implement cancel flow using repository compare-and-set semantics and translate failed cancel attempts into the correct API error behavior
-- [ ] 5.6 Emit `created` and `cancelled` socket events from the service only after the corresponding DB state has been committed
-- [ ] 5.7 Register `get_image_generation_service()` in `app/common/service.py`
+- [x] 5.1 Create `app/services/image/image_generation_service.py` with create, get detail, list history, and cancel methods
+- [x] 5.2 Implement create-job flow: validate input, persist `pending` job, enqueue minimal queue payload, and return the created job response
+- [x] 5.3 Implement list-history flow with organization-scoped filtering and role-aware visibility (regular user sees own jobs, org admin/super admin can see broader scope)
+- [x] 5.4 Implement get-detail flow with permission checks and completed output image references
+- [x] 5.5 Implement cancel flow using repository compare-and-set semantics and translate failed cancel attempts into the correct API error behavior
+- [x] 5.6 Emit `created` and `cancelled` socket events from the service only after the corresponding DB state has been committed
+- [x] 5.7 Register `get_image_generation_service()` in `app/common/service.py`
 
 ## 6. Worker execution pipeline
 
