@@ -56,12 +56,12 @@
 
 ## 7. REST API router
 
-- [ ] 7.1 Create `app/api/v1/image_generations/router.py`
-- [ ] 7.2 Implement `POST /api/v1/image-generations/text-to-image` with auth, organization context resolution, and service injection
-- [ ] 7.3 Implement `GET /api/v1/image-generations/{job_id}` with role-aware access checks through the service layer
-- [ ] 7.4 Implement `GET /api/v1/image-generations` with pagination parameters and organization-scoped history retrieval
-- [ ] 7.5 Implement `POST /api/v1/image-generations/{job_id}/cancel` and return the updated cancelled job state when successful
-- [ ] 7.6 Register the new router in `app/api/v1/router.py`
+- [x] 7.1 Create `app/api/v1/image_generations/router.py`
+- [x] 7.2 Implement `POST /api/v1/image-generations/text-to-image` with auth, organization context resolution, and service injection
+- [x] 7.3 Implement `GET /api/v1/image-generations/{job_id}` with role-aware access checks through the service layer
+- [x] 7.4 Implement `GET /api/v1/image-generations` with pagination parameters and organization-scoped history retrieval
+- [x] 7.5 Implement `POST /api/v1/image-generations/{job_id}/cancel` and return the updated cancelled job state when successful
+- [x] 7.6 Register the new router in `app/api/v1/router.py`
 
 ## 8. Socket event integration
 
