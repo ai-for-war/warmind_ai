@@ -138,7 +138,11 @@ class ImageGenerationWorker:
             logger.info("Skip task %s: pending claim lost (already claimed/cancelled)", task.job_id)
             return
 
-        await self._emit_processing_event(task=task, status=claimed.status)
+        await self._emit_processing_event(
+            user_id=claimed.created_by,
+            task=task,
+            status=claimed.status,
+        )
 
         try:
             provider_result = await self.minimax_image_client.generate_text_to_image(
@@ -190,6 +194,7 @@ class ImageGenerationWorker:
                 return
 
             await self._emit_succeeded_event(
+                user_id=claimed.created_by,
                 task=task,
                 status=succeeded.status,
                 image_ids=succeeded.output_image_ids,
@@ -198,6 +203,7 @@ class ImageGenerationWorker:
             )
         except ImageGenerationNonRetryableProviderError as exc:
             await self._mark_failed_and_emit(
+                user_id=claimed.created_by,
                 task=task,
                 job_id=claimed.id,
                 error_code="provider_non_retryable",
@@ -205,6 +211,7 @@ class ImageGenerationWorker:
             )
         except ImageGenerationRetryableProviderError as exc:
             await self._mark_failed_and_emit(
+                user_id=claimed.created_by,
                 task=task,
                 job_id=claimed.id,
                 error_code="provider_retryable",
@@ -212,6 +219,7 @@ class ImageGenerationWorker:
             )
         except Exception as exc:  # noqa: BLE001
             await self._mark_failed_and_emit(
+                user_id=claimed.created_by,
                 task=task,
                 job_id=claimed.id,
                 error_code="storage_or_processing_error",
@@ -221,6 +229,7 @@ class ImageGenerationWorker:
     async def _mark_failed_and_emit(
         self,
         *,
+        user_id: str,
         task: ImageGenerationTask,
         job_id: str,
         error_code: str,
@@ -237,7 +246,7 @@ class ImageGenerationWorker:
             return
 
         await worker_gateway.emit_to_user(
-            user_id=task.user_id,
+            user_id=user_id,
             event=TextToImageGenerationEvents.FAILED,
             data=build_image_generation_lifecycle_payload(
                 job_id=job_id,
@@ -252,10 +261,16 @@ class ImageGenerationWorker:
             organization_id=task.organization_id,
         )
 
-    async def _emit_processing_event(self, *, task: ImageGenerationTask, status: str) -> None:
+    async def _emit_processing_event(
+        self,
+        *,
+        user_id: str,
+        task: ImageGenerationTask,
+        status: str,
+    ) -> None:
         """Emit processing event after processing state is persisted."""
         await worker_gateway.emit_to_user(
-            user_id=task.user_id,
+            user_id=user_id,
             event=TextToImageGenerationEvents.PROCESSING,
             data=build_image_generation_lifecycle_payload(
                 job_id=task.job_id,
@@ -272,6 +287,7 @@ class ImageGenerationWorker:
     async def _emit_succeeded_event(
         self,
         *,
+        user_id: str,
         task: ImageGenerationTask,
         status: str,
         image_ids: list[str],
@@ -280,7 +296,7 @@ class ImageGenerationWorker:
     ) -> None:
         """Emit succeeded event after success state is persisted."""
         await worker_gateway.emit_to_user(
-            user_id=task.user_id,
+            user_id=user_id,
             event=TextToImageGenerationEvents.SUCCEEDED,
             data=build_image_generation_lifecycle_payload(
                 job_id=task.job_id,

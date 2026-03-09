@@ -243,4 +243,6 @@ def get_image_generation_service() -> ImageGenerationService:
     return ImageGenerationService(
         image_generation_job_repo=get_image_generation_job_repo(),
         redis_queue=get_redis_queue(),
+        image_repo=get_image_repo(),
+        cloudinary_client=get_cloudinary_client(),
     )

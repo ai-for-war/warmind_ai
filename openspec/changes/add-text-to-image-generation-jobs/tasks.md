@@ -74,11 +74,11 @@
 
 ## 9. Access control and edge-case handling
 
-- [ ] 9.1 Reuse the existing 3-tier permission model for job detail, history visibility, and cancellation authority
-- [ ] 9.2 Ensure cross-organization job lookups return hidden/not-found behavior where required by existing security patterns
-- [ ] 9.3 Handle the cancel-vs-worker-claim race by returning a non-cancellable response when the worker has already claimed the job
-- [ ] 9.4 Ensure duplicate or stale queued payloads do not re-run provider work or create duplicate generated images
-- [ ] 9.5 Ensure list responses do not generate signed image URLs for every historical record, while detail responses can include completed output access data
+- [x] 9.1 Reuse the existing 3-tier permission model for job detail, history visibility, and cancellation authority
+- [x] 9.2 Ensure cross-organization job lookups return hidden/not-found behavior where required by existing security patterns
+- [x] 9.3 Handle the cancel-vs-worker-claim race by returning a non-cancellable response when the worker has already claimed the job
+- [x] 9.4 Ensure duplicate or stale queued payloads do not re-run provider work or create duplicate generated images
+- [x] 9.5 Ensure list responses do not generate signed image URLs for every historical record, while detail responses can include completed output access data
 
 ## 10. Verification and implementation readiness
 

@@ -83,10 +83,18 @@ class CreateTextToImageJobResponse(BaseModel):
         use_enum_values = True
 
 
+class ImageGenerationOutputImageAccess(BaseModel):
+    """Output image access data for detail responses."""
+
+    image_id: str
+    signed_url: str
+
+
 class ImageGenerationJobDetailResponse(BaseModel):
     """Schema for generation job detail response."""
 
     job: TextToImageGenerationJobRecord
+    output_images: list[ImageGenerationOutputImageAccess] = Field(default_factory=list)
 
 
 class ImageGenerationJobSummaryItem(BaseModel):

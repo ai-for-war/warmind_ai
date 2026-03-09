@@ -27,11 +27,14 @@ from app.domain.schemas.image_generation import (
     CreateTextToImageJobResponse,
     ImageGenerationHistoryResponse,
     ImageGenerationJobDetailResponse,
+    ImageGenerationOutputImageAccess,
     ImageGenerationJobStatus,
     ImageGenerationJobSummaryItem,
     TextToImageGenerationJobRecord,
 )
+from app.infrastructure.cloudinary.client import CloudinaryClient
 from app.infrastructure.redis.redis_queue import RedisQueue
+from app.repo.image_repo import ImageRepository
 from app.repo.image_generation_job_repo import ImageGenerationJobRepository
 from app.socket_gateway import gateway
 
@@ -43,9 +46,13 @@ class ImageGenerationService:
         self,
         image_generation_job_repo: ImageGenerationJobRepository,
         redis_queue: RedisQueue,
+        image_repo: ImageRepository,
+        cloudinary_client: CloudinaryClient,
     ) -> None:
         self.image_generation_job_repo = image_generation_job_repo
         self.redis_queue = redis_queue
+        self.image_repo = image_repo
+        self.cloudinary_client = cloudinary_client
         self.settings = get_settings()
 
     async def create_text_to_image_job(
@@ -149,7 +156,11 @@ class ImageGenerationService:
         ):
             raise PermissionDeniedError()
 
-        return ImageGenerationJobDetailResponse(job=self._to_job_record(job))
+        output_images = await self._build_output_image_accesses(job)
+        return ImageGenerationJobDetailResponse(
+            job=self._to_job_record(job),
+            output_images=output_images,
+        )
 
     async def cancel_job(
         self,
@@ -262,6 +273,34 @@ class ImageGenerationService:
             success_count=job.success_count,
             failed_count=job.failed_count,
         )
+
+    async def _build_output_image_accesses(
+        self,
+        job: ImageGenerationJob,
+    ) -> list[ImageGenerationOutputImageAccess]:
+        """Build signed output-image access data for detail responses only."""
+        if not job.output_image_ids:
+            return []
+
+        accesses: list[ImageGenerationOutputImageAccess] = []
+        for image_id in job.output_image_ids:
+            image = await self.image_repo.find_by_id_and_org(
+                image_id=image_id,
+                org_id=job.organization_id,
+            )
+            if image is None:
+                continue
+            signed_url = await self.cloudinary_client.generate_signed_url(
+                public_id=image.public_id,
+                expiry_seconds=7200,
+            )
+            accesses.append(
+                ImageGenerationOutputImageAccess(
+                    image_id=image.id,
+                    signed_url=signed_url,
+                )
+            )
+        return accesses
 
     async def _emit_created_event(self, job: ImageGenerationJob) -> None:
         """Emit created event after job persistence."""
