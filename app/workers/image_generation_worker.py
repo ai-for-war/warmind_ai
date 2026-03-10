@@ -66,6 +66,9 @@ class ImageGenerationWorker:
     def __init__(self) -> None:
         self.settings = get_settings()
         self.running = False
+        self.max_concurrency = max(1, int(self.settings.IMAGE_GENERATION_MAX_CONCURRENCY))
+        self._semaphore = asyncio.Semaphore(self.max_concurrency)
+        self._active_tasks: set[asyncio.Task[Any]] = set()
         self._queue: Optional[Any] = None
         self._job_repo: Optional[ImageGenerationJobRepository] = None
         self._image_repo: Optional[ImageRepository] = None
@@ -103,17 +106,43 @@ class ImageGenerationWorker:
         return self._minimax_image_client
 
     async def run_once(self) -> bool:
-        """Process a single queue item if available."""
-        task_data = await self.queue.dequeue(
-            queue_name=self.settings.IMAGE_GENERATION_QUEUE_NAME,
-            timeout=self.DEQUEUE_TIMEOUT,
-        )
-        if task_data is None:
-            return False
+        """Dispatch a single queue item if capacity is available."""
+        await self._semaphore.acquire()
+        try:
+            task_data = await self.queue.dequeue(
+                queue_name=self.settings.IMAGE_GENERATION_QUEUE_NAME,
+                timeout=self.DEQUEUE_TIMEOUT,
+            )
+            if task_data is None:
+                return False
 
-        task = ImageGenerationTask.from_dict(task_data)
-        await self.process_task(task)
-        return True
+            task = ImageGenerationTask.from_dict(task_data)
+            active_task = asyncio.create_task(self._run_task(task))
+            self._active_tasks.add(active_task)
+            return True
+        finally:
+            if task_data is None:
+                self._semaphore.release()
+
+    async def _run_task(self, task: ImageGenerationTask) -> None:
+        """Run one queued task and release its concurrency slot."""
+        current_task = asyncio.current_task()
+        try:
+            await self.process_task(task)
+        except Exception:  # noqa: BLE001
+            logger.exception("Unhandled error while processing image generation task %s", task.job_id)
+        finally:
+            if current_task is not None:
+                self._active_tasks.discard(current_task)
+            self._semaphore.release()
+
+    async def _wait_for_active_tasks(self) -> None:
+        """Wait for all in-flight tasks to finish during shutdown."""
+        if not self._active_tasks:
+            return
+
+        logger.info("Waiting for %d active image generation task(s) to finish", len(self._active_tasks))
+        await asyncio.gather(*list(self._active_tasks), return_exceptions=True)
 
     async def process_task(self, task: ImageGenerationTask) -> None:
         """Execute one text-to-image job from queued payload."""
@@ -321,14 +350,20 @@ class ImageGenerationWorker:
     async def start(self) -> None:
         """Start the worker processing loop."""
         self.running = True
-        logger.info("Image generation worker started")
+        logger.info(
+            "Image generation worker started with max_concurrency=%d",
+            self.max_concurrency,
+        )
 
-        while self.running:
-            try:
-                await self.run_once()
-            except Exception as exc:  # noqa: BLE001
-                logger.exception("Error in image generation worker loop: %s", exc)
-                await asyncio.sleep(1)
+        try:
+            while self.running:
+                try:
+                    await self.run_once()
+                except Exception as exc:  # noqa: BLE001
+                    logger.exception("Error in image generation worker loop: %s", exc)
+                    await asyncio.sleep(1)
+        finally:
+            await self._wait_for_active_tasks()
 
         logger.info("Image generation worker stopped")
 
