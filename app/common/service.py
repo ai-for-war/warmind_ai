@@ -5,6 +5,7 @@ from functools import lru_cache
 from app.common.repo import (
     get_audio_file_repo,
     get_conversation_repo,
+    get_image_generation_job_repo,
     get_image_repo,
     get_member_repo,
     get_message_repo,
@@ -18,6 +19,7 @@ from app.common.repo import (
 from app.infrastructure.cloudinary.client import CloudinaryClient
 from app.infrastructure.google_sheets.client import GoogleSheetClient
 from app.infrastructure.minimax.client import MiniMaxClient
+from app.infrastructure.minimax.image_client import MiniMaxImageClient
 from app.infrastructure.redis.client import RedisClient
 from app.infrastructure.redis.redis_queue import RedisQueue
 from app.services.ai.chat_service import ChatService
@@ -28,6 +30,7 @@ from app.services.analytics.analytics_service import AnalyticsService
 from app.services.analytics.cache_manager import AnalyticsCacheManager
 from app.services.auth.auth_service import AuthService
 from app.services.image.image_service import ImageService
+from app.services.image.image_generation_service import ImageGenerationService
 from app.services.organization.organization_service import OrganizationService
 from app.services.sheet_crawler.crawler_service import SheetCrawlerService
 from app.services.user.user_service import UserService
@@ -225,4 +228,21 @@ def get_tts_service() -> TTSService:
         voice_repo=get_voice_repo(),
         cloudinary_client=get_cloudinary_client(),
         minimax_client=get_minimax_client(),
+    )
+
+
+@lru_cache
+def get_minimax_image_client() -> MiniMaxImageClient:
+    """Get singleton MiniMax image client instance."""
+    return MiniMaxImageClient()
+
+
+@lru_cache
+def get_image_generation_service() -> ImageGenerationService:
+    """Get singleton image generation service instance."""
+    return ImageGenerationService(
+        image_generation_job_repo=get_image_generation_job_repo(),
+        redis_queue=get_redis_queue(),
+        image_repo=get_image_repo(),
+        cloudinary_client=get_cloudinary_client(),
     )

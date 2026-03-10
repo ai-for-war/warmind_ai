@@ -161,3 +161,60 @@ class MiniMaxStreamError(MiniMaxAPIError):
 
     default_message = "MiniMax audio stream failed"
     status_code = 502
+
+
+class ImageGenerationJobNotFoundError(AppException):
+    """Raised when an image generation job is not found."""
+
+    default_message = "Image generation job not found"
+    status_code = 404
+
+
+class InvalidImageGenerationJobStateError(AppException):
+    """Raised when a generation job is in an invalid state for an operation."""
+
+    default_message = "Invalid image generation job state"
+    status_code = 409
+
+
+class ImageGenerationCancellationConflictError(AppException):
+    """Raised when cancellation cannot be applied due to a race or state transition."""
+
+    default_message = "Image generation job can no longer be cancelled"
+    status_code = 409
+
+
+class ImageGenerationProviderError(AppException):
+    """Raised when text-to-image provider execution fails."""
+
+    default_message = "Image generation provider failed"
+    status_code = 502
+
+
+class ImageGenerationRetryableProviderError(ImageGenerationProviderError):
+    """Raised when provider failure is transient and safe to retry."""
+
+    default_message = "Image generation provider temporarily unavailable"
+    status_code = 502
+
+    def __init__(self, message: str = None, provider_code: int | None = None):
+        self.provider_code = provider_code
+        super().__init__(message)
+
+
+class ImageGenerationNonRetryableProviderError(ImageGenerationProviderError):
+    """Raised when provider rejects request and retry is not useful."""
+
+    default_message = "Image generation request rejected by provider"
+    status_code = 422
+
+    def __init__(self, message: str = None, provider_code: int | None = None):
+        self.provider_code = provider_code
+        super().__init__(message)
+
+
+class ImageGenerationStorageError(AppException):
+    """Raised when storing generated image output fails."""
+
+    default_message = "Image generation storage failed"
+    status_code = 502

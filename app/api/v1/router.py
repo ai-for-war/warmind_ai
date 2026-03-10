@@ -6,6 +6,7 @@ from app.api.v1.analytics.router import router as analytics_router
 from app.api.v1.ai.chat import router as chat_router
 from app.api.v1.auth.routes import router as auth_router
 from app.api.v1.health import router as health_router
+from app.api.v1.image_generations.router import router as image_generations_router
 from app.api.v1.images.router import router as images_router
 from app.api.v1.internal.router import router as internal_router
 from app.api.v1.organizations.routes import router as organizations_router
@@ -20,6 +21,7 @@ router.include_router(auth_router)
 router.include_router(users_router)
 router.include_router(organizations_router)
 router.include_router(images_router)
+router.include_router(image_generations_router)
 router.include_router(internal_router)
 router.include_router(sheet_crawler_router)
 router.include_router(analytics_router)

@@ -5,6 +5,13 @@ from app.domain.models.conversation import (
     Conversation,
     ConversationStatus,
 )
+from app.domain.models.image import Image, ImageSource
+from app.domain.models.image_generation_job import (
+    ImageGenerationJob,
+    ImageGenerationJobStatus,
+    ImageGenerationJobType,
+    ImageGenerationProvider,
+)
 from app.domain.models.message import (
     Attachment,
     AttachmentType,
@@ -33,6 +40,13 @@ __all__ = [
     # Conversation models
     "Conversation",
     "ConversationStatus",
+    # Image models
+    "Image",
+    "ImageSource",
+    "ImageGenerationJob",
+    "ImageGenerationJobStatus",
+    "ImageGenerationJobType",
+    "ImageGenerationProvider",
     # Message models
     "Attachment",
     "AttachmentType",

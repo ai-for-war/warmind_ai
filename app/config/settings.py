@@ -40,6 +40,7 @@ class Settings(BaseSettings):
 
     # Sheet Crawler
     SHEET_SYNC_QUEUE_NAME: str = "sheet_sync_tasks"
+    IMAGE_GENERATION_QUEUE_NAME: str = "image_generation_tasks"
 
     # OpenAI
     OPENAI_API_KEY: str  # Required for LLM operations
