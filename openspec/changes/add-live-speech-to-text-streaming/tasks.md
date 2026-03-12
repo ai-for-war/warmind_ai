@@ -8,11 +8,11 @@
 
 ## 2. Socket payload schemas and normalized transcript contract
 
-- [ ] 2.1 Create `app/domain/schemas/stt.py` with request payload models for `stt:start`, `stt:audio` metadata, `stt:finalize`, and `stt:stop`
-- [ ] 2.2 Define validation rules in `stt.py` that enforce phase 1 audio format as `encoding=linear16`, `sample_rate=16000`, and `channels=1`
-- [ ] 2.3 Define outbound payload models for `stt:started`, `stt:partial`, `stt:final`, `stt:completed`, and `stt:error`
-- [ ] 2.4 Decide and encode the normalized `stt:final` payload shape, including whether `confidence`, `start_ms`, and `end_ms` are exposed in phase 1
-- [ ] 2.5 Keep the frontend-facing payloads provider-agnostic so Socket.IO consumers never depend on raw Deepgram event names or raw SDK response types
+- [x] 2.1 Create `app/domain/schemas/stt.py` with request payload models for `stt:start`, `stt:audio` metadata, `stt:finalize`, and `stt:stop`
+- [x] 2.2 Define validation rules in `stt.py` that enforce phase 1 audio format as `encoding=linear16`, `sample_rate=16000`, and `channels=1`
+- [x] 2.3 Define outbound payload models for `stt:started`, `stt:partial`, `stt:final`, `stt:completed`, and `stt:error`
+- [x] 2.4 Decide and encode the normalized `stt:final` payload shape, including whether `confidence`, `start_ms`, and `end_ms` are exposed in phase 1
+- [x] 2.5 Keep the frontend-facing payloads provider-agnostic so Socket.IO consumers never depend on raw Deepgram event names or raw SDK response types
 
 ## 3. Deepgram SDK adapter using official Python SDK
 
