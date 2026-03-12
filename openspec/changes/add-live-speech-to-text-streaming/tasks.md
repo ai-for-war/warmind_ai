@@ -41,13 +41,13 @@
 
 ## 5. Session manager, lifecycle ownership, and cleanup
 
-- [ ] 5.1 Create `app/services/stt/session_manager.py` keyed by socket ID, with exactly one active `STTSession` per socket
-- [ ] 5.2 Add APIs on the manager for `start_session`, `push_audio`, `finalize_session`, `stop_session`, and `handle_disconnect`
-- [ ] 5.3 Ensure `disconnect` always closes the Deepgram connection and removes the in-memory session
-- [ ] 5.4 Add bounded buffering and queue-guard behavior so backend memory cannot grow unbounded if frontend sends faster than the provider path can consume
-- [ ] 5.5 Add inactivity timeout handling for sessions that open but never receive enough audio, or receive audio and then stall without finalize/stop
-- [ ] 5.6 Decide whether inactivity timeout auto-finalizes first or hard-closes first, and encode that policy in the manager
-- [ ] 5.7 Keep the manager implementation process-local and document that horizontal scale requires sticky sessions for inbound socket affinity
+- [x] 5.1 Create `app/services/stt/session_manager.py` keyed by socket ID, with exactly one active `STTSession` per socket
+- [x] 5.2 Add APIs on the manager for `start_session`, `push_audio`, `finalize_session`, `stop_session`, and `handle_disconnect`
+- [x] 5.3 Ensure `disconnect` always closes the Deepgram connection and removes the in-memory session
+- [x] 5.4 Add bounded buffering and queue-guard behavior so backend memory cannot grow unbounded if frontend sends faster than the provider path can consume
+- [x] 5.5 Add inactivity timeout handling for sessions that open but never receive enough audio, or receive audio and then stall without finalize/stop
+- [x] 5.6 Decide whether inactivity timeout auto-finalizes first or hard-closes first, and encode that policy in the manager
+- [x] 5.7 Keep the manager implementation process-local and document that horizontal scale requires sticky sessions for inbound socket affinity
 
 ## 6. Socket.IO server integration
 
