@@ -1,10 +1,10 @@
 ## 1. Dependencies, configuration, and shared contracts
 
-- [ ] 1.1 Add the official Deepgram Python SDK dependency to `requirements.txt` and pin a tested version instead of leaving the integration on an unbounded latest release
-- [ ] 1.2 Add `DEEPGRAM_API_KEY`, `DEEPGRAM_MODEL`, `DEEPGRAM_ENDPOINTING_MS`, `DEEPGRAM_UTTERANCE_END_MS`, and `DEEPGRAM_KEEPALIVE_INTERVAL_SECONDS` to `app/config/settings.py`
-- [ ] 1.3 Add an `STTEvents` group to `app/common/event_socket.py` for `stt:start`, `stt:audio`, `stt:finalize`, `stt:stop`, `stt:started`, `stt:partial`, `stt:final`, `stt:completed`, and `stt:error`
-- [ ] 1.4 Add STT-specific exception classes to `app/common/exceptions.py` for invalid stream state, unsupported audio format, active-stream conflict, provider connection failure, and stream ownership violations
-- [ ] 1.5 Register dependency factories in `app/common/service.py` for the Deepgram client wrapper and STT session manager/service
+- [x] 1.1 Add the official Deepgram Python SDK dependency to `requirements.txt` and pin a tested version instead of leaving the integration on an unbounded latest release
+- [x] 1.2 Add `DEEPGRAM_API_KEY`, `DEEPGRAM_MODEL`, `DEEPGRAM_ENDPOINTING_MS`, `DEEPGRAM_UTTERANCE_END_MS`, and `DEEPGRAM_KEEPALIVE_INTERVAL_SECONDS` to `app/config/settings.py`
+- [x] 1.3 Add an `STTEvents` group to `app/common/event_socket.py` for `stt:start`, `stt:audio`, `stt:finalize`, `stt:stop`, `stt:started`, `stt:partial`, `stt:final`, `stt:completed`, and `stt:error`
+- [x] 1.4 Add STT-specific exception classes to `app/common/exceptions.py` for invalid stream state, unsupported audio format, active-stream conflict, provider connection failure, and stream ownership violations
+- [x] 1.5 Register dependency factories in `app/common/service.py` for the Deepgram client wrapper and STT session manager/service
 
 ## 2. Socket payload schemas and normalized transcript contract
 

@@ -7,6 +7,7 @@ pytest-asyncio
 httpx
 hypothesis
 python-socketio
+deepgram-sdk
 
 # Authentication
 python-jose[cryptography]

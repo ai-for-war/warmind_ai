@@ -218,3 +218,38 @@ class ImageGenerationStorageError(AppException):
 
     default_message = "Image generation storage failed"
     status_code = 502
+
+
+class InvalidSTTStreamStateError(AppException):
+    """Raised when an STT operation is invalid for the current stream state."""
+
+    default_message = "Invalid STT stream state"
+    status_code = 409
+
+
+class UnsupportedSTTAudioFormatError(AppException):
+    """Raised when the incoming STT audio format is not supported."""
+
+    default_message = "Unsupported STT audio format"
+    status_code = 400
+
+
+class ActiveSTTStreamConflictError(AppException):
+    """Raised when a socket attempts to open a second active STT stream."""
+
+    default_message = "An active STT stream already exists for this socket"
+    status_code = 409
+
+
+class STTProviderConnectionError(AppException):
+    """Raised when the STT provider connection cannot be opened or maintained."""
+
+    default_message = "Speech-to-text provider connection failed"
+    status_code = 502
+
+
+class STTStreamOwnershipError(AppException):
+    """Raised when a socket attempts to control a stream it does not own."""
+
+    default_message = "Socket does not own this STT stream"
+    status_code = 403

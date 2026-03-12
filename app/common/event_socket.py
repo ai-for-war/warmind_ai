@@ -35,6 +35,20 @@ class TTSEvents:
     ERROR = "tts:error"
 
 
+class STTEvents:
+    """Socket events for live speech-to-text streaming over Socket.IO."""
+
+    START = "stt:start"
+    AUDIO = "stt:audio"
+    FINALIZE = "stt:finalize"
+    STOP = "stt:stop"
+    STARTED = "stt:started"
+    PARTIAL = "stt:partial"
+    FINAL = "stt:final"
+    COMPLETED = "stt:completed"
+    ERROR = "stt:error"
+
+
 class TextToImageGenerationEvents:
     """Socket events for text-to-image generation lifecycle."""
 

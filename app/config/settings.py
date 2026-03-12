@@ -50,6 +50,13 @@ class Settings(BaseSettings):
     # MiniMax
     MINIMAX_API_KEY: str
 
+    # Deepgram
+    DEEPGRAM_API_KEY: str
+    DEEPGRAM_MODEL: str = "nova-3"
+    DEEPGRAM_ENDPOINTING_MS: int = 400
+    DEEPGRAM_UTTERANCE_END_MS: int = 1000
+    DEEPGRAM_KEEPALIVE_INTERVAL_SECONDS: int = 5
+
     # Cloudinary
     CLOUDINARY_CLOUD_NAME: str
     CLOUDINARY_API_KEY: str
