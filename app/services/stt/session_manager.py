@@ -198,49 +198,58 @@ class STTSessionManager:
         """
 
         emitted: list[STTSessionEvent] = []
-        now = self._utcnow()
 
-        for sid, session in list(self._sessions.items()):
-            if not session.is_active:
-                self._remove_session(sid)
-                continue
-
-            age_seconds = (now - session.created_at).total_seconds()
-            provider_idle = session.seconds_since_provider_activity(at=now)
-            audio_idle = session.seconds_since_audio(at=now)
-
-            if session.last_audio_at is None and age_seconds >= self._startup_idle_timeout_seconds:
-                await session.provider_client.close()
-                emitted.append(self._build_timeout_event(session, "Session timed out before any audio arrived"))
-                self._remove_session(sid)
-                continue
-
-            if (
-                session.state == STTSessionState.STREAMING
-                and audio_idle is not None
-                and audio_idle >= self._stream_idle_timeout_seconds
-            ):
-                await session.request_finalize(sid=session.sid, stream_id=session.stream_id)
-                emitted.extend(await self._collect_session_events(session, wait_for_first=False))
-                if not session.is_active:
-                    self._remove_session(sid)
-                continue
-
-            if (
-                session.state == STTSessionState.FINALIZING
-                and provider_idle is not None
-                and provider_idle >= self._finalize_grace_timeout_seconds
-            ):
-                await session.provider_client.close()
-                emitted.extend(
-                    await self._collect_session_events(
-                        session,
-                        wait_for_first=False,
-                    )
-                )
-                self._remove_session(sid)
+        for sid in list(self._sessions):
+            emitted.extend(await self.reap_session(sid))
 
         return emitted
+
+    async def reap_session(self, sid: str) -> list[STTSessionEvent]:
+        """Apply inactivity policy to one live session."""
+        session = self._sessions.get(sid)
+        if session is None:
+            return []
+        if not session.is_active:
+            self._remove_session(sid)
+            return []
+
+        now = self._utcnow()
+        age_seconds = (now - session.created_at).total_seconds()
+        provider_idle = session.seconds_since_provider_activity(at=now)
+        audio_idle = session.seconds_since_audio(at=now)
+
+        if session.last_audio_at is None and age_seconds >= self._startup_idle_timeout_seconds:
+            await session.provider_client.close()
+            self._remove_session(sid)
+            return [
+                self._build_timeout_event(
+                    session,
+                    "Session timed out before any audio arrived",
+                )
+            ]
+
+        if (
+            session.state == STTSessionState.STREAMING
+            and audio_idle is not None
+            and audio_idle >= self._stream_idle_timeout_seconds
+        ):
+            await session.request_finalize(sid=session.sid, stream_id=session.stream_id)
+            emitted = await self._collect_session_events(session, wait_for_first=False)
+            if not session.is_active:
+                self._remove_session(sid)
+            return emitted
+
+        if (
+            session.state == STTSessionState.FINALIZING
+            and provider_idle is not None
+            and provider_idle >= self._finalize_grace_timeout_seconds
+        ):
+            await session.provider_client.close()
+            emitted = await self._collect_session_events(session, wait_for_first=False)
+            self._remove_session(sid)
+            return emitted
+
+        return []
 
     async def _collect_session_events(
         self,

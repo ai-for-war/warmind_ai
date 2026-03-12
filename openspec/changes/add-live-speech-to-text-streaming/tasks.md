@@ -51,13 +51,13 @@
 
 ## 6. Socket.IO server integration
 
-- [ ] 6.1 Register `stt:start`, `stt:audio`, `stt:finalize`, and `stt:stop` handlers in `app/socket_gateway/server.py`
-- [ ] 6.2 Load `user_id` from the saved Socket.IO session so STT ownership reuses the existing authenticated socket context
-- [ ] 6.3 Validate each inbound control event before handing it to the session manager, including active-session existence and stream ownership
-- [ ] 6.4 Accept binary audio payloads over the current Socket.IO connection without base64 encoding
-- [ ] 6.5 Emit normalized outbound STT events through the existing `gateway.emit_to_user(...)` pattern so the implementation remains consistent with chat/TTS
-- [ ] 6.6 Preserve additive `organization_id` enrichment on all outbound STT events when organization context is known
-- [ ] 6.7 Decide and implement how `organization_id` is resolved for STT events on the socket path if the current socket session stores only `user_id`
+- [x] 6.1 Register `stt:start`, `stt:audio`, `stt:finalize`, and `stt:stop` handlers in `app/socket_gateway/server.py`
+- [x] 6.2 Load `user_id` from the saved Socket.IO session so STT ownership reuses the existing authenticated socket context
+- [x] 6.3 Validate each inbound control event before handing it to the session manager, including active-session existence and stream ownership
+- [x] 6.4 Accept binary audio payloads over the current Socket.IO connection without base64 encoding
+- [x] 6.5 Emit normalized outbound STT events through the existing `gateway.emit_to_user(...)` pattern so the implementation remains consistent with chat/TTS
+- [x] 6.6 Preserve additive `organization_id` enrichment on all outbound STT events when organization context is known
+- [x] 6.7 Decide and implement how `organization_id` is resolved for STT events on the socket path if the current socket session stores only `user_id`
 
 ## 7. Deepgram behavior verification based on official docs
 
