@@ -94,7 +94,7 @@ class DeepgramLiveClient:
         self._events: asyncio.Queue[ProviderEvent] = asyncio.Queue()
 
     def get_runtime_config(self, *, language: str | None = None) -> dict[str, Any]:
-        """Return provider connect options for the active STT runtime."""
+        """Return verified Listen V1 connect options for the active STT runtime."""
         return {
             "model": self.model,
             "encoding": "linear16",
@@ -102,9 +102,6 @@ class DeepgramLiveClient:
             "channels": 1,
             "interim_results": True,
             "vad_events": True,
-            "punctuate": True,
-            "smart_format": True,
-            "diarize": True,
             "endpointing": self.endpointing_ms,
             "utterance_end_ms": self.utterance_end_ms,
             "language": language or "en",
@@ -153,7 +150,9 @@ class DeepgramLiveClient:
         connection = self._require_connection()
 
         try:
-            return bool(await connection.send_media(chunk))
+            from deepgram.extensions.types.sockets import ListenV1MediaMessage
+
+            return bool(await connection.send_media(ListenV1MediaMessage(chunk)))
         except Exception as exc:
             raise STTProviderConnectionError(
                 "Failed to send audio to Deepgram"
@@ -200,8 +199,11 @@ class DeepgramLiveClient:
         connection = self._require_connection()
 
         try:
+            from deepgram.extensions.types.sockets import ListenV1ControlMessage
 
-            return bool(await connection.send_control({"type": control_type}))
+            return bool(
+                await connection.send_control(ListenV1ControlMessage(type=control_type))
+            )
         except Exception as exc:
             raise STTProviderConnectionError(
                 f"Failed to send Deepgram control message: {control_type}"
