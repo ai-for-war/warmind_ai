@@ -23,7 +23,12 @@ class STTBaseSchema(BaseModel):
 
 
 class STTStartRequest(STTBaseSchema):
-    """Payload for `stt:start` requests."""
+    """Payload for `stt:start` requests.
+
+    Phase 1 supports exactly one active stream per socket connection. Frontend
+    callers must finalize or stop the current stream before starting another
+    stream on the same Socket.IO connection.
+    """
 
     stream_id: str = Field(..., min_length=1, max_length=128)
     language: str | None = Field(default=None, min_length=2, max_length=32)
@@ -42,11 +47,25 @@ class STTStartRequest(STTBaseSchema):
 
 
 class STTAudioMetadata(STTBaseSchema):
-    """Metadata accompanying a binary `stt:audio` payload."""
+    """Metadata accompanying a binary `stt:audio` payload.
+
+    `sequence` is required and should increase monotonically per stream.
+    Phase 1 treats it as transport metadata for observability and future
+    validation; missing or duplicate frames are currently handled best-effort
+    rather than rejected in the schema layer.
+    """
 
     stream_id: str = Field(..., min_length=1, max_length=128)
-    sequence: int = Field(..., ge=0)
-    timestamp_ms: int | None = Field(default=None, ge=0)
+    sequence: int = Field(
+        ...,
+        ge=0,
+        description="Client-maintained monotonic frame sequence per stream.",
+    )
+    timestamp_ms: int | None = Field(
+        default=None,
+        ge=0,
+        description="Optional client capture timestamp in milliseconds.",
+    )
 
 
 class STTFinalizeRequest(STTBaseSchema):

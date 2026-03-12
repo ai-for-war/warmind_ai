@@ -61,20 +61,20 @@
 
 ## 7. Deepgram behavior verification based on official docs
 
-- [ ] 7.1 Verify the pinned SDK version's exact async Listen V1 method names against official docs and code examples before final implementation, because current docs surface both `start_listening/send_media/send_control` and lower-level `start/send/keep_alive/finalize/finish` patterns
-- [ ] 7.2 Verify which event enum values and payload classes are actually emitted for Listen V1 transcript events in the pinned SDK version
-- [ ] 7.3 Verify how `speech_final`, `is_final`, `from_finalize`, and `UtteranceEnd.last_word_end` appear in real provider responses for `nova-3`
-- [ ] 7.4 Verify whether `language` values should be validated locally or passed through to Deepgram and surfaced as provider errors
-- [ ] 7.5 Verify official Deepgram guidance for keepalive interval and finalize timing for a raw PCM browser stream
-- [ ] 7.6 Verify recovery guidance for transient provider/network failures and explicitly decide what phase 1 will not support, especially around replay/resume and backlog recovery
+- [x] 7.1 Verify the pinned SDK version's exact async Listen V1 method names against official docs and code examples before final implementation, because current docs surface both `start_listening/send_media/send_control` and lower-level `start/send/keep_alive/finalize/finish` patterns
+- [x] 7.2 Verify which event enum values and payload classes are actually emitted for Listen V1 transcript events in the pinned SDK version
+- [x] 7.3 Verify how `speech_final`, `is_final`, `from_finalize`, and `UtteranceEnd.last_word_end` appear in real provider responses for `nova-3`
+- [x] 7.4 Verify whether `language` values should be validated locally or passed through to Deepgram and surfaced as provider errors
+- [x] 7.5 Verify official Deepgram guidance for keepalive interval and finalize timing for a raw PCM browser stream
+- [x] 7.6 Verify recovery guidance for transient provider/network failures and explicitly decide what phase 1 will not support, especially around replay/resume and backlog recovery
 
 ## 8. Frontend-backend contract alignment for browser AudioWorklet input
 
-- [ ] 8.1 Write or update internal implementation notes for the expected browser contract: `AudioWorklet` produces PCM16 mono 16kHz frames and client emits them as binary Socket.IO messages
-- [ ] 8.2 Define the `stt:start` payload required from frontend, including `stream_id`, `language`, `encoding`, `sample_rate`, and `channels`
-- [ ] 8.3 Define the `stt:audio` metadata contract, including `stream_id`, `sequence`, and optional `timestamp_ms`
-- [ ] 8.4 Decide whether the backend requires monotonically increasing sequence numbers and how it reacts to missing or duplicate audio frames
-- [ ] 8.5 Document that phase 1 only supports `1 active stream / socket`, so frontend must stop/finalize before starting a new stream on the same connection
+- [x] 8.1 Write or update internal implementation notes for the expected browser contract: `AudioWorklet` produces PCM16 mono 16kHz frames and client emits them as binary Socket.IO messages
+- [x] 8.2 Define the `stt:start` payload required from frontend, including `stream_id`, `language`, `encoding`, `sample_rate`, and `channels`
+- [x] 8.3 Define the `stt:audio` metadata contract, including `stream_id`, `sequence`, and optional `timestamp_ms`
+- [x] 8.4 Decide whether the backend requires monotonically increasing sequence numbers and how it reacts to missing or duplicate audio frames
+- [x] 8.5 Document that phase 1 only supports `1 active stream / socket`, so frontend must stop/finalize before starting a new stream on the same connection
 
 ## 9. Observability, safety, and failure handling
 
