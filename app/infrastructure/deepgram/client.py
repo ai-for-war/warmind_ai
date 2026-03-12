@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
@@ -90,6 +91,7 @@ class DeepgramLiveClient:
         self._client: Any | None = None
         self._connection_manager: Any | None = None
         self._connection: Any | None = None
+        self._listener_task: asyncio.Task[None] | None = None
         self._event_loop: asyncio.AbstractEventLoop | None = None
         self._events: asyncio.Queue[ProviderEvent] = asyncio.Queue()
 
@@ -98,12 +100,13 @@ class DeepgramLiveClient:
         return {
             "model": self.model,
             "encoding": "linear16",
-            "sample_rate": 16000,
-            "channels": 1,
-            "interim_results": True,
-            "vad_events": True,
-            "endpointing": self.endpointing_ms,
-            "utterance_end_ms": self.utterance_end_ms,
+            # Deepgram's websocket query parser expects string query values.
+            "sample_rate": "16000",
+            "channels": "1",
+            "interim_results": "true",
+            "vad_events": "true",
+            "endpointing": str(self.endpointing_ms),
+            "utterance_end_ms": str(self.utterance_end_ms),
             "language": language or "en",
         }
 
@@ -131,7 +134,7 @@ class DeepgramLiveClient:
             self._connection.on(EventType.CLOSE, self._on_close)
             self._connection.on(EventType.ERROR, self._on_error)
 
-            await self._connection.start_listening()
+            self._listener_task = asyncio.create_task(self._connection.start_listening())
             logger.info(
                 "Deepgram live connection started provider %s model %s language %s",
                 "deepgram",
@@ -140,7 +143,10 @@ class DeepgramLiveClient:
             )
         except Exception as exc:
             await self._cleanup_connection_context()
-            logger.exception("Deepgram live connection failed to start")
+            logger.error(
+                "Deepgram live connection failed to start: %s",
+                self._sanitize_exception_message(exc),
+            )
             raise STTProviderConnectionError(
                 "Failed to open Deepgram live connection"
             ) from exc
@@ -150,9 +156,8 @@ class DeepgramLiveClient:
         connection = self._require_connection()
 
         try:
-            from deepgram.extensions.types.sockets import ListenV1MediaMessage
-
-            return bool(await connection.send_media(ListenV1MediaMessage(chunk)))
+            await connection.send_media(chunk)
+            return True
         except Exception as exc:
             raise STTProviderConnectionError(
                 "Failed to send audio to Deepgram"
@@ -174,7 +179,7 @@ class DeepgramLiveClient:
 
         success = True
         try:
-            await connection.finish()
+            await connection.send_close_stream()
             logger.info("Deepgram live connection finished")
         except Exception as exc:
             success = False
@@ -199,11 +204,13 @@ class DeepgramLiveClient:
         connection = self._require_connection()
 
         try:
-            from deepgram.extensions.types.sockets import ListenV1ControlMessage
-
-            return bool(
-                await connection.send_control(ListenV1ControlMessage(type=control_type))
-            )
+            if control_type == "KeepAlive":
+                await connection.send_keep_alive()
+                return True
+            if control_type == "Finalize":
+                await connection.send_finalize()
+                return True
+            raise ValueError(f"Unsupported Deepgram control message: {control_type}")
         except Exception as exc:
             raise STTProviderConnectionError(
                 f"Failed to send Deepgram control message: {control_type}"
@@ -352,9 +359,20 @@ class DeepgramLiveClient:
 
     async def _cleanup_connection_context(self) -> None:
         connection_manager = self._connection_manager
+        listener_task = self._listener_task
         self._connection = None
         self._connection_manager = None
         self._client = None
+        self._listener_task = None
+
+        if listener_task is not None and not listener_task.done():
+            listener_task.cancel()
+            try:
+                await listener_task
+            except asyncio.CancelledError:
+                pass
+            except Exception:
+                logger.debug("Deepgram listener task cleanup raised", exc_info=True)
 
         if connection_manager is not None:
             try:
@@ -397,3 +415,23 @@ class DeepgramLiveClient:
         if isinstance(message, str) and message.strip():
             return message.strip()
         return str(payload)
+
+    @staticmethod
+    def _sanitize_exception_message(exc: Exception) -> str:
+        status_code = getattr(exc, "status_code", None)
+        body = getattr(exc, "body", None)
+        if status_code is not None or body is not None:
+            details: list[str] = []
+            if status_code is not None:
+                details.append(f"status_code={status_code}")
+            if body:
+                details.append(f"body={body}")
+            if details:
+                return "Deepgram API error (" + ", ".join(details) + ")"
+
+        message = str(exc)
+        return re.sub(
+            r"(Authorization':\s*')([^']+)(')",
+            r"\1[REDACTED]\3",
+            message,
+        )
