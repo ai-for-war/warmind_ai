@@ -1,1 +1,0 @@
-"""Deepgram infrastructure adapters."""

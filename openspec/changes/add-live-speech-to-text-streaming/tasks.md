@@ -16,16 +16,16 @@
 
 ## 3. Deepgram SDK adapter using official Python SDK
 
-- [ ] 3.1 Create `app/infrastructure/deepgram/client.py` as the only module allowed to talk directly to `deepgram-sdk`
-- [ ] 3.2 Initialize the async SDK client using `AsyncDeepgramClient(api_key=...)`
-- [ ] 3.3 Implement live connection creation using the current Listen V1 async websocket path from official docs and Context7 (`client.listen.v1.connect(...)`)
-- [ ] 3.4 Register Deepgram SDK event handlers for at least open, message, close, and error events using the SDK event API
-- [ ] 3.5 Implement provider start/options wiring for `model=nova-3`, `encoding=linear16`, `sample_rate=16000`, `channels=1`, `interim_results=true`, `vad_events=true`, `endpointing=400`, `utterance_end_ms=1000`, and `language=<client or en>`
-- [ ] 3.6 Implement audio streaming to Deepgram using the current SDK media send path verified from docs (`send_media(...)` / equivalent tested method for the pinned SDK version)
-- [ ] 3.7 Implement provider control messages for keepalive and finalize using the current SDK control send path verified from docs (`send_control(KeepAlive/Finalize)` or the pinned-version equivalent)
-- [ ] 3.8 Normalize SDK responses into an internal provider event model that includes transcript partials, final fragments, speech-started, utterance-end, provider-finalize, close, and error signals
-- [ ] 3.9 Hide all SDK-specific classes such as `ListenV1SocketClientResponse`, `ListenV1MediaMessage`, and control message types inside the adapter boundary so service code depends only on internal dataclasses or methods
-- [ ] 3.10 Add explicit logging around provider open/close/error events without logging raw audio or full transcript contents
+- [x] 3.1 Create `app/infrastructure/deepgram/client.py` as the only module allowed to talk directly to `deepgram-sdk`
+- [x] 3.2 Initialize the async SDK client using `AsyncDeepgramClient(api_key=...)`
+- [x] 3.3 Implement live connection creation using the current Listen V1 async websocket path from official docs and Context7 (`client.listen.v1.connect(...)`)
+- [x] 3.4 Register Deepgram SDK event handlers for at least open, message, close, and error events using the SDK event API
+- [x] 3.5 Implement provider start/options wiring for `model=nova-3`, `encoding=linear16`, `sample_rate=16000`, `channels=1`, `interim_results=true`, `vad_events=true`, `endpointing=400`, `utterance_end_ms=1000`, and `language=<client or en>`
+- [x] 3.6 Implement audio streaming to Deepgram using the current SDK media send path verified from docs (`send_media(...)` / equivalent tested method for the pinned SDK version)
+- [x] 3.7 Implement provider control messages for keepalive and finalize using the current SDK control send path verified from docs (`send_control(KeepAlive/Finalize)` or the pinned-version equivalent)
+- [x] 3.8 Normalize SDK responses into an internal provider event model that includes transcript partials, final fragments, speech-started, utterance-end, provider-finalize, close, and error signals
+- [x] 3.9 Hide all SDK-specific classes such as `ListenV1SocketClientResponse`, `ListenV1MediaMessage`, and control message types inside the adapter boundary so service code depends only on internal dataclasses or methods
+- [x] 3.10 Add explicit logging around provider open/close/error events without logging raw audio or full transcript contents
 
 ## 4. STT session state machine and transcript assembly
 
