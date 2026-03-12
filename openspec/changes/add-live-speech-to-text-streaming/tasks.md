@@ -29,15 +29,15 @@
 
 ## 4. STT session state machine and transcript assembly
 
-- [ ] 4.1 Create `app/services/stt/session.py` with a stateful `STTSession` object that owns `sid`, `user_id`, `stream_id`, `organization_id`, `language`, provider connection, transcript buffers, and timestamps
-- [ ] 4.2 Implement an explicit state machine with at least `starting`, `streaming`, `finalizing`, `completed`, and `failed`
-- [ ] 4.3 Enforce `1 active stream per socket` at the session layer before any provider connection is opened
-- [ ] 4.4 Bind each stream to the originating socket and reject audio/control events from non-owning sockets
-- [ ] 4.5 Implement transcript assembly rules so `is_final=false` becomes `stt:partial`, while `speech_final=true` becomes `stt:final`
-- [ ] 4.6 Decide how to buffer and merge provider-final fragments that are `is_final=true` but not yet `speech_final=true`
-- [ ] 4.7 Use `UtteranceEnd` only as a secondary flush aid or idle marker, not as the primary commit trigger for transcript finalization
-- [ ] 4.8 Track last-audio and last-provider-activity timestamps for keepalive and stale-session cleanup
-- [ ] 4.9 Implement graceful finalize flow so session state does not transition to `completed` until provider final output has been flushed
+- [x] 4.1 Create `app/services/stt/session.py` with a stateful `STTSession` object that owns `sid`, `user_id`, `stream_id`, `organization_id`, `language`, provider connection, transcript buffers, and timestamps
+- [x] 4.2 Implement an explicit state machine with at least `starting`, `streaming`, `finalizing`, `completed`, and `failed`
+- [x] 4.3 Enforce `1 active stream per socket` at the session layer before any provider connection is opened
+- [x] 4.4 Bind each stream to the originating socket and reject audio/control events from non-owning sockets
+- [x] 4.5 Implement transcript assembly rules so `is_final=false` becomes `stt:partial`, while `speech_final=true` becomes `stt:final`
+- [x] 4.6 Decide how to buffer and merge provider-final fragments that are `is_final=true` but not yet `speech_final=true`
+- [x] 4.7 Use `UtteranceEnd` only as a secondary flush aid or idle marker, not as the primary commit trigger for transcript finalization
+- [x] 4.8 Track last-audio and last-provider-activity timestamps for keepalive and stale-session cleanup
+- [x] 4.9 Implement graceful finalize flow so session state does not transition to `completed` until provider final output has been flushed
 
 ## 5. Session manager, lifecycle ownership, and cleanup
 
