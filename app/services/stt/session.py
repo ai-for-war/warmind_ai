@@ -242,10 +242,14 @@ class STTSession:
             return self._handle_utterance_end()
         if event.kind == ProviderEventKind.PROVIDER_FINALIZE:
             return self._handle_provider_finalize()
-        if event.kind in {
-            ProviderEventKind.TRANSCRIPT_PARTIAL,
-            ProviderEventKind.TRANSCRIPT_FINAL_FRAGMENT,
-        } and event.transcript is not None:
+        if (
+            event.kind
+            in {
+                ProviderEventKind.TRANSCRIPT_PARTIAL,
+                ProviderEventKind.TRANSCRIPT_FINAL_FRAGMENT,
+            }
+            and event.transcript is not None
+        ):
             return self._handle_transcript_event(event.transcript)
         return []
 
@@ -274,10 +278,7 @@ class STTSession:
         return []
 
     def _handle_utterance_end(self) -> list[STTSessionEvent]:
-        if (
-            self.state == STTSessionState.FINALIZING
-            and self._pending_final_fragments
-        ):
+        if self.state == STTSessionState.FINALIZING and self._pending_final_fragments:
             return [self._flush_pending_final_fragments()]
         return []
 
@@ -318,8 +319,8 @@ class STTSession:
             kind=STTSessionEventKind.FINAL,
             payload=STTFinalPayload(
                 stream_id=self.stream_id,
-                transcript=self._merge_transcript_text(fragments),
                 confidence=self._merge_confidence(fragments),
+                transcript=self._merge_transcript_text(fragments),
                 start_ms=self._merge_start_ms(fragments),
                 end_ms=self._merge_end_ms(fragments),
             ),
@@ -342,7 +343,9 @@ class STTSession:
 
     def _assert_state(self, allowed_states: set[STTSessionState]) -> None:
         if self.state not in allowed_states:
-            allowed = ", ".join(state.value for state in sorted(allowed_states, key=str))
+            allowed = ", ".join(
+                state.value for state in sorted(allowed_states, key=str)
+            )
             raise InvalidSTTStreamStateError(
                 f"STT session is '{self.state.value}', expected one of: {allowed}"
             )
@@ -397,7 +400,9 @@ class STTSession:
 
     @staticmethod
     def _merge_end_ms(fragments: list[ProviderTranscriptEvent]) -> int | None:
-        values = [fragment.end_ms for fragment in fragments if fragment.end_ms is not None]
+        values = [
+            fragment.end_ms for fragment in fragments if fragment.end_ms is not None
+        ]
         return max(values) if values else None
 
     @staticmethod

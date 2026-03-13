@@ -11,6 +11,8 @@ from typing import Any
 
 from app.common.exceptions import STTProviderConnectionError
 from app.config.settings import get_settings
+from deepgram import AsyncDeepgramClient
+from deepgram.core.events import EventType
 
 logger = logging.getLogger(__name__)
 
@@ -115,12 +117,6 @@ class DeepgramLiveClient:
         if self._connection is not None:
             raise STTProviderConnectionError("Deepgram connection is already open")
 
-        try:
-            from deepgram import AsyncDeepgramClient
-            from deepgram.core.events import EventType
-        except ImportError as exc:
-            raise STTProviderConnectionError("deepgram-sdk is not installed") from exc
-
         listen_options = self.get_runtime_config(language=language)
 
         try:
@@ -134,7 +130,9 @@ class DeepgramLiveClient:
             self._connection.on(EventType.CLOSE, self._on_close)
             self._connection.on(EventType.ERROR, self._on_error)
 
-            self._listener_task = asyncio.create_task(self._connection.start_listening())
+            self._listener_task = asyncio.create_task(
+                self._connection.start_listening()
+            )
             logger.info(
                 "Deepgram live connection started provider %s model %s language %s",
                 "deepgram",
