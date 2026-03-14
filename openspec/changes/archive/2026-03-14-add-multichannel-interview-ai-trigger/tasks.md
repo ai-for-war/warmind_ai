@@ -81,11 +81,11 @@
 
 ## 11. Verification and implementation readiness
 
-- [ ] 11.1 Add schema tests for multichannel `stt:start` validation, including `channels=2`, valid `channel_map`, and rejection of missing or duplicate speaker-role mappings
-- [ ] 11.2 Add adapter tests for multichannel Deepgram event normalization, especially preservation of `channel_index`, `speech_final`, `UtteranceEnd`, and `SpeechStarted`
-- [ ] 11.3 Add session tests for preview emission, stable segment merge, grace-timer cancellation, and stable utterance closure after `UtteranceEnd + 800ms`
-- [ ] 11.4 Add Redis context-store tests to verify only closed stable utterances are written and preview/partial transcript state is never stored
-- [ ] 11.5 Add async persistence tests to verify closed interviewer and user utterances are both written to MongoDB after Redis success
-- [ ] 11.6 Add AI trigger tests to verify only interviewer utterance closure triggers answer generation and that the context window includes both interviewer and user turns
-- [ ] 11.7 Add socket integration tests for the end-to-end flow: start multichannel session -> preview events -> final segment events -> utterance closed -> Redis write -> interviewer answer event
-- [ ] 11.8 Run manual verification with real or simulated two-mic browser audio for interviewer and user channels, including silence gaps, resumed speech before `800ms`, explicit finalize, stop, and disconnect handling
+- [x] 11.1 Add schema tests for multichannel `stt:start` validation, including `channels=2`, valid `channel_map`, and rejection of missing or duplicate speaker-role mappings
+- [x] 11.2 Add adapter tests for multichannel Deepgram event normalization, especially preservation of `channel_index`, `speech_final`, `UtteranceEnd`, and `SpeechStarted`
+- [x] 11.3 Add session tests for preview emission, stable segment merge, grace-timer cancellation, and stable utterance closure after `UtteranceEnd + 800ms`
+- [x] 11.4 Add Redis context-store tests to verify only closed stable utterances are written and preview/partial transcript state is never stored
+- [x] 11.5 Add async persistence tests to verify closed interviewer and user utterances are both written to MongoDB after Redis success
+- [x] 11.6 Add AI trigger tests to verify only interviewer utterance closure triggers answer generation and that the context window includes both interviewer and user turns
+- [x] 11.7 Add socket integration tests for the end-to-end flow: start multichannel session -> preview events -> final segment events -> utterance closed -> Redis write -> interviewer answer event
+- [x] 11.8 Run manual verification with real or simulated two-mic browser audio for interviewer and user channels, including silence gaps, resumed speech before `800ms`, explicit finalize, stop, and disconnect handling
