@@ -13,11 +13,14 @@ from app.common.exceptions import (
     STTStreamOwnershipError,
 )
 from app.domain.schemas.stt import (
+    InterviewAnswerPayload,
+    STTChannelMap,
     STTCompletedPayload,
     STTErrorPayload,
     STTFinalPayload,
     STTPartialPayload,
     STTStartedPayload,
+    STTUtteranceClosedPayload,
 )
 from app.infrastructure.deepgram.client import (
     DeepgramLiveClient,
@@ -43,6 +46,8 @@ class STTSessionEventKind(str, Enum):
     STARTED = "started"
     PARTIAL = "partial"
     FINAL = "final"
+    UTTERANCE_CLOSED = "utterance_closed"
+    INTERVIEW_ANSWER = "interview_answer"
     COMPLETED = "completed"
     ERROR = "error"
 
@@ -56,6 +61,8 @@ class STTSessionEvent:
         STTStartedPayload
         | STTPartialPayload
         | STTFinalPayload
+        | STTUtteranceClosedPayload
+        | InterviewAnswerPayload
         | STTCompletedPayload
         | STTErrorPayload
     )
@@ -70,15 +77,19 @@ class STTSession:
         sid: str,
         user_id: str,
         stream_id: str,
+        conversation_id: str,
         organization_id: str | None,
         language: str | None,
+        channel_map: STTChannelMap,
         provider_client: DeepgramLiveClient,
     ) -> None:
         self.sid = sid
         self.user_id = user_id
         self.stream_id = stream_id
+        self.conversation_id = conversation_id
         self.organization_id = organization_id
         self.language = language or "en"
+        self.channel_map = channel_map
         self.provider_client = provider_client
         self.state = STTSessionState.STARTING
         self.created_at = self._utcnow()
@@ -120,7 +131,9 @@ class STTSession:
                 kind=STTSessionEventKind.STARTED,
                 payload=STTStartedPayload(
                     stream_id=self.stream_id,
+                    conversation_id=self.conversation_id,
                     language=self.language,
+                    channel_map=self.channel_map,
                 ),
             )
         ]
@@ -263,6 +276,7 @@ class STTSession:
                     kind=STTSessionEventKind.PARTIAL,
                     payload=STTPartialPayload(
                         stream_id=self.stream_id,
+                        conversation_id=self.conversation_id,
                         transcript=self._compose_transcript_with_buffer(
                             transcript.transcript
                         ),
@@ -298,7 +312,10 @@ class STTSession:
             emitted.append(
                 STTSessionEvent(
                     kind=STTSessionEventKind.COMPLETED,
-                    payload=STTCompletedPayload(stream_id=self.stream_id),
+                    payload=STTCompletedPayload(
+                        stream_id=self.stream_id,
+                        conversation_id=self.conversation_id,
+                    ),
                 )
             )
             return emitted
@@ -319,6 +336,7 @@ class STTSession:
             kind=STTSessionEventKind.FINAL,
             payload=STTFinalPayload(
                 stream_id=self.stream_id,
+                conversation_id=self.conversation_id,
                 confidence=self._merge_confidence(fragments),
                 transcript=self._merge_transcript_text(fragments),
                 start_ms=self._merge_start_ms(fragments),

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from app.domain.schemas.stt import STTChannelMap
 from app.services.stt.session import STTSession, STTSessionEvent
 from app.services.stt.session_manager import STTSessionManager
 
@@ -22,16 +23,20 @@ class STTService:
         sid: str,
         user_id: str,
         stream_id: str,
+        conversation_id: str,
         organization_id: str | None,
         language: str | None,
+        channel_map: STTChannelMap,
     ) -> list[STTSessionEvent]:
         """Start one live STT session."""
         return await self.session_manager.start_session(
             sid=sid,
             user_id=user_id,
             stream_id=stream_id,
+            conversation_id=conversation_id,
             organization_id=organization_id,
             language=language,
+            channel_map=channel_map,
         )
 
     async def push_audio(

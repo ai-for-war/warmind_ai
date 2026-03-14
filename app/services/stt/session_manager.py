@@ -15,7 +15,7 @@ from app.common.exceptions import (
     ActiveSTTStreamConflictError,
     InvalidSTTStreamStateError,
 )
-from app.domain.schemas.stt import STTErrorPayload
+from app.domain.schemas.stt import STTChannelMap, STTErrorPayload
 from app.infrastructure.deepgram.client import DeepgramLiveClient
 from app.services.stt.session import (
     STTSession,
@@ -60,8 +60,10 @@ class STTSessionManager:
         sid: str,
         user_id: str,
         stream_id: str,
+        conversation_id: str,
         organization_id: str | None,
         language: str | None,
+        channel_map: STTChannelMap,
     ) -> list[STTSessionEvent]:
         """Create and start one active STT session for a socket."""
         existing = self._sessions.get(sid)
@@ -76,8 +78,10 @@ class STTSessionManager:
             sid=sid,
             user_id=user_id,
             stream_id=stream_id,
+            conversation_id=conversation_id,
             organization_id=organization_id,
             language=language,
+            channel_map=channel_map,
             provider_client=self.create_provider_client(),
         )
         self._sessions[sid] = session

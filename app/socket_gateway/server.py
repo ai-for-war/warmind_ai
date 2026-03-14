@@ -6,7 +6,7 @@ import contextlib
 import socketio
 from pydantic import ValidationError
 
-from app.common.event_socket import STTEvents
+from app.common.event_socket import InterviewEvents, STTEvents
 from app.common.repo import get_member_repo
 from app.domain.schemas.stt import (
     STTAudioMetadata,
@@ -99,8 +99,10 @@ async def stt_start(sid: str, payload: dict) -> None:
             sid=sid,
             user_id=user_id,
             stream_id=request.stream_id,
+            conversation_id=request.conversation_id,
             organization_id=organization_id,
             language=request.language,
+            channel_map=request.channel_map,
         )
     except Exception as exc:
         stream_id = payload.get("stream_id") if isinstance(payload, dict) else None
@@ -336,6 +338,8 @@ async def _emit_stt_session_events(
         STTSessionEventKind.STARTED: STTEvents.STARTED,
         STTSessionEventKind.PARTIAL: STTEvents.PARTIAL,
         STTSessionEventKind.FINAL: STTEvents.FINAL,
+        STTSessionEventKind.UTTERANCE_CLOSED: STTEvents.UTTERANCE_CLOSED,
+        STTSessionEventKind.INTERVIEW_ANSWER: InterviewEvents.ANSWER,
         STTSessionEventKind.COMPLETED: STTEvents.COMPLETED,
         STTSessionEventKind.ERROR: STTEvents.ERROR,
     }
@@ -344,7 +348,7 @@ async def _emit_stt_session_events(
         await gateway.emit_to_user(
             user_id=user_id,
             event=event_names[event.kind],
-            data=event.payload.model_dump(exclude_none=True),
+            data=event.payload.model_dump(exclude_none=True, by_alias=True),
             organization_id=organization_id,
         )
 
@@ -371,7 +375,7 @@ async def _emit_stt_error(
     await gateway.emit_to_user(
         user_id=user_id,
         event=STTEvents.ERROR,
-        data=payload.model_dump(exclude_none=True),
+        data=payload.model_dump(exclude_none=True, by_alias=True),
         organization_id=organization_id,
     )
 

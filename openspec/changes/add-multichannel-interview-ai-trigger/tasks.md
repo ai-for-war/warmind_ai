@@ -7,11 +7,11 @@
 
 ## 2. Multichannel socket payload schemas and normalized event models
 
-- [ ] 2.1 Update `app/domain/schemas/stt.py` so `stt:start` requires `conversation_id`, `channels=2`, and a valid `channel_map` for `interviewer` and `user`
-- [ ] 2.2 Update audio metadata schemas so multichannel `stt:audio` frames keep existing sequence/timestamp fields while validating the new interview stream contract
-- [ ] 2.3 Extend outbound STT payload schemas so `stt:partial` and `stt:final` remain speaker-aware with channel/source attribution
-- [ ] 2.4 Add a normalized `stt:utterance_closed` payload schema containing `conversation_id`, `utterance_id`, `source`, `channel`, `text`, `started_at`, `ended_at`, and `turn_closed_at`
-- [ ] 2.5 Add a text-only interview answer payload schema for AI responses emitted after interviewer turn closure
+- [x] 2.1 Update `app/domain/schemas/stt.py` so `stt:start` requires `conversation_id`, `channels=2`, and a valid `channel_map` for `interviewer` and `user`
+- [x] 2.2 Update audio metadata schemas so multichannel `stt:audio` frames keep existing sequence/timestamp fields while validating the new interview stream contract
+- [x] 2.3 Extend outbound STT payload schemas so `stt:partial` and `stt:final` remain speaker-aware with channel/source attribution
+- [x] 2.4 Add a normalized `stt:utterance_closed` payload schema containing `conversation_id`, `utterance_id`, `source`, `channel`, `text`, `started_at`, `ended_at`, and `turn_closed_at`
+- [x] 2.5 Add a text-only interview answer payload schema for AI responses emitted after interviewer turn closure
 
 ## 3. Conversation and utterance persistence models
 
