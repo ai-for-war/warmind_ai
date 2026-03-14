@@ -12,6 +12,17 @@ from app.domain.models.image_generation_job import (
     ImageGenerationJobType,
     ImageGenerationProvider,
 )
+from app.domain.models.interview_conversation import (
+    InterviewChannelMap,
+    InterviewConversation,
+    InterviewConversationStatus,
+)
+from app.domain.models.interview_utterance import (
+    DURABLE_INTERVIEW_UTTERANCE_STATUSES,
+    InterviewSpeakerRole,
+    InterviewUtterance,
+    InterviewUtteranceStatus,
+)
 from app.domain.models.message import (
     Attachment,
     AttachmentType,
@@ -40,6 +51,13 @@ __all__ = [
     # Conversation models
     "Conversation",
     "ConversationStatus",
+    "InterviewChannelMap",
+    "InterviewConversation",
+    "InterviewConversationStatus",
+    "InterviewSpeakerRole",
+    "InterviewUtterance",
+    "InterviewUtteranceStatus",
+    "DURABLE_INTERVIEW_UTTERANCE_STATUSES",
     # Image models
     "Image",
     "ImageSource",

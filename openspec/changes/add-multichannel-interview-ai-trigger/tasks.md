@@ -15,10 +15,10 @@
 
 ## 3. Conversation and utterance persistence models
 
-- [ ] 3.1 Create or update domain models for `conversation` and `utterance` with explicit `channel_map`, `source`, `channel`, `text`, `status`, `started_at`, `ended_at`, and `turn_closed_at`
-- [ ] 3.2 Create repositories for conversations and utterances with methods to create conversation records, append stable utterances, and query recent durable utterances for fallback recovery
-- [ ] 3.3 Add MongoDB indexes needed for conversation lookup and utterance timeline retrieval by `conversation_id`, `created_at`, and `turn_closed_at`
-- [ ] 3.4 Decide and encode durable status values so only closed stable utterances are stored in MongoDB and open/preview states remain excluded
+- [x] 3.1 Create or update domain models for `conversation` and `utterance` with explicit `channel_map`, `source`, `channel`, `text`, `status`, `started_at`, `ended_at`, and `turn_closed_at`
+- [x] 3.2 Create repositories for conversations and utterances with methods to create conversation records, append stable utterances, and query recent durable utterances for fallback recovery
+- [x] 3.3 Add MongoDB indexes needed for conversation lookup and utterance timeline retrieval by `conversation_id`, `created_at`, and `turn_closed_at`
+- [x] 3.4 Decide and encode durable status values so only closed stable utterances are stored in MongoDB and open/preview states remain excluded
 
 ## 4. Deepgram adapter upgrade for multichannel Listen V1
 
