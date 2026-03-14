@@ -30,13 +30,13 @@
 
 ## 5. In-memory interview session state machine
 
-- [ ] 5.1 Replace the single-stream transcript assembly flow with a conversation-scoped interview session object that owns one Deepgram connection and per-channel open utterance state
-- [ ] 5.2 Track open utterances separately for channel `0` and channel `1`, including stable segment buffers, preview text, timestamps, and pending turn-close timers
-- [ ] 5.3 Implement preview behavior so `is_final=false` updates emit UI preview events immediately without writing preview state to Redis or MongoDB
-- [ ] 5.4 Implement stable segment merge rules so `is_final=true` and `speech_final=true` contribute to the open utterance for the correct channel without closing the turn yet
-- [ ] 5.5 Implement turn-close detection so `UtteranceEnd` starts an `800ms` grace timer and any new `SpeechStarted` or transcript activity on that same channel cancels the pending close
-- [ ] 5.6 Emit a stable utterance-closed event only when the grace timer expires with no new speech activity for that channel
-- [ ] 5.7 Preserve one active interview STT session per socket while supporting both channels inside that session
+- [x] 5.1 Replace the single-stream transcript assembly flow with a conversation-scoped interview session object that owns one Deepgram connection and per-channel open utterance state
+- [x] 5.2 Track open utterances separately for channel `0` and channel `1`, including stable segment buffers, preview text, timestamps, and pending turn-close timers
+- [x] 5.3 Implement preview behavior so `is_final=false` updates emit UI preview events immediately without writing preview state to Redis or MongoDB
+- [x] 5.4 Implement stable segment merge rules so `is_final=true` and `speech_final=true` contribute to the open utterance for the correct channel without closing the turn yet
+- [x] 5.5 Implement turn-close detection so `UtteranceEnd` starts an `800ms` grace timer and any new `SpeechStarted` or transcript activity on that same channel cancels the pending close
+- [x] 5.6 Emit a stable utterance-closed event only when the grace timer expires with no new speech activity for that channel
+- [x] 5.7 Preserve one active interview STT session per socket while supporting both channels inside that session
 
 ## 6. Redis stable-context storage
 

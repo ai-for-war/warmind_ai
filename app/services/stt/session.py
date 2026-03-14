@@ -2,23 +2,28 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from enum import Enum
+from uuid import uuid4
 
 from app.common.exceptions import (
     ActiveSTTStreamConflictError,
+    InvalidChannelMappingError,
     InvalidSTTStreamStateError,
     STTProviderConnectionError,
     STTStreamOwnershipError,
 )
+from app.config.settings import get_settings
 from app.domain.schemas.stt import (
     InterviewAnswerPayload,
     STTChannelMap,
+    STTChannelIndex,
     STTCompletedPayload,
     STTErrorPayload,
     STTFinalPayload,
     STTPartialPayload,
+    STTSpeakerRole,
     STTStartedPayload,
     STTUtteranceClosedPayload,
 )
@@ -28,6 +33,48 @@ from app.infrastructure.deepgram.client import (
     ProviderEventKind,
     ProviderTranscriptEvent,
 )
+
+
+@dataclass(slots=True)
+class StableTranscriptSegment:
+    """Stable finalized transcript segment assigned to one interview channel."""
+
+    text: str
+    confidence: float | None = None
+    start_ms: int | None = None
+    end_ms: int | None = None
+
+
+@dataclass(slots=True)
+class OpenInterviewUtterance:
+    """Process-local open utterance state for one interview speaker channel."""
+
+    utterance_id: str
+    source: STTSpeakerRole
+    channel: STTChannelIndex
+    started_at: datetime
+    stable_segments: list[StableTranscriptSegment] = field(default_factory=list)
+    preview_text: str = ""
+    ended_at: datetime | None = None
+    last_activity_at: datetime | None = None
+
+    @property
+    def stable_text(self) -> str:
+        """Return merged finalized text for the open utterance."""
+        merged = ""
+        for segment in self.stable_segments:
+            merged = STTSession._compose_transcript(merged, segment.text)
+        return merged
+
+    @property
+    def preview_transcript(self) -> str:
+        """Return UI preview text combining stable and volatile transcript state."""
+        return STTSession._compose_transcript(self.stable_text, self.preview_text)
+
+    @property
+    def has_stable_text(self) -> bool:
+        """Return whether this utterance has any finalized transcript content."""
+        return bool(self.stable_text)
 
 
 class STTSessionState(str, Enum):
@@ -69,7 +116,7 @@ class STTSessionEvent:
 
 
 class STTSession:
-    """Owns one live STT stream, provider connection, and transcript state."""
+    """Owns one multichannel interview STT stream and per-channel utterance state."""
 
     def __init__(
         self,
@@ -91,6 +138,7 @@ class STTSession:
         self.language = language or "en"
         self.channel_map = channel_map
         self.provider_client = provider_client
+        self.turn_close_grace_ms = get_settings().INTERVIEW_TURN_CLOSE_GRACE_MS
         self.state = STTSessionState.STARTING
         self.created_at = self._utcnow()
         self.started_at: datetime | None = None
@@ -100,17 +148,19 @@ class STTSession:
         self.last_audio_at: datetime | None = None
         self.last_provider_activity_at: datetime | None = None
         self.last_keepalive_at: datetime | None = None
-        self._pending_final_fragments: list[ProviderTranscriptEvent] = []
+        self._open_utterances: dict[STTChannelIndex, OpenInterviewUtterance | None] = {
+            0: None,
+            1: None,
+        }
+        self._turn_close_deadlines: dict[STTChannelIndex, datetime | None] = {
+            0: None,
+            1: None,
+        }
 
     @property
     def is_active(self) -> bool:
         """Return whether the session is still live."""
         return self.state not in {STTSessionState.COMPLETED, STTSessionState.FAILED}
-
-    @property
-    def pending_final_text(self) -> str:
-        """Return the buffered final fragment text."""
-        return self._merge_transcript_text(self._pending_final_fragments)
 
     async def start(self) -> list[STTSessionEvent]:
         """Open the provider stream and transition into streaming state."""
@@ -191,7 +241,13 @@ class STTSession:
         emitted: list[STTSessionEvent] = []
         for event in events:
             self.last_provider_activity_at = self._utcnow()
-            emitted.extend(self._consume_provider_event(event))
+            try:
+                emitted.extend(self._consume_provider_event(event))
+            except InvalidChannelMappingError as exc:
+                emitted.append(self._build_error_event(str(exc)))
+            emitted.extend(
+                self.consume_due_turn_closures(at=self.last_provider_activity_at)
+            )
         return emitted
 
     def assert_owner(self, *, sid: str, stream_id: str) -> None:
@@ -244,6 +300,62 @@ class STTSession:
         now = at or self._utcnow()
         return (now - self.last_provider_activity_at).total_seconds()
 
+    def seconds_until_next_turn_close(self, *, at: datetime | None = None) -> float | None:
+        """Return seconds until the next pending turn-close deadline, if any."""
+        now = at or self._utcnow()
+        deadlines = [
+            deadline
+            for deadline in self._turn_close_deadlines.values()
+            if deadline is not None
+        ]
+        if not deadlines:
+            return None
+        earliest = min(deadlines)
+        return max((earliest - now).total_seconds(), 0.0)
+
+    def consume_due_turn_closures(
+        self,
+        *,
+        at: datetime | None = None,
+    ) -> list[STTSessionEvent]:
+        """Emit utterance-closed events for any expired per-channel grace timer."""
+        if not self.is_active:
+            return []
+
+        now = at or self._utcnow()
+        emitted: list[STTSessionEvent] = []
+        for channel in (0, 1):
+            deadline = self._turn_close_deadlines[channel]
+            if deadline is None or deadline > now:
+                continue
+
+            self._turn_close_deadlines[channel] = None
+            utterance = self._open_utterances[channel]
+            if utterance is None:
+                continue
+
+            if utterance.has_stable_text:
+                ended_at = utterance.ended_at or utterance.last_activity_at or now
+                emitted.append(
+                    STTSessionEvent(
+                        kind=STTSessionEventKind.UTTERANCE_CLOSED,
+                        payload=STTUtteranceClosedPayload(
+                            conversation_id=self.conversation_id,
+                            utterance_id=utterance.utterance_id,
+                            source=utterance.source,
+                            channel=utterance.channel,
+                            text=utterance.stable_text,
+                            started_at=utterance.started_at,
+                            ended_at=ended_at,
+                            turn_closed_at=now,
+                        ),
+                    )
+                )
+
+            self._open_utterances[channel] = None
+
+        return emitted
+
     def _consume_provider_event(self, event: ProviderEvent) -> list[STTSessionEvent]:
         if event.kind == ProviderEventKind.OPEN:
             return []
@@ -251,8 +363,10 @@ class STTSession:
             return [self._build_error_event(event.error_message or "Provider error")]
         if event.kind == ProviderEventKind.CLOSE:
             return self._handle_close_event(event)
+        if event.kind == ProviderEventKind.SPEECH_STARTED:
+            return self._handle_speech_started(event)
         if event.kind == ProviderEventKind.UTTERANCE_END:
-            return self._handle_utterance_end()
+            return self._handle_utterance_end(event)
         if event.kind == ProviderEventKind.PROVIDER_FINALIZE:
             return self._handle_provider_finalize()
         if (
@@ -270,45 +384,73 @@ class STTSession:
         self,
         transcript: ProviderTranscriptEvent,
     ) -> list[STTSessionEvent]:
+        channel = self._resolve_channel_index(transcript.channel_index)
+        self._cancel_pending_turn_close(channel)
+        utterance = self._get_or_create_open_utterance(channel=channel)
+        utterance.last_activity_at = self._utcnow()
+
         if not transcript.is_final:
+            utterance.preview_text = transcript.transcript
             return [
                 STTSessionEvent(
                     kind=STTSessionEventKind.PARTIAL,
                     payload=STTPartialPayload(
                         stream_id=self.stream_id,
                         conversation_id=self.conversation_id,
-                        transcript=self._compose_transcript_with_buffer(
-                            transcript.transcript
-                        ),
+                        source=utterance.source,
+                        channel=channel,
+                        transcript=utterance.preview_transcript,
                     ),
                 )
             ]
 
-        self._pending_final_fragments.append(transcript)
-        if transcript.speech_final or (
-            transcript.from_finalize and self.state == STTSessionState.FINALIZING
-        ):
-            return [self._flush_pending_final_fragments()]
+        utterance.preview_text = ""
+        self._append_stable_segment(utterance, transcript)
+        utterance.ended_at = utterance.last_activity_at
+        return [
+            STTSessionEvent(
+                kind=STTSessionEventKind.FINAL,
+                payload=STTFinalPayload(
+                    stream_id=self.stream_id,
+                    conversation_id=self.conversation_id,
+                    source=utterance.source,
+                    channel=channel,
+                    confidence=transcript.confidence,
+                    transcript=transcript.transcript,
+                    start_ms=transcript.start_ms,
+                    end_ms=transcript.end_ms,
+                ),
+            )
+        ]
+
+    def _handle_speech_started(self, event: ProviderEvent) -> list[STTSessionEvent]:
+        channel = self._resolve_channel_index(event.channel_index)
+        self._cancel_pending_turn_close(channel)
+        utterance = self._open_utterances[channel]
+        if utterance is not None:
+            utterance.last_activity_at = self._utcnow()
         return []
 
-    def _handle_utterance_end(self) -> list[STTSessionEvent]:
-        if self.state == STTSessionState.FINALIZING and self._pending_final_fragments:
-            return [self._flush_pending_final_fragments()]
+    def _handle_utterance_end(self, event: ProviderEvent) -> list[STTSessionEvent]:
+        channel = self._resolve_channel_index(event.channel_index)
+        utterance = self._open_utterances[channel]
+        if utterance is None or not utterance.has_stable_text:
+            return []
+
+        self._turn_close_deadlines[channel] = self._utcnow() + self._grace_delta()
         return []
 
     def _handle_provider_finalize(self) -> list[STTSessionEvent]:
-        if self._pending_final_fragments:
-            return [self._flush_pending_final_fragments()]
         return []
 
     def _handle_close_event(self, event: ProviderEvent) -> list[STTSessionEvent]:
         emitted: list[STTSessionEvent] = []
-        if self._pending_final_fragments:
-            emitted.append(self._flush_pending_final_fragments())
+        self._clear_pending_turn_closures()
 
         if self.state == STTSessionState.FINALIZING:
             self.state = STTSessionState.COMPLETED
             self.completed_at = self._utcnow()
+            self._discard_open_utterances()
             emitted.append(
                 STTSessionEvent(
                     kind=STTSessionEventKind.COMPLETED,
@@ -326,26 +468,10 @@ class STTSession:
         emitted.append(self._build_error_event(message))
         return emitted
 
-    def _flush_pending_final_fragments(self) -> STTSessionEvent:
-        if not self._pending_final_fragments:
-            raise InvalidSTTStreamStateError("No final transcript fragments to flush")
-
-        fragments = list(self._pending_final_fragments)
-        self._pending_final_fragments.clear()
-        return STTSessionEvent(
-            kind=STTSessionEventKind.FINAL,
-            payload=STTFinalPayload(
-                stream_id=self.stream_id,
-                conversation_id=self.conversation_id,
-                confidence=self._merge_confidence(fragments),
-                transcript=self._merge_transcript_text(fragments),
-                start_ms=self._merge_start_ms(fragments),
-                end_ms=self._merge_end_ms(fragments),
-            ),
-        )
-
     def _build_error_event(self, error_message: str) -> STTSessionEvent:
         self._fail()
+        self._clear_pending_turn_closures()
+        self._discard_open_utterances()
         return STTSessionEvent(
             kind=STTSessionEventKind.ERROR,
             payload=STTErrorPayload(
@@ -372,6 +498,70 @@ class STTSession:
         self.state = STTSessionState.FAILED
         self.failed_at = self._utcnow()
 
+    def _get_or_create_open_utterance(
+        self,
+        *,
+        channel: STTChannelIndex,
+    ) -> OpenInterviewUtterance:
+        utterance = self._open_utterances[channel]
+        if utterance is not None:
+            return utterance
+
+        now = self._utcnow()
+        utterance = OpenInterviewUtterance(
+            utterance_id=uuid4().hex,
+            source=self.channel_map.role_for_channel(channel),
+            channel=channel,
+            started_at=now,
+            last_activity_at=now,
+        )
+        self._open_utterances[channel] = utterance
+        return utterance
+
+    def _append_stable_segment(
+        self,
+        utterance: OpenInterviewUtterance,
+        transcript: ProviderTranscriptEvent,
+    ) -> None:
+        normalized_text = transcript.transcript.strip()
+        if not normalized_text:
+            return
+
+        current_text = utterance.stable_text
+        merged_text = self._compose_transcript(current_text, normalized_text)
+        if merged_text == current_text:
+            return
+
+        utterance.stable_segments.append(
+            StableTranscriptSegment(
+                text=normalized_text,
+                confidence=transcript.confidence,
+                start_ms=transcript.start_ms,
+                end_ms=transcript.end_ms,
+            )
+        )
+
+    def _cancel_pending_turn_close(self, channel: STTChannelIndex) -> None:
+        self._turn_close_deadlines[channel] = None
+
+    def _clear_pending_turn_closures(self) -> None:
+        for channel in (0, 1):
+            self._turn_close_deadlines[channel] = None
+
+    def _discard_open_utterances(self) -> None:
+        for channel in (0, 1):
+            self._open_utterances[channel] = None
+
+    def _resolve_channel_index(self, channel_index: int | None) -> STTChannelIndex:
+        if channel_index not in (0, 1):
+            raise InvalidChannelMappingError(
+                "Provider event is missing a valid interview channel index"
+            )
+        return channel_index
+
+    def _grace_delta(self) -> timedelta:
+        return timedelta(milliseconds=self.turn_close_grace_ms)
+
     @staticmethod
     def _compose_transcript(base: str, addition: str) -> str:
         base = base.strip()
@@ -385,43 +575,6 @@ class STTSession:
         if base.endswith(addition):
             return base
         return f"{base} {addition}"
-
-    def _compose_transcript_with_buffer(self, transcript: str) -> str:
-        return self._compose_transcript(self.pending_final_text, transcript)
-
-    def _merge_transcript_text(
-        self,
-        fragments: list[ProviderTranscriptEvent],
-    ) -> str:
-        merged = ""
-        for fragment in fragments:
-            merged = self._compose_transcript(merged, fragment.transcript)
-        return merged
-
-    @staticmethod
-    def _merge_confidence(fragments: list[ProviderTranscriptEvent]) -> float | None:
-        values = [
-            fragment.confidence
-            for fragment in fragments
-            if fragment.confidence is not None
-        ]
-        if not values:
-            return None
-        return sum(values) / len(values)
-
-    @staticmethod
-    def _merge_start_ms(fragments: list[ProviderTranscriptEvent]) -> int | None:
-        values = [
-            fragment.start_ms for fragment in fragments if fragment.start_ms is not None
-        ]
-        return min(values) if values else None
-
-    @staticmethod
-    def _merge_end_ms(fragments: list[ProviderTranscriptEvent]) -> int | None:
-        values = [
-            fragment.end_ms for fragment in fragments if fragment.end_ms is not None
-        ]
-        return max(values) if values else None
 
     @staticmethod
     def _utcnow() -> datetime:

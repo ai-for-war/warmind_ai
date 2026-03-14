@@ -262,25 +262,40 @@ class STTSessionManager:
         wait_for_first: bool,
         timeout_seconds: float | None = None,
     ) -> list[STTSessionEvent]:
+        due_events = session.consume_due_turn_closures()
+        if due_events:
+            return due_events
+
         provider_events = session.provider_client.drain_pending_events()
         if not provider_events and wait_for_first:
+            wait_timeout = timeout_seconds
+            turn_close_timeout = session.seconds_until_next_turn_close()
+            if turn_close_timeout is not None:
+                wait_timeout = (
+                    turn_close_timeout
+                    if wait_timeout is None
+                    else min(wait_timeout, turn_close_timeout)
+                )
             try:
-                if timeout_seconds is None:
+                if wait_timeout is None:
                     provider_events.append(await session.provider_client.next_event())
                 else:
                     provider_events.append(
                         await asyncio.wait_for(
                             session.provider_client.next_event(),
-                            timeout=timeout_seconds,
+                            timeout=wait_timeout,
                         )
                     )
             except asyncio.TimeoutError:
-                return []
+                return session.consume_due_turn_closures()
 
         provider_events.extend(session.provider_client.drain_pending_events())
         if not provider_events:
-            return []
-        return session.consume_provider_events(provider_events)
+            return session.consume_due_turn_closures()
+
+        emitted = session.consume_provider_events(provider_events)
+        emitted.extend(session.consume_due_turn_closures())
+        return emitted
 
     def _require_session(self, sid: str) -> STTSession:
         session = self._sessions.get(sid)
