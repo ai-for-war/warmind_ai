@@ -190,4 +190,28 @@ class InterviewAnswerPayload(STTBaseSchema):
     """Text-only AI answer payload emitted for an interview conversation."""
 
     conversation_id: str = Field(..., min_length=1, max_length=128)
+    utterance_id: str = Field(..., min_length=1, max_length=128)
     text: str = Field(..., min_length=1)
+
+
+class InterviewAnswerStartedPayload(STTBaseSchema):
+    """Payload emitted when interview answer streaming starts."""
+
+    conversation_id: str = Field(..., min_length=1, max_length=128)
+    utterance_id: str = Field(..., min_length=1, max_length=128)
+
+
+class InterviewAnswerTokenPayload(STTBaseSchema):
+    """Payload emitted for one streamed interview answer chunk."""
+
+    conversation_id: str = Field(..., min_length=1, max_length=128)
+    utterance_id: str = Field(..., min_length=1, max_length=128)
+    token: str = Field(..., min_length=1)
+
+
+class InterviewAnswerFailedPayload(STTBaseSchema):
+    """Payload emitted when interview answer generation fails."""
+
+    conversation_id: str = Field(..., min_length=1, max_length=128)
+    utterance_id: str = Field(..., min_length=1, max_length=128)
+    error: str = Field(..., min_length=1, max_length=500)

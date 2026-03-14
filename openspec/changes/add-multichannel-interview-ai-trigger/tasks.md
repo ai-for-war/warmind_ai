@@ -55,12 +55,12 @@
 
 ## 8. Interview AI trigger and context builder
 
-- [ ] 8.1 Create an interview answer service that triggers only when a closed stable utterance belongs to `interviewer`
-- [ ] 8.2 Implement a Redis-first context builder that loads a bounded recent window of stable interviewer and user utterances in timeline order
-- [ ] 8.3 Ensure the just-closed interviewer utterance is always included in the AI context window used for answer generation
-- [ ] 8.4 Exclude prior AI answers from the phase 1 context assembly path
-- [ ] 8.5 Emit a text-only answer event back to the frontend after successful AI generation
-- [ ] 8.6 Handle AI provider/service failures without breaking the live interview session or losing the already-closed stable utterance
+- [x] 8.1 Create an interview answer service that triggers only when a closed stable utterance belongs to `interviewer`
+- [x] 8.2 Implement a Redis-first context builder that loads a bounded recent window of stable interviewer and user utterances in timeline order
+- [x] 8.3 Ensure the just-closed interviewer utterance is always included in the AI context window used for answer generation
+- [x] 8.4 Exclude prior AI answers from the phase 1 context assembly path
+- [x] 8.5 Emit a text-only answer event back to the frontend after successful AI generation
+- [x] 8.6 Handle AI provider/service failures without breaking the live interview session or losing the already-closed stable utterance
 
 ## 9. Socket.IO server integration
 

@@ -54,6 +54,10 @@ class InterviewEvents:
     """Socket events for interview-specific realtime flows."""
 
     ANSWER = "interview:answer"
+    ANSWER_STARTED = "interview:answer:started"
+    ANSWER_TOKEN = "interview:answer:token"
+    ANSWER_COMPLETED = "interview:answer:completed"
+    ANSWER_FAILED = "interview:answer:failed"
 
 
 class TextToImageGenerationEvents:

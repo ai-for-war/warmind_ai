@@ -15,12 +15,14 @@ from datetime import datetime, timezone
 from app.common.exceptions import (
     ActiveSTTStreamConflictError,
     AsyncUtterancePersistenceError,
+    InterviewAITriggerError,
     InvalidSTTStreamStateError,
     RedisContextWriteError,
 )
 from app.domain.schemas.stt import STTChannelMap, STTErrorPayload
 from app.infrastructure.deepgram.client import DeepgramLiveClient
 from app.repo.interview_utterance_repo import InterviewUtteranceRepository
+from app.services.interview.answer_service import InterviewAnswerService
 from app.services.stt.session import (
     STTSession,
     STTSessionEvent,
@@ -44,6 +46,7 @@ class STTSessionManager:
         deepgram_client_factory: Callable[[], DeepgramLiveClient],
         context_store: RedisInterviewContextStore | None = None,
         utterance_repo: InterviewUtteranceRepository | None = None,
+        answer_service: InterviewAnswerService | None = None,
         async_persist_retry_attempts: int = 3,
         async_persist_retry_delay_seconds: float = 0.5,
         max_pending_audio_chunks: int = 32,
@@ -54,6 +57,7 @@ class STTSessionManager:
         self._deepgram_client_factory = deepgram_client_factory
         self._context_store = context_store
         self._utterance_repo = utterance_repo
+        self._answer_service = answer_service
         self._async_persist_retry_attempts = max(async_persist_retry_attempts, 1)
         self._async_persist_retry_delay_seconds = max(
             async_persist_retry_delay_seconds,
@@ -68,6 +72,7 @@ class STTSessionManager:
         self._pending_audio_chunks: dict[str, int] = {}
         self._deferred_events: dict[str, list[STTSessionEvent]] = {}
         self._persistence_tasks: set[asyncio.Task[None]] = set()
+        self._answer_tasks: set[asyncio.Task[None]] = set()
 
     def create_provider_client(self) -> DeepgramLiveClient:
         """Create a provider wrapper for a new STT session."""
@@ -388,6 +393,11 @@ class STTSessionManager:
                 )
                 continue
 
+            self._schedule_interview_answer_stream(
+                session=session,
+                stable_utterance=stable_utterance,
+            )
+
             self._schedule_async_utterance_persistence(
                 sid=session.sid,
                 stream_id=session.stream_id,
@@ -395,6 +405,51 @@ class STTSessionManager:
             )
 
         return emitted
+
+    def _schedule_interview_answer_stream(
+        self,
+        *,
+        session: STTSession,
+        stable_utterance: StableInterviewContextUtterance,
+    ) -> None:
+        if self._answer_service is None or stable_utterance.source != "interviewer":
+            return
+
+        task = asyncio.create_task(
+            self._stream_interview_answer(
+                session=session,
+                stable_utterance=stable_utterance,
+            )
+        )
+        self._answer_tasks.add(task)
+        task.add_done_callback(self._answer_tasks.discard)
+
+    async def _stream_interview_answer(
+        self,
+        *,
+        session: STTSession,
+        stable_utterance: StableInterviewContextUtterance,
+    ) -> None:
+        if self._answer_service is None or stable_utterance.source != "interviewer":
+            return
+
+        try:
+            await self._answer_service.stream_for_closed_utterance(
+                user_id=session.user_id,
+                organization_id=session.organization_id,
+                closed_utterance=stable_utterance,
+            )
+        except InterviewAITriggerError as exc:
+            logger.warning(
+                "Interview AI streaming failed for conversation %s",
+                stable_utterance.conversation_id,
+                exc_info=exc,
+            )
+        except Exception:
+            logger.exception(
+                "Unexpected interview AI streaming failure for conversation %s",
+                stable_utterance.conversation_id,
+            )
 
     def _schedule_async_utterance_persistence(
         self,
