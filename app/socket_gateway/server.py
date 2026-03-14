@@ -134,7 +134,11 @@ async def stt_audio(
 
     try:
         metadata = STTAudioMetadata.model_validate(metadata_payload)
-        _require_matching_session(sid=sid, stream_id=metadata.stream_id)
+        _require_matching_session(
+            sid=sid,
+            stream_id=metadata.stream_id,
+            conversation_id=metadata.conversation_id,
+        )
         if not isinstance(audio_payload, (bytes, bytearray, memoryview)):
             raise ValueError("STT audio payload must be binary")
 
@@ -260,12 +264,18 @@ async def _resolve_socket_organization_id(user_id: str) -> str | None:
     return None
 
 
-def _require_matching_session(sid: str, stream_id: str) -> None:
+def _require_matching_session(
+    sid: str,
+    stream_id: str,
+    conversation_id: str | None = None,
+) -> None:
     session = _get_stt_service().get_session(sid)
     if session is None:
         raise LookupError("No active STT session for this socket")
     if session.stream_id != stream_id:
         raise PermissionError("Socket does not own this STT stream")
+    if conversation_id is not None and session.conversation_id != conversation_id:
+        raise PermissionError("Socket does not own this interview conversation")
 
 
 def _ensure_stt_listener_task(*, sid: str, user_id: str) -> None:

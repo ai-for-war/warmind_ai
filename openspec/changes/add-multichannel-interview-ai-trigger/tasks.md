@@ -64,12 +64,12 @@
 
 ## 9. Socket.IO server integration
 
-- [ ] 9.1 Update `app/socket_gateway/server.py` so `stt:start` accepts the multichannel interview contract and creates a conversation-scoped session
-- [ ] 9.2 Update `stt:audio` handling so binary multichannel audio frames are validated and forwarded without changing the authenticated Socket.IO transport model
-- [ ] 9.3 Update session event emission so `stt:partial`, `stt:final`, and `stt:utterance_closed` include speaker-aware channel/source context
-- [ ] 9.4 Keep organization-aware payload enrichment on all interview STT and AI answer events
-- [ ] 9.5 Ensure disconnect, explicit stop, and explicit finalize clean up the provider session, cancel pending close timers, and remove process-local open utterance state
-- [ ] 9.6 Add keepalive scheduling in the session listener loop so `KeepAlive` is sent every `3-5s` during silence while the interview session remains active
+- [x] 9.1 Update `app/socket_gateway/server.py` so `stt:start` accepts the multichannel interview contract and creates a conversation-scoped session
+- [x] 9.2 Update `stt:audio` handling so binary multichannel audio frames are validated and forwarded without changing the authenticated Socket.IO transport model
+- [x] 9.3 Update session event emission so `stt:partial`, `stt:final`, and `stt:utterance_closed` include speaker-aware channel/source context
+- [x] 9.4 Keep organization-aware payload enrichment on all interview STT and AI answer events
+- [x] 9.5 Ensure disconnect, explicit stop, and explicit finalize clean up the provider session, cancel pending close timers, and remove process-local open utterance state
+- [x] 9.6 Add keepalive scheduling in the session listener loop so `KeepAlive` is sent every `3-5s` during silence while the interview session remains active
 
 ## 10. Access control, recovery, and operational safety
 

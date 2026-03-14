@@ -20,7 +20,11 @@ from app.common.exceptions import (
     RedisContextWriteError,
 )
 from app.domain.schemas.stt import STTChannelMap, STTErrorPayload
-from app.infrastructure.deepgram.client import DeepgramLiveClient
+from app.infrastructure.deepgram.client import (
+    DeepgramLiveClient,
+    ProviderEvent,
+    ProviderEventKind,
+)
 from app.repo.interview_utterance_repo import InterviewUtteranceRepository
 from app.services.interview.answer_service import InterviewAnswerService
 from app.services.stt.session import (
@@ -72,7 +76,7 @@ class STTSessionManager:
         self._pending_audio_chunks: dict[str, int] = {}
         self._deferred_events: dict[str, list[STTSessionEvent]] = {}
         self._persistence_tasks: set[asyncio.Task[None]] = set()
-        self._answer_tasks: set[asyncio.Task[None]] = set()
+        self._answer_tasks: dict[str, set[asyncio.Task[None]]] = {}
 
     def create_provider_client(self) -> DeepgramLiveClient:
         """Create a provider wrapper for a new STT session."""
@@ -319,17 +323,72 @@ class STTSessionManager:
                         )
                     )
             except asyncio.TimeoutError:
-                due_events = session.consume_due_turn_closures()
-                return await self._persist_context_events(session, due_events)
+                return await self._handle_idle_session(session)
 
         provider_events.extend(session.provider_client.drain_pending_events())
         if not provider_events:
-            due_events = session.consume_due_turn_closures()
-            return await self._persist_context_events(session, due_events)
+            return await self._handle_idle_session(session)
 
+        should_close_after_finalize = (
+            session.state == STTSessionState.FINALIZING
+            and any(
+                event.kind == ProviderEventKind.PROVIDER_FINALIZE
+                for event in provider_events
+            )
+        )
         emitted = session.consume_provider_events(provider_events)
         emitted.extend(session.consume_due_turn_closures())
-        return await self._persist_context_events(session, emitted)
+        emitted = await self._persist_context_events(session, emitted)
+        if should_close_after_finalize and session.is_active:
+            emitted.extend(await self._close_finalized_session(session))
+        return emitted
+
+    async def _handle_idle_session(self, session: STTSession) -> list[STTSessionEvent]:
+        due_events = session.consume_due_turn_closures()
+        if due_events:
+            return await self._persist_context_events(session, due_events)
+
+        if not session.should_send_keepalive():
+            return []
+
+        try:
+            await session.send_keepalive()
+        except Exception as exc:
+            return [
+                STTSessionEvent(
+                    kind=STTSessionEventKind.ERROR,
+                    payload=STTErrorPayload(
+                        stream_id=session.stream_id,
+                        error_code="stt_keepalive_failed",
+                        error_message=str(exc),
+                    ),
+                )
+            ]
+        return []
+
+    async def _close_finalized_session(
+        self,
+        session: STTSession,
+    ) -> list[STTSessionEvent]:
+        await session.provider_client.close()
+
+        close_events = session.provider_client.drain_pending_events()
+        if not close_events:
+            try:
+                close_events.append(
+                    await asyncio.wait_for(
+                        session.provider_client.next_event(),
+                        timeout=1.0,
+                    )
+                )
+            except asyncio.TimeoutError:
+                pass
+
+        close_events.extend(session.provider_client.drain_pending_events())
+        if not close_events:
+            close_events = [ProviderEvent(kind=ProviderEventKind.CLOSE)]
+
+        return session.consume_provider_events(close_events)
 
     def _require_session(self, sid: str) -> STTSession:
         session = self._sessions.get(sid)
@@ -349,6 +408,7 @@ class STTSessionManager:
         self._audio_locks.pop(sid, None)
         self._pending_audio_chunks.pop(sid, None)
         self._deferred_events.pop(sid, None)
+        self._cancel_answer_tasks(sid)
 
     async def _persist_context_events(
         self,
@@ -421,8 +481,13 @@ class STTSessionManager:
                 stable_utterance=stable_utterance,
             )
         )
-        self._answer_tasks.add(task)
-        task.add_done_callback(self._answer_tasks.discard)
+        self._answer_tasks.setdefault(session.sid, set()).add(task)
+        task.add_done_callback(
+            lambda completed_task, session_id=session.sid: self._discard_answer_task(
+                session_id,
+                completed_task,
+            )
+        )
 
     async def _stream_interview_answer(
         self,
@@ -450,6 +515,23 @@ class STTSessionManager:
                 "Unexpected interview AI streaming failure for conversation %s",
                 stable_utterance.conversation_id,
             )
+
+    def _cancel_answer_tasks(self, sid: str) -> None:
+        tasks = self._answer_tasks.pop(sid, set())
+        for task in tasks:
+            task.cancel()
+
+    def _discard_answer_task(
+        self,
+        sid: str,
+        task: asyncio.Task[None],
+    ) -> None:
+        tasks = self._answer_tasks.get(sid)
+        if tasks is None:
+            return
+        tasks.discard(task)
+        if not tasks:
+            self._answer_tasks.pop(sid, None)
 
     def _schedule_async_utterance_persistence(
         self,
