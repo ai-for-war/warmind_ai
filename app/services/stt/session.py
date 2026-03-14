@@ -481,6 +481,25 @@ class STTSession:
             ),
         )
 
+    def fail(
+        self,
+        error_message: str,
+        *,
+        error_code: str = "stt_session_failed",
+    ) -> STTSessionEvent:
+        """Transition the session into a failed state and emit an error event."""
+        self._fail()
+        self._clear_pending_turn_closures()
+        self._discard_open_utterances()
+        return STTSessionEvent(
+            kind=STTSessionEventKind.ERROR,
+            payload=STTErrorPayload(
+                stream_id=self.stream_id,
+                error_code=error_code,
+                error_message=error_message,
+            ),
+        )
+
     def _assert_can_start(self) -> None:
         if self.state != STTSessionState.STARTING:
             raise InvalidSTTStreamStateError("STT session has already started")

@@ -271,7 +271,10 @@ def _require_matching_session(
 ) -> None:
     session = _get_stt_service().get_session(sid)
     if session is None:
-        raise LookupError("No active STT session for this socket")
+        raise LookupError(
+            "No active STT session for this socket. Interview sessions are "
+            "process-local and require sticky-session routing."
+        )
     if session.stream_id != stream_id:
         raise PermissionError("Socket does not own this STT stream")
     if conversation_id is not None and session.conversation_id != conversation_id:

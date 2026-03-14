@@ -73,11 +73,11 @@
 
 ## 10. Access control, recovery, and operational safety
 
-- [ ] 10.1 Reuse authenticated socket ownership checks so only the owning socket can stream audio or control the active interview session
-- [ ] 10.2 Validate that invalid or conflicting `channel_map` input cannot start a session and cannot remap speaker roles mid-stream
-- [ ] 10.3 Ensure premature provider close, timeout, or reconnect failure transitions the session into a clear error state without persisting unstable partial transcript state
-- [ ] 10.4 Document and encode sticky-session assumptions so multichannel interview state is not expected to survive cross-instance rebalance
-- [ ] 10.5 Ensure Deepgram `Finalize` is used only for explicit session flush behavior and not as a substitute for normal utterance turn closure
+- [x] 10.1 Reuse authenticated socket ownership checks so only the owning socket can stream audio or control the active interview session
+- [x] 10.2 Validate that invalid or conflicting `channel_map` input cannot start a session and cannot remap speaker roles mid-stream
+- [x] 10.3 Ensure premature provider close, timeout, or reconnect failure transitions the session into a clear error state without persisting unstable partial transcript state
+- [x] 10.4 Document and encode sticky-session assumptions so multichannel interview state is not expected to survive cross-instance rebalance
+- [x] 10.5 Ensure Deepgram `Finalize` is used only for explicit session flush behavior and not as a substitute for normal utterance turn closure
 
 ## 11. Verification and implementation readiness
 

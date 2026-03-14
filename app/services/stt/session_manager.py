@@ -18,6 +18,7 @@ from app.common.exceptions import (
     InterviewAITriggerError,
     InvalidSTTStreamStateError,
     RedisContextWriteError,
+    STTProviderConnectionError,
 )
 from app.domain.schemas.stt import STTChannelMap, STTErrorPayload
 from app.infrastructure.deepgram.client import (
@@ -120,8 +121,14 @@ class STTSessionManager:
         self._audio_locks[sid] = asyncio.Lock()
         self._pending_audio_chunks[sid] = 0
 
-        emitted = await session.start()
-        emitted.extend(await self._collect_session_events(session, wait_for_first=False))
+        try:
+            emitted = await session.start()
+            emitted.extend(
+                await self._collect_session_events(session, wait_for_first=False)
+            )
+        except Exception:
+            self._remove_session(sid)
+            raise
         if not session.is_active:
             self._remove_session(sid)
         return emitted
@@ -143,6 +150,13 @@ class STTSessionManager:
             async with self._audio_locks[sid]:
                 session = self._require_session(sid)
                 await session.push_audio(sid=sid, stream_id=stream_id, chunk=chunk)
+        except STTProviderConnectionError as exc:
+            failed_event = await self._fail_live_session(
+                session=session,
+                message=str(exc),
+                error_code="stt_provider_connection_failed",
+            )
+            return [failed_event]
         finally:
             self._pending_audio_chunks[sid] = max(
                 0, self._pending_audio_chunks.get(sid, 1) - 1
@@ -161,7 +175,15 @@ class STTSessionManager:
     ) -> list[STTSessionEvent]:
         """Request provider finalize for the owning session."""
         session = self._require_session(sid)
-        await session.request_finalize(sid=sid, stream_id=stream_id)
+        try:
+            await session.request_finalize(sid=sid, stream_id=stream_id)
+        except STTProviderConnectionError as exc:
+            failed_event = await self._fail_live_session(
+                session=session,
+                message=str(exc),
+                error_code="stt_provider_connection_failed",
+            )
+            return [failed_event]
         emitted = await self._collect_session_events(session, wait_for_first=False)
         if not session.is_active:
             self._remove_session(sid)
@@ -229,7 +251,7 @@ class STTSessionManager:
         - If a session starts and never receives audio before the startup timeout,
           hard-close it immediately.
         - If a streaming session received audio and then goes idle too long,
-          auto-finalize first.
+          fail it rather than using Finalize as implicit turn closure.
         - If a finalizing session remains idle past the grace timeout, hard-close it.
         """
 
@@ -255,25 +277,24 @@ class STTSessionManager:
         audio_idle = session.seconds_since_audio(at=now)
 
         if session.last_audio_at is None and age_seconds >= self._startup_idle_timeout_seconds:
-            await session.provider_client.close()
-            self._remove_session(sid)
-            return [
-                self._build_timeout_event(
-                    session,
-                    "Session timed out before any audio arrived",
-                )
-            ]
+            timeout_event = await self._fail_live_session(
+                session=session,
+                message="Session timed out before any audio arrived",
+                error_code="stt_session_timeout",
+            )
+            return [timeout_event]
 
         if (
             session.state == STTSessionState.STREAMING
             and audio_idle is not None
             and audio_idle >= self._stream_idle_timeout_seconds
         ):
-            await session.request_finalize(sid=session.sid, stream_id=session.stream_id)
-            emitted = await self._collect_session_events(session, wait_for_first=False)
-            if not session.is_active:
-                self._remove_session(sid)
-            return emitted
+            timeout_event = await self._fail_live_session(
+                session=session,
+                message="Session timed out after stream inactivity",
+                error_code="stt_session_timeout",
+            )
+            return [timeout_event]
 
         if (
             session.state == STTSessionState.FINALIZING
@@ -354,16 +375,12 @@ class STTSessionManager:
         try:
             await session.send_keepalive()
         except Exception as exc:
-            return [
-                STTSessionEvent(
-                    kind=STTSessionEventKind.ERROR,
-                    payload=STTErrorPayload(
-                        stream_id=session.stream_id,
-                        error_code="stt_keepalive_failed",
-                        error_message=str(exc),
-                    ),
-                )
-            ]
+            keepalive_error = await self._fail_live_session(
+                session=session,
+                message=str(exc),
+                error_code="stt_keepalive_failed",
+            )
+            return [keepalive_error]
         return []
 
     async def _close_finalized_session(
@@ -393,7 +410,10 @@ class STTSessionManager:
     def _require_session(self, sid: str) -> STTSession:
         session = self._sessions.get(sid)
         if session is None:
-            raise InvalidSTTStreamStateError("No active STT session for this socket")
+            raise InvalidSTTStreamStateError(
+                "No active STT session for this socket. Interview sessions are "
+                "process-local and require sticky-session routing."
+            )
         return session
 
     def _guard_audio_backlog(self, sid: str) -> None:
@@ -409,6 +429,26 @@ class STTSessionManager:
         self._pending_audio_chunks.pop(sid, None)
         self._deferred_events.pop(sid, None)
         self._cancel_answer_tasks(sid)
+
+    async def _fail_live_session(
+        self,
+        *,
+        session: STTSession,
+        message: str,
+        error_code: str,
+    ) -> STTSessionEvent:
+        try:
+            await session.provider_client.close()
+        except Exception:
+            logger.debug(
+                "Provider close during failure handling raised for %s",
+                session.stream_id,
+                exc_info=True,
+            )
+
+        failed_event = session.fail(message, error_code=error_code)
+        self._remove_session(session.sid)
+        return failed_event
 
     async def _persist_context_events(
         self,
