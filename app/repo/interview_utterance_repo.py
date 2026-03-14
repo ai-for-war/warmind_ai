@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from pymongo import ReturnDocument
 
 from app.common.exceptions import InvalidInterviewConversationStateError
 from app.domain.models.interview_utterance import (
@@ -54,8 +55,13 @@ class InterviewUtteranceRepository:
             "turn_closed_at": turn_closed_at,
             "created_at": datetime.now(timezone.utc),
         }
-        await self.collection.insert_one(document)
-        return InterviewUtterance(**document)
+        persisted = await self.collection.find_one_and_update(
+            {"_id": document["_id"]},
+            {"$setOnInsert": document},
+            upsert=True,
+            return_document=ReturnDocument.AFTER,
+        )
+        return InterviewUtterance(**persisted)
 
     async def get_recent_durable_by_conversation(
         self,

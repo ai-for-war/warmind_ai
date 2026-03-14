@@ -48,10 +48,10 @@
 
 ## 7. Async MongoDB persistence for stable utterances
 
-- [ ] 7.1 Implement an asynchronous persistence path that writes a closed stable utterance to MongoDB after Redis write succeeds
-- [ ] 7.2 Ensure interviewer and user utterances both persist through the same async path, with no special-case skip for user utterances
-- [ ] 7.3 Add retry/backfill handling or explicit failure reporting for MongoDB persistence failures that occur after Redis already contains the stable utterance
-- [ ] 7.4 Ensure MongoDB persistence is not on the critical path for interviewer AI trigger latency
+- [x] 7.1 Implement an asynchronous persistence path that writes a closed stable utterance to MongoDB after Redis write succeeds
+- [x] 7.2 Ensure interviewer and user utterances both persist through the same async path, with no special-case skip for user utterances
+- [x] 7.3 Add retry/backfill handling or explicit failure reporting for MongoDB persistence failures that occur after Redis already contains the stable utterance
+- [x] 7.4 Ensure MongoDB persistence is not on the critical path for interviewer AI trigger latency
 
 ## 8. Interview AI trigger and context builder
 

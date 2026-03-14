@@ -262,6 +262,7 @@ def get_stt_session_manager() -> STTSessionManager:
     return STTSessionManager(
         deepgram_client_factory=get_deepgram_live_client,
         context_store=get_interview_context_store(),
+        utterance_repo=get_interview_utterance_repo(),
     )
 
 

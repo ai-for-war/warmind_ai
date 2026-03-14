@@ -8,16 +8,19 @@ and control messages always hit the same app instance that owns the session.
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Callable
 from datetime import datetime, timezone
 
 from app.common.exceptions import (
     ActiveSTTStreamConflictError,
-    RedisContextWriteError,
+    AsyncUtterancePersistenceError,
     InvalidSTTStreamStateError,
+    RedisContextWriteError,
 )
 from app.domain.schemas.stt import STTChannelMap, STTErrorPayload
 from app.infrastructure.deepgram.client import DeepgramLiveClient
+from app.repo.interview_utterance_repo import InterviewUtteranceRepository
 from app.services.stt.session import (
     STTSession,
     STTSessionEvent,
@@ -29,6 +32,8 @@ from app.services.stt.context_store import (
     StableInterviewContextUtterance,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class STTSessionManager:
     """Owns per-socket STT sessions, lifecycle control, and cleanup."""
@@ -38,6 +43,9 @@ class STTSessionManager:
         *,
         deepgram_client_factory: Callable[[], DeepgramLiveClient],
         context_store: RedisInterviewContextStore | None = None,
+        utterance_repo: InterviewUtteranceRepository | None = None,
+        async_persist_retry_attempts: int = 3,
+        async_persist_retry_delay_seconds: float = 0.5,
         max_pending_audio_chunks: int = 32,
         startup_idle_timeout_seconds: int = 15,
         stream_idle_timeout_seconds: int = 45,
@@ -45,6 +53,12 @@ class STTSessionManager:
     ) -> None:
         self._deepgram_client_factory = deepgram_client_factory
         self._context_store = context_store
+        self._utterance_repo = utterance_repo
+        self._async_persist_retry_attempts = max(async_persist_retry_attempts, 1)
+        self._async_persist_retry_delay_seconds = max(
+            async_persist_retry_delay_seconds,
+            0.0,
+        )
         self._max_pending_audio_chunks = max_pending_audio_chunks
         self._startup_idle_timeout_seconds = startup_idle_timeout_seconds
         self._stream_idle_timeout_seconds = stream_idle_timeout_seconds
@@ -52,6 +66,8 @@ class STTSessionManager:
         self._sessions: dict[str, STTSession] = {}
         self._audio_locks: dict[str, asyncio.Lock] = {}
         self._pending_audio_chunks: dict[str, int] = {}
+        self._deferred_events: dict[str, list[STTSessionEvent]] = {}
+        self._persistence_tasks: set[asyncio.Task[None]] = set()
 
     def create_provider_client(self) -> DeepgramLiveClient:
         """Create a provider wrapper for a new STT session."""
@@ -269,6 +285,10 @@ class STTSessionManager:
         wait_for_first: bool,
         timeout_seconds: float | None = None,
     ) -> list[STTSessionEvent]:
+        deferred_events = self._drain_deferred_events(session.sid)
+        if deferred_events:
+            return deferred_events
+
         due_events = session.consume_due_turn_closures()
         if due_events:
             return await self._persist_context_events(session, due_events)
@@ -294,7 +314,8 @@ class STTSessionManager:
                         )
                     )
             except asyncio.TimeoutError:
-                return session.consume_due_turn_closures()
+                due_events = session.consume_due_turn_closures()
+                return await self._persist_context_events(session, due_events)
 
         provider_events.extend(session.provider_client.drain_pending_events())
         if not provider_events:
@@ -322,6 +343,7 @@ class STTSessionManager:
         self._sessions.pop(sid, None)
         self._audio_locks.pop(sid, None)
         self._pending_audio_chunks.pop(sid, None)
+        self._deferred_events.pop(sid, None)
 
     async def _persist_context_events(
         self,
@@ -364,8 +386,117 @@ class STTSessionManager:
                         ),
                     )
                 )
+                continue
+
+            self._schedule_async_utterance_persistence(
+                sid=session.sid,
+                stream_id=session.stream_id,
+                stable_utterance=stable_utterance,
+            )
 
         return emitted
+
+    def _schedule_async_utterance_persistence(
+        self,
+        *,
+        sid: str,
+        stream_id: str,
+        stable_utterance: StableInterviewContextUtterance,
+    ) -> None:
+        if self._utterance_repo is None:
+            return
+
+        task = asyncio.create_task(
+            self._persist_closed_utterance_in_background(
+                sid=sid,
+                stream_id=stream_id,
+                stable_utterance=stable_utterance,
+            )
+        )
+        self._persistence_tasks.add(task)
+        task.add_done_callback(self._persistence_tasks.discard)
+
+    async def _persist_closed_utterance_in_background(
+        self,
+        *,
+        sid: str,
+        stream_id: str,
+        stable_utterance: StableInterviewContextUtterance,
+    ) -> None:
+        if self._utterance_repo is None:
+            return
+
+        last_error: Exception | None = None
+        for attempt in range(1, self._async_persist_retry_attempts + 1):
+            try:
+                await self._utterance_repo.append_stable(
+                    conversation_id=stable_utterance.conversation_id,
+                    source=stable_utterance.source,
+                    channel=stable_utterance.channel,
+                    text=stable_utterance.text,
+                    started_at=stable_utterance.started_at,
+                    ended_at=stable_utterance.ended_at,
+                    turn_closed_at=stable_utterance.turn_closed_at,
+                    utterance_id=stable_utterance.utterance_id,
+                )
+                return
+            except Exception as exc:
+                last_error = exc
+                logger.warning(
+                    "Async interview utterance persistence attempt %s/%s failed for %s",
+                    attempt,
+                    self._async_persist_retry_attempts,
+                    stable_utterance.utterance_id,
+                    exc_info=True,
+                )
+                if attempt < self._async_persist_retry_attempts:
+                    await asyncio.sleep(
+                        self._async_persist_retry_delay_seconds * attempt
+                    )
+
+        error = AsyncUtterancePersistenceError(
+            "Failed to persist stable interview utterance after Redis write"
+        )
+        logger.error(
+            "Async interview utterance persistence exhausted retries for %s",
+            stable_utterance.utterance_id,
+            exc_info=last_error,
+        )
+        self._queue_deferred_event(
+            sid=sid,
+            stream_id=stream_id,
+            event=STTSessionEvent(
+                kind=STTSessionEventKind.ERROR,
+                payload=STTErrorPayload(
+                    stream_id=stream_id,
+                    error_code="async_utterance_persistence_failed",
+                    error_message=str(error),
+                ),
+            ),
+        )
+
+    def _queue_deferred_event(
+        self,
+        *,
+        sid: str,
+        stream_id: str,
+        event: STTSessionEvent,
+    ) -> None:
+        session = self._sessions.get(sid)
+        if session is None or session.stream_id != stream_id:
+            logger.warning(
+                "Dropping deferred STT event for stale session %s/%s",
+                sid,
+                stream_id,
+            )
+            return
+        self._deferred_events.setdefault(sid, []).append(event)
+
+    def _drain_deferred_events(self, sid: str) -> list[STTSessionEvent]:
+        events = self._deferred_events.pop(sid, [])
+        if not events:
+            return []
+        return events
 
     @staticmethod
     def _build_timeout_event(session: STTSession, message: str) -> STTSessionEvent:
