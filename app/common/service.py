@@ -7,6 +7,8 @@ from app.common.repo import (
     get_conversation_repo,
     get_image_generation_job_repo,
     get_image_repo,
+    get_interview_conversation_repo,
+    get_interview_utterance_repo,
     get_member_repo,
     get_message_repo,
     get_org_repo,
@@ -32,8 +34,11 @@ from app.services.analytics.cache_manager import AnalyticsCacheManager
 from app.services.auth.auth_service import AuthService
 from app.services.image.image_service import ImageService
 from app.services.image.image_generation_service import ImageGenerationService
+from app.services.interview.answer_service import InterviewAnswerService
 from app.services.organization.organization_service import OrganizationService
 from app.services.sheet_crawler.crawler_service import SheetCrawlerService
+from app.services.stt.context_store import RedisInterviewContextStore
+from app.services.stt.interview_session_manager import InterviewSessionManager
 from app.services.stt.session_manager import STTSessionManager
 from app.services.stt.stt_service import STTService
 from app.services.user.user_service import UserService
@@ -220,6 +225,35 @@ def get_deepgram_live_client() -> DeepgramLiveClient:
     provider connection lifecycle.
     """
     return DeepgramLiveClient()
+
+
+@lru_cache
+def get_interview_context_store() -> RedisInterviewContextStore:
+    """Get singleton Redis-backed interview context store instance."""
+    client = RedisClient.get_client()
+    return RedisInterviewContextStore(client)
+
+
+@lru_cache
+def get_interview_answer_service() -> InterviewAnswerService:
+    """Get singleton interview answer service instance."""
+    return InterviewAnswerService(
+        context_store=get_interview_context_store(),
+        conversation_repo=get_interview_conversation_repo(),
+        utterance_repo=get_interview_utterance_repo(),
+    )
+
+
+@lru_cache
+def get_interview_session_manager() -> InterviewSessionManager:
+    """Get singleton interview session manager instance."""
+    return InterviewSessionManager(
+        deepgram_client_factory=get_deepgram_live_client,
+        context_store=get_interview_context_store(),
+        conversation_repo=get_interview_conversation_repo(),
+        utterance_repo=get_interview_utterance_repo(),
+        answer_service=get_interview_answer_service(),
+    )
 
 
 @lru_cache

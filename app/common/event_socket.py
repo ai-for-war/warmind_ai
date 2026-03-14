@@ -45,8 +45,15 @@ class STTEvents:
     STARTED = "stt:started"
     PARTIAL = "stt:partial"
     FINAL = "stt:final"
+    UTTERANCE_CLOSED = "stt:utterance_closed"
     COMPLETED = "stt:completed"
     ERROR = "stt:error"
+
+
+class InterviewEvents:
+    """Socket events for interview-specific realtime flows."""
+
+    ANSWER = "interview:answer"
 
 
 class TextToImageGenerationEvents:

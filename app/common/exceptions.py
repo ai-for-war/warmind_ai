@@ -253,3 +253,38 @@ class STTStreamOwnershipError(AppException):
 
     default_message = "Socket does not own this STT stream"
     status_code = 403
+
+
+class InvalidChannelMappingError(AppException):
+    """Raised when the declared interview channel mapping is invalid."""
+
+    default_message = "Invalid interview channel mapping"
+    status_code = 400
+
+
+class InvalidInterviewConversationStateError(AppException):
+    """Raised when an interview conversation action is invalid for its state."""
+
+    default_message = "Invalid interview conversation state"
+    status_code = 409
+
+
+class RedisContextWriteError(AppException):
+    """Raised when stable interview context cannot be written to Redis."""
+
+    default_message = "Failed to write interview context to Redis"
+    status_code = 502
+
+
+class AsyncUtterancePersistenceError(AppException):
+    """Raised when closed interview utterance persistence fails asynchronously."""
+
+    default_message = "Failed to persist interview utterance asynchronously"
+    status_code = 502
+
+
+class InterviewAITriggerError(AppException):
+    """Raised when interview answer generation cannot be triggered or completed."""
+
+    default_message = "Interview AI trigger failed"
+    status_code = 502

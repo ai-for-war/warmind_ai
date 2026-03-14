@@ -1,9 +1,9 @@
 ## 1. Contracts, configuration, and shared event definitions
 
-- [ ] 1.1 Extend `app/config/settings.py` with multichannel interview STT settings for `channels=2`, `multichannel=true`, `endpointing`, `utterance_end_ms`, `keepalive interval`, and interviewer turn-close grace timing
-- [ ] 1.2 Update `app/common/event_socket.py` with additive interview-specific events for stable utterance closure and text answer delivery while preserving existing STT event names for preview/final/completed/error
-- [ ] 1.3 Add or update exception types in `app/common/exceptions.py` for invalid channel mapping, invalid interview conversation state, Redis context write failure, async utterance persistence failure, and AI trigger failure
-- [ ] 1.4 Register repository and service factories in `app/common/service.py` and `app/common/repo.py` for interview session management, Redis context storage, conversation persistence, utterance persistence, and answer generation services
+- [x] 1.1 Extend `app/config/settings.py` with multichannel interview STT settings for `channels=2`, `multichannel=true`, `endpointing`, `utterance_end_ms`, `keepalive interval`, and interviewer turn-close grace timing
+- [x] 1.2 Update `app/common/event_socket.py` with additive interview-specific events for stable utterance closure and text answer delivery while preserving existing STT event names for preview/final/completed/error
+- [x] 1.3 Add or update exception types in `app/common/exceptions.py` for invalid channel mapping, invalid interview conversation state, Redis context write failure, async utterance persistence failure, and AI trigger failure
+- [x] 1.4 Register repository and service factories in `app/common/service.py` and `app/common/repo.py` for interview session management, Redis context storage, conversation persistence, utterance persistence, and answer generation services
 
 ## 2. Multichannel socket payload schemas and normalized event models
 
