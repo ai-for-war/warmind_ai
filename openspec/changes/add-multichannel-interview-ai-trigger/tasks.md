@@ -40,11 +40,11 @@
 
 ## 6. Redis stable-context storage
 
-- [ ] 6.1 Create a Redis-backed context store service that writes only closed stable utterances to a recent ordered utterance window per conversation
-- [ ] 6.2 Define the Redis value shape for a stable utterance so it includes `utterance_id`, `conversation_id`, `source`, `channel`, `text`, and turn timing fields
-- [ ] 6.3 Implement timeline-ordered append and bounded trimming of recent utterances so AI context reads stay fast and bounded
-- [ ] 6.4 Store stable conversation metadata such as `channel_map` in Redis when the interview session starts or when the first stable utterance is persisted
-- [ ] 6.5 Add fallback behavior so Redis read failures surface clearly and do not silently corrupt AI context assembly
+- [x] 6.1 Create a Redis-backed context store service that writes only closed stable utterances to a recent ordered utterance window per conversation
+- [x] 6.2 Define the Redis value shape for a stable utterance so it includes `utterance_id`, `conversation_id`, `source`, `channel`, `text`, and turn timing fields
+- [x] 6.3 Implement timeline-ordered append and bounded trimming of recent utterances so AI context reads stay fast and bounded
+- [x] 6.4 Store stable conversation metadata such as `channel_map` in Redis when the interview session starts or when the first stable utterance is persisted
+- [x] 6.5 Add fallback behavior so Redis read failures surface clearly and do not silently corrupt AI context assembly
 
 ## 7. Async MongoDB persistence for stable utterances
 

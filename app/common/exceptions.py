@@ -1,5 +1,7 @@
 """Custom exceptions for the application."""
 
+from __future__ import annotations
+
 
 class AppException(Exception):
     """Base exception for application errors."""
@@ -273,6 +275,13 @@ class RedisContextWriteError(AppException):
     """Raised when stable interview context cannot be written to Redis."""
 
     default_message = "Failed to write interview context to Redis"
+    status_code = 502
+
+
+class RedisContextReadError(AppException):
+    """Raised when stable interview context cannot be read from Redis."""
+
+    default_message = "Failed to read interview context from Redis"
     status_code = 502
 
 

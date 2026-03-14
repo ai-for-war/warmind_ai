@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 
 from app.common.exceptions import (
     ActiveSTTStreamConflictError,
+    RedisContextWriteError,
     InvalidSTTStreamStateError,
 )
 from app.domain.schemas.stt import STTChannelMap, STTErrorPayload
@@ -23,6 +24,10 @@ from app.services.stt.session import (
     STTSessionEventKind,
     STTSessionState,
 )
+from app.services.stt.context_store import (
+    RedisInterviewContextStore,
+    StableInterviewContextUtterance,
+)
 
 
 class STTSessionManager:
@@ -32,12 +37,14 @@ class STTSessionManager:
         self,
         *,
         deepgram_client_factory: Callable[[], DeepgramLiveClient],
+        context_store: RedisInterviewContextStore | None = None,
         max_pending_audio_chunks: int = 32,
         startup_idle_timeout_seconds: int = 15,
         stream_idle_timeout_seconds: int = 45,
         finalize_grace_timeout_seconds: int = 10,
     ) -> None:
         self._deepgram_client_factory = deepgram_client_factory
+        self._context_store = context_store
         self._max_pending_audio_chunks = max_pending_audio_chunks
         self._startup_idle_timeout_seconds = startup_idle_timeout_seconds
         self._stream_idle_timeout_seconds = stream_idle_timeout_seconds
@@ -264,7 +271,7 @@ class STTSessionManager:
     ) -> list[STTSessionEvent]:
         due_events = session.consume_due_turn_closures()
         if due_events:
-            return due_events
+            return await self._persist_context_events(session, due_events)
 
         provider_events = session.provider_client.drain_pending_events()
         if not provider_events and wait_for_first:
@@ -291,11 +298,12 @@ class STTSessionManager:
 
         provider_events.extend(session.provider_client.drain_pending_events())
         if not provider_events:
-            return session.consume_due_turn_closures()
+            due_events = session.consume_due_turn_closures()
+            return await self._persist_context_events(session, due_events)
 
         emitted = session.consume_provider_events(provider_events)
         emitted.extend(session.consume_due_turn_closures())
-        return emitted
+        return await self._persist_context_events(session, emitted)
 
     def _require_session(self, sid: str) -> STTSession:
         session = self._sessions.get(sid)
@@ -314,6 +322,50 @@ class STTSessionManager:
         self._sessions.pop(sid, None)
         self._audio_locks.pop(sid, None)
         self._pending_audio_chunks.pop(sid, None)
+
+    async def _persist_context_events(
+        self,
+        session: STTSession,
+        events: list[STTSessionEvent],
+    ) -> list[STTSessionEvent]:
+        if not events or self._context_store is None:
+            return events
+
+        emitted: list[STTSessionEvent] = []
+        for event in events:
+            emitted.append(event)
+            if event.kind != STTSessionEventKind.UTTERANCE_CLOSED:
+                continue
+
+            payload = event.payload
+            stable_utterance = StableInterviewContextUtterance(
+                utterance_id=payload.utterance_id,
+                conversation_id=payload.conversation_id,
+                source=payload.source,
+                channel=payload.channel,
+                text=payload.text,
+                started_at=payload.started_at,
+                ended_at=payload.ended_at,
+                turn_closed_at=payload.turn_closed_at,
+            )
+            try:
+                await self._context_store.append_closed_utterance(
+                    stable_utterance,
+                    channel_map=session.channel_map,
+                )
+            except RedisContextWriteError as exc:
+                emitted.append(
+                    STTSessionEvent(
+                        kind=STTSessionEventKind.ERROR,
+                        payload=STTErrorPayload(
+                            stream_id=session.stream_id,
+                            error_code="redis_context_write_failed",
+                            error_message=str(exc),
+                        ),
+                    )
+                )
+
+        return emitted
 
     @staticmethod
     def _build_timeout_event(session: STTSession, message: str) -> STTSessionEvent:

@@ -259,7 +259,10 @@ def get_interview_session_manager() -> InterviewSessionManager:
 @lru_cache
 def get_stt_session_manager() -> STTSessionManager:
     """Get singleton STT session manager instance."""
-    return STTSessionManager(deepgram_client_factory=get_deepgram_live_client)
+    return STTSessionManager(
+        deepgram_client_factory=get_deepgram_live_client,
+        context_store=get_interview_context_store(),
+    )
 
 
 @lru_cache
