@@ -13,6 +13,9 @@ from app.common.exceptions import STTProviderConnectionError
 from app.config.settings import get_settings
 from deepgram import AsyncDeepgramClient
 from deepgram.core.events import EventType
+from deepgram.listen.v1.types.listen_v1close_stream import ListenV1CloseStream
+from deepgram.listen.v1.types.listen_v1finalize import ListenV1Finalize
+from deepgram.listen.v1.types.listen_v1keep_alive import ListenV1KeepAlive
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +38,7 @@ class ProviderTranscriptEvent:
     """Normalized transcript payload emitted by the provider adapter."""
 
     transcript: str
+    channel_index: int | None = None
     confidence: float | None = None
     start_ms: int | None = None
     end_ms: int | None = None
@@ -48,6 +52,7 @@ class ProviderEvent:
     """Provider-agnostic event model produced by the Deepgram adapter."""
 
     kind: ProviderEventKind
+    channel_index: int | None = None
     transcript: ProviderTranscriptEvent | None = None
     last_word_end_ms: int | None = None
     error_message: str | None = None
@@ -68,6 +73,8 @@ class DeepgramLiveClient:
         *,
         api_key: str | None = None,
         model: str | None = None,
+        channels: int | None = None,
+        multichannel: bool | None = None,
         endpointing_ms: int | None = None,
         utterance_end_ms: int | None = None,
         keepalive_interval_seconds: int | None = None,
@@ -75,20 +82,28 @@ class DeepgramLiveClient:
         settings = get_settings()
         self.api_key = api_key or settings.DEEPGRAM_API_KEY
         self.model = model or settings.DEEPGRAM_MODEL
+        self.channels = (
+            channels if channels is not None else settings.INTERVIEW_STT_CHANNELS
+        )
+        self.multichannel = (
+            multichannel
+            if multichannel is not None
+            else settings.INTERVIEW_STT_MULTICHANNEL
+        )
         self.endpointing_ms = (
             endpointing_ms
             if endpointing_ms is not None
-            else settings.DEEPGRAM_ENDPOINTING_MS
+            else settings.INTERVIEW_STT_ENDPOINTING_MS
         )
         self.utterance_end_ms = (
             utterance_end_ms
             if utterance_end_ms is not None
-            else settings.DEEPGRAM_UTTERANCE_END_MS
+            else settings.INTERVIEW_STT_UTTERANCE_END_MS
         )
         self.keepalive_interval_seconds = (
             keepalive_interval_seconds
             if keepalive_interval_seconds is not None
-            else settings.DEEPGRAM_KEEPALIVE_INTERVAL_SECONDS
+            else settings.INTERVIEW_STT_KEEPALIVE_INTERVAL_SECONDS
         )
         self._client: Any | None = None
         self._connection_manager: Any | None = None
@@ -96,6 +111,8 @@ class DeepgramLiveClient:
         self._listener_task: asyncio.Task[None] | None = None
         self._event_loop: asyncio.AbstractEventLoop | None = None
         self._events: asyncio.Queue[ProviderEvent] = asyncio.Queue()
+        self._connect_options: dict[str, Any] | None = None
+        self._last_request_metadata: dict[str, Any] | None = None
 
     def get_runtime_config(self, *, language: str | None = None) -> dict[str, Any]:
         """Return verified Listen V1 connect options for the active STT runtime."""
@@ -104,7 +121,8 @@ class DeepgramLiveClient:
             "encoding": "linear16",
             # Deepgram's websocket query parser expects string query values.
             "sample_rate": "16000",
-            "channels": "1",
+            "channels": str(self.channels),
+            "multichannel": str(self.multichannel).lower(),
             "interim_results": "true",
             "vad_events": "true",
             "endpointing": str(self.endpointing_ms),
@@ -118,6 +136,7 @@ class DeepgramLiveClient:
             raise STTProviderConnectionError("Deepgram connection is already open")
 
         listen_options = self.get_runtime_config(language=language)
+        self._connect_options = dict(listen_options)
 
         try:
             self._event_loop = asyncio.get_running_loop()
@@ -134,10 +153,16 @@ class DeepgramLiveClient:
                 self._connection.start_listening()
             )
             logger.info(
-                "Deepgram live connection started provider %s model %s language %s",
-                "deepgram",
-                self.model,
-                listen_options["language"],
+                "Deepgram live connection started",
+                extra={
+                    "provider": "deepgram",
+                    "model": self.model,
+                    "language": listen_options["language"],
+                    "channels": self.channels,
+                    "multichannel": self.multichannel,
+                    "endpointing": listen_options["endpointing"],
+                    "utterance_end_ms": listen_options["utterance_end_ms"],
+                },
             )
         except Exception as exc:
             await self._cleanup_connection_context()
@@ -170,15 +195,27 @@ class DeepgramLiveClient:
         return await self._send_control_message("Finalize")
 
     async def close(self) -> bool:
-        """Close the provider stream cleanly."""
+        """Close the provider stream cleanly via CloseStream.
+
+        Finalize and CloseStream remain distinct behaviors. Callers can use
+        ``finalize()`` to flush pending transcript results while keeping the
+        websocket alive long enough to consume them, then call ``close()`` only
+        when the session itself should terminate.
+        """
         connection = self._connection
         if connection is None:
             return True
 
         success = True
         try:
-            await connection.send_close_stream()
-            logger.info("Deepgram live connection finished")
+            await connection.send_close_stream(
+                ListenV1CloseStream(type="CloseStream")
+            )
+            logger.info(
+                "Deepgram close stream requested",
+                extra=self._provider_log_context(),
+            )
+            await self._await_listener_shutdown(timeout_seconds=1.0)
         except Exception as exc:
             success = False
             logger.warning("Deepgram finish failed: %s", exc)
@@ -203,10 +240,18 @@ class DeepgramLiveClient:
 
         try:
             if control_type == "KeepAlive":
-                await connection.send_keep_alive()
+                await connection.send_keep_alive(ListenV1KeepAlive(type="KeepAlive"))
+                logger.debug(
+                    "Deepgram keepalive requested",
+                    extra=self._provider_log_context(),
+                )
                 return True
             if control_type == "Finalize":
-                await connection.send_finalize()
+                await connection.send_finalize(ListenV1Finalize(type="Finalize"))
+                logger.info(
+                    "Deepgram finalize requested",
+                    extra=self._provider_log_context(),
+                )
                 return True
             raise ValueError(f"Unsupported Deepgram control message: {control_type}")
         except Exception as exc:
@@ -220,13 +265,22 @@ class DeepgramLiveClient:
         return self._connection
 
     def _on_open(self, _: Any) -> None:
-        logger.info("Deepgram provider connection opened")
-        self._publish_event(ProviderEvent(kind=ProviderEventKind.OPEN))
+        logger.info("Deepgram provider connection opened", extra=self._provider_log_context())
+        self._publish_event(
+            ProviderEvent(
+                kind=ProviderEventKind.OPEN,
+                metadata=dict(self._connect_options or {}),
+            )
+        )
 
     def _on_close(self, payload: Any) -> None:
         close_code = self._safe_int(getattr(payload, "code", None))
         logger.info(
-            "Deepgram provider connection closed", extra={"close_code": close_code}
+            "Deepgram provider connection closed",
+            extra={
+                **self._provider_log_context(),
+                "close_code": close_code,
+            },
         )
         self._publish_event(
             ProviderEvent(
@@ -237,7 +291,11 @@ class DeepgramLiveClient:
 
     def _on_error(self, payload: Any) -> None:
         error_message = self._stringify_error(payload)
-        logger.error("Deepgram provider error: %s", error_message)
+        logger.error(
+            "Deepgram provider error: %s",
+            error_message,
+            extra=self._provider_log_context(),
+        )
         self._publish_event(
             ProviderEvent(
                 kind=ProviderEventKind.ERROR,
@@ -250,70 +308,81 @@ class DeepgramLiveClient:
         if provider_event is None:
             return
 
-        if (
-            provider_event.kind
-            in {
-                ProviderEventKind.TRANSCRIPT_PARTIAL,
-                ProviderEventKind.TRANSCRIPT_FINAL_FRAGMENT,
-            }
-            and provider_event.transcript is not None
-        ):
-            logger.debug(
-                "Deepgram transcript event",
-                extra={
-                    "is_final": provider_event.transcript.is_final,
-                    "speech_final": provider_event.transcript.speech_final,
-                    "from_finalize": provider_event.transcript.from_finalize,
-                    "transcript_chars": len(provider_event.transcript.transcript),
-                },
-            )
-        elif provider_event.kind == ProviderEventKind.SPEECH_STARTED:
-            logger.debug("Deepgram speech started")
-        elif provider_event.kind == ProviderEventKind.UTTERANCE_END:
-            logger.debug(
-                "Deepgram utterance end",
-                extra={"last_word_end_ms": provider_event.last_word_end_ms},
-            )
-        elif provider_event.kind == ProviderEventKind.PROVIDER_FINALIZE:
-            logger.debug("Deepgram finalize signal")
+        self._remember_request_metadata(provider_event.metadata)
+        logger.debug(
+            "Deepgram provider event",
+            extra=self._build_provider_event_log_extra(provider_event),
+        )
 
         self._publish_event(provider_event)
 
     def _normalize_message(self, message: Any) -> ProviderEvent | None:
         message_type = str(getattr(message, "type", "") or "").lower()
+        channel_indices = self._extract_channel_indices(
+            getattr(message, "channel_index", None)
+        ) or self._extract_channel_indices(getattr(message, "channel", None))
+        channel_index = channel_indices[0] if channel_indices else None
+        metadata = self._extract_provider_metadata(
+            message,
+            channel_indices=channel_indices,
+        )
 
         if "utteranceend" in message_type:
             return ProviderEvent(
                 kind=ProviderEventKind.UTTERANCE_END,
+                channel_index=channel_index,
                 last_word_end_ms=self._seconds_to_ms(
                     getattr(message, "last_word_end", None)
                 ),
+                metadata=metadata,
             )
 
         if "speechstarted" in message_type:
-            return ProviderEvent(kind=ProviderEventKind.SPEECH_STARTED)
+            return ProviderEvent(
+                kind=ProviderEventKind.SPEECH_STARTED,
+                channel_index=channel_index,
+                metadata=metadata,
+            )
 
         if "finalize" in message_type:
-            return ProviderEvent(kind=ProviderEventKind.PROVIDER_FINALIZE)
+            return ProviderEvent(
+                kind=ProviderEventKind.PROVIDER_FINALIZE,
+                channel_index=channel_index,
+                metadata=metadata,
+            )
 
-        transcript = self._extract_transcript_event(message)
+        transcript = self._extract_transcript_event(
+            message,
+            channel_index=channel_index,
+        )
         if transcript is not None:
             kind = (
                 ProviderEventKind.TRANSCRIPT_FINAL_FRAGMENT
                 if transcript.is_final
                 else ProviderEventKind.TRANSCRIPT_PARTIAL
             )
-            return ProviderEvent(kind=kind, transcript=transcript)
+            return ProviderEvent(
+                kind=kind,
+                channel_index=transcript.channel_index,
+                transcript=transcript,
+                metadata=metadata,
+            )
 
         if "error" in message_type:
             return ProviderEvent(
                 kind=ProviderEventKind.ERROR,
                 error_message=self._stringify_error(message),
+                metadata=metadata,
             )
 
         return None
 
-    def _extract_transcript_event(self, message: Any) -> ProviderTranscriptEvent | None:
+    def _extract_transcript_event(
+        self,
+        message: Any,
+        *,
+        channel_index: int | None,
+    ) -> ProviderTranscriptEvent | None:
         channel = getattr(message, "channel", None)
         alternatives = getattr(channel, "alternatives", None)
         first_alternative = (
@@ -331,6 +400,7 @@ class DeepgramLiveClient:
 
         return ProviderTranscriptEvent(
             transcript=transcript,
+            channel_index=channel_index,
             confidence=self._safe_float(getattr(first_alternative, "confidence", None)),
             start_ms=start_ms,
             end_ms=end_ms,
@@ -354,6 +424,24 @@ class DeepgramLiveClient:
         if self._event_loop is None:
             return
         self._event_loop.call_soon_threadsafe(self._events.put_nowait, event)
+
+    async def _await_listener_shutdown(self, *, timeout_seconds: float) -> None:
+        listener_task = self._listener_task
+        if listener_task is None:
+            return
+        try:
+            await asyncio.wait_for(asyncio.shield(listener_task), timeout=timeout_seconds)
+        except asyncio.TimeoutError:
+            logger.debug(
+                "Timed out waiting for Deepgram listener shutdown",
+                extra=self._provider_log_context(),
+            )
+        except Exception:
+            logger.debug(
+                "Deepgram listener shutdown raised",
+                extra=self._provider_log_context(),
+                exc_info=True,
+            )
 
     async def _cleanup_connection_context(self) -> None:
         connection_manager = self._connection_manager
@@ -404,6 +492,93 @@ class DeepgramLiveClient:
             return float(value)
         except (TypeError, ValueError):
             return None
+
+    @classmethod
+    def _extract_channel_indices(cls, value: Any) -> tuple[int, ...] | None:
+        if value is None:
+            return None
+        if isinstance(value, (list, tuple)):
+            normalized = tuple(
+                item for item in (cls._safe_int(raw) for raw in value) if item is not None
+            )
+            return normalized or None
+        normalized = cls._safe_int(value)
+        if normalized is None:
+            return None
+        return (normalized,)
+
+    @classmethod
+    def _extract_provider_metadata(
+        cls,
+        message: Any,
+        *,
+        channel_indices: tuple[int, ...] | None = None,
+    ) -> dict[str, Any] | None:
+        metadata_payload: dict[str, Any] = {}
+        metadata = getattr(message, "metadata", None)
+        if metadata is not None:
+            request_id = getattr(metadata, "request_id", None)
+            if request_id:
+                metadata_payload["request_id"] = request_id
+
+            model_uuid = getattr(metadata, "model_uuid", None)
+            if model_uuid:
+                metadata_payload["model_uuid"] = model_uuid
+
+            model_info = getattr(metadata, "model_info", None)
+            if model_info is not None:
+                model_name = getattr(model_info, "name", None)
+                model_version = getattr(model_info, "version", None)
+                model_arch = getattr(model_info, "arch", None)
+                if model_name:
+                    metadata_payload["model_name"] = model_name
+                if model_version:
+                    metadata_payload["model_version"] = model_version
+                if model_arch:
+                    metadata_payload["model_arch"] = model_arch
+
+        if channel_indices:
+            metadata_payload["channel_indices"] = list(channel_indices)
+
+        return metadata_payload or None
+
+    def _remember_request_metadata(self, metadata: dict[str, Any] | None) -> None:
+        if not metadata:
+            return
+        remembered = dict(self._last_request_metadata or {})
+        for key in ("request_id", "model_uuid", "model_name", "model_version", "model_arch"):
+            value = metadata.get(key)
+            if value is not None:
+                remembered[key] = value
+        if remembered:
+            self._last_request_metadata = remembered
+
+    def _provider_log_context(self) -> dict[str, Any]:
+        context: dict[str, Any] = {"provider": "deepgram"}
+        if self._last_request_metadata:
+            context.update(self._last_request_metadata)
+        return context
+
+    def _build_provider_event_log_extra(
+        self,
+        event: ProviderEvent,
+    ) -> dict[str, Any]:
+        extra = self._provider_log_context()
+        extra["event_kind"] = event.kind.value
+        if event.metadata:
+            extra.update(event.metadata)
+        if event.channel_index is not None:
+            extra["channel_index"] = event.channel_index
+        if event.last_word_end_ms is not None:
+            extra["last_word_end_ms"] = event.last_word_end_ms
+        if event.close_code is not None:
+            extra["close_code"] = event.close_code
+        if event.transcript is not None:
+            extra["is_final"] = event.transcript.is_final
+            extra["speech_final"] = event.transcript.speech_final
+            extra["from_finalize"] = event.transcript.from_finalize
+            extra["transcript_chars"] = len(event.transcript.transcript)
+        return extra
 
     @staticmethod
     def _stringify_error(payload: Any) -> str:

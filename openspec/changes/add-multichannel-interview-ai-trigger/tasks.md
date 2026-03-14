@@ -22,11 +22,11 @@
 
 ## 4. Deepgram adapter upgrade for multichannel Listen V1
 
-- [ ] 4.1 Update `app/infrastructure/deepgram/client.py` to open Listen V1 with `channels=2`, `multichannel=true`, `interim_results=true`, `endpointing`, and `utterance_end_ms`
-- [ ] 4.2 Verify the pinned Deepgram SDK async usage against current docs and code by using `AsyncDeepgramClient`, `listen.v1.connect`, `start_listening`, `send_media`, and control messages for `KeepAlive` and `Finalize`
-- [ ] 4.3 Extend provider event normalization to preserve `channel_index` on partial transcript, final transcript, `SpeechStarted`, `UtteranceEnd`, and finalize-related events
-- [ ] 4.4 Implement structured provider logging that captures channel, finality flags, close codes, and provider request metadata without logging raw transcript bodies or audio bytes
-- [ ] 4.5 Add a clean separation between provider `Finalize` and `CloseStream` behaviors so the application can flush remaining transcript without tearing down the session prematurely
+- [x] 4.1 Update `app/infrastructure/deepgram/client.py` to open Listen V1 with `channels=2`, `multichannel=true`, `interim_results=true`, `endpointing`, and `utterance_end_ms`
+- [x] 4.2 Verify the pinned Deepgram SDK async usage against current docs and code by using `AsyncDeepgramClient`, `listen.v1.connect`, `start_listening`, `send_media`, and control messages for `KeepAlive` and `Finalize`
+- [x] 4.3 Extend provider event normalization to preserve `channel_index` on partial transcript, final transcript, `SpeechStarted`, `UtteranceEnd`, and finalize-related events
+- [x] 4.4 Implement structured provider logging that captures channel, finality flags, close codes, and provider request metadata without logging raw transcript bodies or audio bytes
+- [x] 4.5 Add a clean separation between provider `Finalize` and `CloseStream` behaviors so the application can flush remaining transcript without tearing down the session prematurely
 
 ## 5. In-memory interview session state machine
 
