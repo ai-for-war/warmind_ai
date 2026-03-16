@@ -204,6 +204,8 @@ class InterviewAnswerStartedPayload(STTBaseSchema):
 class InterviewAnswerTokenPayload(STTBaseSchema):
     """Payload emitted for one streamed interview answer chunk."""
 
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=False)
+
     conversation_id: str = Field(..., min_length=1, max_length=128)
     utterance_id: str = Field(..., min_length=1, max_length=128)
     token: str = Field(..., min_length=1)

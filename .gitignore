@@ -12,3 +12,5 @@ __pycache__
 .mypy_cache
 .DS_Store
 kiro-483609-2c952e91370a.json
+
+__pycache__/
