@@ -16,7 +16,7 @@ from app.domain.schemas.stt import (
     InterviewAnswerStartedPayload,
     InterviewAnswerTokenPayload,
 )
-from app.infrastructure.llm.factory import get_chat_openai
+from app.infrastructure.llm.factory import get_chat_openai_legacy
 from app.prompts.system.interview_answer import INTERVIEW_ANSWER_SYSTEM_PROMPT
 from app.repo.interview_conversation_repo import InterviewConversationRepository
 from app.repo.interview_utterance_repo import InterviewUtteranceRepository
@@ -287,10 +287,9 @@ class InterviewAnswerService:
 
     @staticmethod
     def _default_llm_factory() -> Any:
-        return get_chat_openai(
+        return get_chat_openai_legacy(
             model="gpt-4.1",
             temperature=0.5,
             streaming=True,
             max_tokens=1024,
-            reasoning_effort="medium",
         )
