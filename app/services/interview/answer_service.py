@@ -288,8 +288,9 @@ class InterviewAnswerService:
     @staticmethod
     def _default_llm_factory() -> Any:
         return get_chat_openai(
-            model="gpt-5.2",
+            model="gpt-4.1",
             temperature=0.5,
             streaming=True,
             max_tokens=1024,
+            reasoning_effort="medium",
         )
