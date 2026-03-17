@@ -43,6 +43,7 @@ class InterviewAnswerService:
         self.conversation_repo = conversation_repo
         self.utterance_repo = utterance_repo
         self._llm_factory = llm_factory or self._default_llm_factory
+        self._llm: Any | None = None
         self.max_context_utterances = max(max_context_utterances, 1)
 
     async def build_context_window(
@@ -123,7 +124,7 @@ class InterviewAnswerService:
             )
 
             full_content = ""
-            async for chunk in self._llm_factory().astream(
+            async for chunk in self._get_llm().astream(
                 [
                     SystemMessage(content=INTERVIEW_ANSWER_SYSTEM_PROMPT),
                     HumanMessage(content=prompt),
@@ -277,6 +278,12 @@ class InterviewAnswerService:
                     parts.append(text)
             return "".join(parts)
         return str(content)
+
+    def _get_llm(self) -> Any:
+        """Create the LLM client lazily once per service instance."""
+        if self._llm is None:
+            self._llm = self._llm_factory()
+        return self._llm
 
     @staticmethod
     def _default_llm_factory() -> Any:
