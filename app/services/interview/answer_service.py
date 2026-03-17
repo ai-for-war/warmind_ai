@@ -37,7 +37,7 @@ class InterviewAnswerService:
         conversation_repo: InterviewConversationRepository,
         utterance_repo: InterviewUtteranceRepository,
         llm_factory: Callable[[], Any] | None = None,
-        max_context_utterances: int = 12,
+        max_context_utterances: int = 10,
     ) -> None:
         self.context_store = context_store
         self.conversation_repo = conversation_repo
