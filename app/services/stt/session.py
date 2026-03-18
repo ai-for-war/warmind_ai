@@ -54,6 +54,7 @@ class OpenInterviewUtterance:
     channel: STTChannelIndex
     started_at: datetime
     stable_segments: list[StableTranscriptSegment] = field(default_factory=list)
+    stable_text_cache: str = ""
     preview_text: str = ""
     ended_at: datetime | None = None
     last_activity_at: datetime | None = None
@@ -61,20 +62,20 @@ class OpenInterviewUtterance:
     @property
     def stable_text(self) -> str:
         """Return merged finalized text for the open utterance."""
-        merged = ""
-        for segment in self.stable_segments:
-            merged = STTSession._compose_transcript(merged, segment.text)
-        return merged
+        return self.stable_text_cache
 
     @property
     def preview_transcript(self) -> str:
         """Return UI preview text combining stable and volatile transcript state."""
-        return STTSession._compose_transcript(self.stable_text, self.preview_text)
+        return STTSession._compose_transcript(
+            self.stable_text_cache,
+            self.preview_text,
+        )
 
     @property
     def has_stable_text(self) -> bool:
         """Return whether this utterance has any finalized transcript content."""
-        return bool(self.stable_text)
+        return bool(self.stable_text_cache)
 
 
 class STTSessionState(str, Enum):
@@ -546,7 +547,7 @@ class STTSession:
         if not normalized_text:
             return
 
-        current_text = utterance.stable_text
+        current_text = utterance.stable_text_cache
         merged_text = self._compose_transcript(current_text, normalized_text)
         if merged_text == current_text:
             return
@@ -559,6 +560,7 @@ class STTSession:
                 end_ms=transcript.end_ms,
             )
         )
+        utterance.stable_text_cache = merged_text
 
     def _cancel_pending_turn_close(self, channel: STTChannelIndex) -> None:
         self._turn_close_deadlines[channel] = None
