@@ -7,6 +7,8 @@ from app.repo.audio_file_repo import AudioFileRepository
 from app.repo.conversation_repo import ConversationRepository
 from app.repo.image_generation_job_repo import ImageGenerationJobRepository
 from app.repo.image_repo import ImageRepository
+from app.repo.interview_conversation_repo import InterviewConversationRepository
+from app.repo.interview_utterance_repo import InterviewUtteranceRepository
 from app.repo.message_repo import MessageRepository
 from app.repo.organization_member_repo import OrganizationMemberRepository
 from app.repo.organization_repo import OrganizationRepository
@@ -143,3 +145,17 @@ def get_image_generation_job_repo() -> ImageGenerationJobRepository:
     """Get singleton image generation job repository instance."""
     db = MongoDB.get_db()
     return ImageGenerationJobRepository(db)
+
+
+@lru_cache
+def get_interview_conversation_repo() -> InterviewConversationRepository:
+    """Get singleton interview conversation repository instance."""
+    db = MongoDB.get_db()
+    return InterviewConversationRepository(db)
+
+
+@lru_cache
+def get_interview_utterance_repo() -> InterviewUtteranceRepository:
+    """Get singleton interview utterance repository instance."""
+    db = MongoDB.get_db()
+    return InterviewUtteranceRepository(db)

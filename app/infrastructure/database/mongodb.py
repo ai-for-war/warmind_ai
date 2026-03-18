@@ -123,6 +123,16 @@ class MongoDB:
         )
         logger.info("Created index: idx_conversations_user_org_deleted_updated")
 
+        # Index for interview conversations collection
+        # Supports: stable lookup by conversation_id during interview session flows
+        await cls.db.interview_conversations.create_index(
+            [("conversation_id", ASCENDING)],
+            name="idx_interview_conversations_conversation_id_unique",
+            unique=True,
+            background=True,
+        )
+        logger.info("Created index: idx_interview_conversations_conversation_id_unique")
+
         # Indexes for sheet_connections collection
         await cls.db.sheet_connections.create_index(
             [("user_id", ASCENDING), ("organization_id", ASCENDING)],
@@ -151,6 +161,22 @@ class MongoDB:
             background=True,
         )
         logger.info("Created index: idx_messages_conversation_deleted_created")
+
+        # Indexes for interview_utterances collection
+        # Supports: recovery queries by created_at and timeline ordering by turn_closed_at
+        await cls.db.interview_utterances.create_index(
+            [("conversation_id", ASCENDING), ("created_at", ASCENDING)],
+            name="idx_interview_utterances_conversation_created",
+            background=True,
+        )
+        logger.info("Created index: idx_interview_utterances_conversation_created")
+
+        await cls.db.interview_utterances.create_index(
+            [("conversation_id", ASCENDING), ("turn_closed_at", ASCENDING)],
+            name="idx_interview_utterances_conversation_turn_closed",
+            background=True,
+        )
+        logger.info("Created index: idx_interview_utterances_conversation_turn_closed")
 
         # Indexes for image_generation_jobs collection
         await cls.db.image_generation_jobs.create_index(

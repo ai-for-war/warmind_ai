@@ -1,5 +1,7 @@
 """Custom exceptions for the application."""
 
+from __future__ import annotations
+
 
 class AppException(Exception):
     """Base exception for application errors."""
@@ -217,4 +219,81 @@ class ImageGenerationStorageError(AppException):
     """Raised when storing generated image output fails."""
 
     default_message = "Image generation storage failed"
+    status_code = 502
+
+
+class InvalidSTTStreamStateError(AppException):
+    """Raised when an STT operation is invalid for the current stream state."""
+
+    default_message = "Invalid STT stream state"
+    status_code = 409
+
+
+class UnsupportedSTTAudioFormatError(AppException):
+    """Raised when the incoming STT audio format is not supported."""
+
+    default_message = "Unsupported STT audio format"
+    status_code = 400
+
+
+class ActiveSTTStreamConflictError(AppException):
+    """Raised when a socket attempts to open a second active STT stream."""
+
+    default_message = "An active STT stream already exists for this socket"
+    status_code = 409
+
+
+class STTProviderConnectionError(AppException):
+    """Raised when the STT provider connection cannot be opened or maintained."""
+
+    default_message = "Speech-to-text provider connection failed"
+    status_code = 502
+
+
+class STTStreamOwnershipError(AppException):
+    """Raised when a socket attempts to control a stream it does not own."""
+
+    default_message = "Socket does not own this STT stream"
+    status_code = 403
+
+
+class InvalidChannelMappingError(AppException):
+    """Raised when the declared interview channel mapping is invalid."""
+
+    default_message = "Invalid interview channel mapping"
+    status_code = 400
+
+
+class InvalidInterviewConversationStateError(AppException):
+    """Raised when an interview conversation action is invalid for its state."""
+
+    default_message = "Invalid interview conversation state"
+    status_code = 409
+
+
+class RedisContextWriteError(AppException):
+    """Raised when stable interview context cannot be written to Redis."""
+
+    default_message = "Failed to write interview context to Redis"
+    status_code = 502
+
+
+class RedisContextReadError(AppException):
+    """Raised when stable interview context cannot be read from Redis."""
+
+    default_message = "Failed to read interview context from Redis"
+    status_code = 502
+
+
+class AsyncUtterancePersistenceError(AppException):
+    """Raised when closed interview utterance persistence fails asynchronously."""
+
+    default_message = "Failed to persist interview utterance asynchronously"
+    status_code = 502
+
+
+class InterviewAITriggerError(AppException):
+    """Raised when interview answer generation cannot be triggered or completed."""
+
+    default_message = "Interview AI trigger failed"
     status_code = 502

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from fastapi.encoders import jsonable_encoder
+
 
 def enrich_socket_payload(
     data: dict[str, Any],
@@ -19,4 +21,6 @@ def enrich_socket_payload(
     if organization_id:
         payload.setdefault("organization_id", organization_id)
 
-    return payload
+    # Socket.IO eventually serializes through stdlib json, so normalize
+    # datetime/Pydantic values into JSON-safe primitives before emit.
+    return jsonable_encoder(payload)

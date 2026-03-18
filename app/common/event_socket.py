@@ -35,6 +35,31 @@ class TTSEvents:
     ERROR = "tts:error"
 
 
+class STTEvents:
+    """Socket events for live speech-to-text streaming over Socket.IO."""
+
+    START = "stt:start"
+    AUDIO = "stt:audio"
+    FINALIZE = "stt:finalize"
+    STOP = "stt:stop"
+    STARTED = "stt:started"
+    PARTIAL = "stt:partial"
+    FINAL = "stt:final"
+    UTTERANCE_CLOSED = "stt:utterance_closed"
+    COMPLETED = "stt:completed"
+    ERROR = "stt:error"
+
+
+class InterviewEvents:
+    """Socket events for interview-specific realtime flows."""
+
+    ANSWER = "interview:answer"
+    ANSWER_STARTED = "interview:answer:started"
+    ANSWER_TOKEN = "interview:answer:token"
+    ANSWER_COMPLETED = "interview:answer:completed"
+    ANSWER_FAILED = "interview:answer:failed"
+
+
 class TextToImageGenerationEvents:
     """Socket events for text-to-image generation lifecycle."""
 
