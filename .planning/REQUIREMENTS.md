@@ -7,16 +7,16 @@
 
 ### Meetings
 
-- [ ] **MEET-01**: User can start a dedicated AI record meeting session from the frontend when a meeting begins
-- [ ] **MEET-02**: User can stop an active AI record meeting session at any time and receive finalized meeting outputs
-- [ ] **MEET-03**: User can choose a supported transcription language such as `vi` or `en` before or when starting the meeting session
+- [x] **MEET-01**: User can start a dedicated AI record meeting session from the frontend when a meeting begins
+- [x] **MEET-02**: User can stop an active AI record meeting session at any time and receive finalized meeting outputs
+- [xx] **MEET-03**: User can choose a supported transcription language such as `vi` or `en` before or when starting the meeting session
 
 ### Transcript
 
-- [ ] **TRNS-01**: User can view transcript text accumulating during an active meeting session
-- [ ] **TRNS-02**: User can review the full saved transcript after the meeting ends
-- [ ] **TRNS-03**: User can see transcript segments grouped by anonymous speaker labels such as `speaker 1` and `speaker 2`
-- [ ] **TRNS-04**: User can see timestamps for saved transcript segments when reviewing a meeting
+- [x] **TRNS-01**: User can view transcript text accumulating during an active meeting session
+- [x] **TRNS-02**: User can review the full saved transcript after the meeting ends
+- [x] **TRNS-03**: User can see transcript segments grouped by anonymous speaker labels such as `speaker 1` and `speaker 2`
+- [x] **TRNS-04**: User can see timestamps for saved transcript segments when reviewing a meeting
 
 ### Summaries
 
@@ -67,10 +67,10 @@
 | MEET-01 | Phase 1 | Pending |
 | MEET-02 | Phase 1 | Pending |
 | MEET-03 | Phase 1 | Pending |
-| TRNS-01 | Phase 2 | Pending |
-| TRNS-02 | Phase 2 | Pending |
-| TRNS-03 | Phase 2 | Pending |
-| TRNS-04 | Phase 2 | Pending |
+| TRNS-01 | Phase 2 | Complete |
+| TRNS-02 | Phase 2 | Complete |
+| TRNS-03 | Phase 2 | Complete |
+| TRNS-04 | Phase 2 | Complete |
 | SUMM-01 | Phase 3 | Pending |
 | SUMM-02 | Phase 4 | Pending |
 | SUMM-03 | Phase 4 | Pending |
@@ -88,4 +88,4 @@
 
 ---
 *Requirements defined: 2026-03-19*
-*Last updated: 2026-03-19 after roadmap mapping*
+*Last updated: 2026-03-20 after Phase 2 completion*

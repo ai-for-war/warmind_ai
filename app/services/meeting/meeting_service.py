@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
+
 from app.common.exceptions import (
     ActiveMeetingRecordConflictError,
     MeetingRecordOwnershipError,
@@ -10,6 +13,7 @@ from app.common.exceptions import (
     UnsupportedMeetingLanguageError,
 )
 from app.config.settings import get_settings
+from app.domain.schemas.meeting_transcript import MeetingTranscriptBlockPayload
 from app.repo.meeting_record_repo import MeetingRecordRepository
 from app.repo.organization_member_repo import OrganizationMemberRepository
 from app.repo.organization_repo import OrganizationRepository
@@ -19,8 +23,10 @@ from app.services.meeting.session import (
     MeetingSessionEventKind,
 )
 from app.services.meeting.session_manager import MeetingSessionManager
+from app.services.meeting.transcript_service import MeetingTranscriptService
 
 MEETING_SUPPORTED_LANGUAGES = frozenset(get_settings().MEETING_SUPPORTED_LANGUAGES)
+logger = logging.getLogger(__name__)
 
 
 class MeetingService:
@@ -31,11 +37,13 @@ class MeetingService:
         *,
         session_manager: MeetingSessionManager,
         meeting_record_repo: MeetingRecordRepository,
+        transcript_service: MeetingTranscriptService,
         organization_repo: OrganizationRepository,
         member_repo: OrganizationMemberRepository,
     ) -> None:
         self.session_manager = session_manager
         self.meeting_record_repo = meeting_record_repo
+        self.transcript_service = transcript_service
         self.organization_repo = organization_repo
         self.member_repo = member_repo
 
@@ -235,6 +243,15 @@ class MeetingService:
             return
 
         for event in events:
+            if event.kind == MeetingSessionEventKind.TRANSCRIPT:
+                payload = event.payload
+                if isinstance(payload, MeetingTranscriptBlockPayload) and payload.is_final:
+                    self._schedule_transcript_persistence(
+                        sid=session.sid,
+                        payload=payload,
+                        organization_id=session.organization_id,
+                    )
+                continue
             if event.kind == MeetingSessionEventKind.COMPLETED:
                 await self.meeting_record_repo.mark_completed(
                     meeting_id=session.meeting_id,
@@ -257,3 +274,38 @@ class MeetingService:
                 f"Unsupported language '{normalized}'"
             )
         return normalized
+
+    def _schedule_transcript_persistence(
+        self,
+        *,
+        sid: str,
+        payload: MeetingTranscriptBlockPayload,
+        organization_id: str,
+    ) -> None:
+        asyncio.create_task(
+            self._persist_transcript_block_in_background(
+                sid=sid,
+                payload=payload,
+                organization_id=organization_id,
+            )
+        )
+
+    async def _persist_transcript_block_in_background(
+        self,
+        *,
+        sid: str,
+        payload: MeetingTranscriptBlockPayload,
+        organization_id: str,
+    ) -> None:
+        try:
+            await self.transcript_service.append_closed_block_payload(
+                payload,
+                organization_id=organization_id,
+            )
+        except Exception:
+            logger.exception(
+                "Async meeting transcript persistence failed for sid=%s meeting_id=%s block_id=%s",
+                sid,
+                payload.meeting_id,
+                payload.block_id,
+            )

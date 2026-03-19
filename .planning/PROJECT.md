@@ -2,7 +2,7 @@
 
 ## What This Is
 
-AI Service is an internal modular AI backend built around FastAPI, LangGraph, Socket.IO, MongoDB, and Redis. It already supports authenticated multi-tenant APIs, AI chat/orchestration, media generation, speech features, analytics, and Google Sheets ingestion, and the next major capability is a dedicated AI record flow for meetings.
+AI Service is an internal modular AI backend built around FastAPI, LangGraph, Socket.IO, MongoDB, and Redis. It already supports authenticated multi-tenant APIs, AI chat/orchestration, media generation, speech features, analytics, Google Sheets ingestion, and a dedicated AI record flow for meetings. The next major capability is batch summary generation and structured review on top of the meeting transcript foundation.
 
 The AI record flow is not an extension of the interview assistant domain. It is a separate meeting-oriented workflow that can reuse shared STT, socket, queue, and LLM infrastructure where useful, while keeping its own conversation semantics, persistence model, prompts, and summary pipeline so the feature can evolve independently.
 
@@ -21,17 +21,16 @@ Internal teams can stream meeting audio to the service and get a durable transcr
 - [x] The platform can run asynchronous/background processing with Redis queues and worker processes - existing
 - [x] The platform can manage voice, text-to-speech, image upload/generation, and related media workflows - existing
 - [x] The platform can ingest and analyze Google Sheets-backed data sources for internal workflows - existing
+- [x] Internal users can start and stop a dedicated AI record meeting session from the frontend by streaming live meeting audio to the backend - validated in Phase 1
+- [x] AI record sessions store the meeting as its own meeting-native flow, separate from interview-specific models and behaviors - validated in Phases 1-2
+- [x] The system durably stores and retrieves full meeting transcripts with anonymous speaker labels and timestamps - validated in Phase 2
+- [x] The frontend/client can select supported meeting language values such as `vi` or `en` for transcription - validated in Phase 1
 
 ### Active
 
-- [ ] Internal users can start and stop a dedicated AI record meeting session from the frontend by streaming live meeting audio to the backend
-- [ ] AI record sessions store the meeting as its own conversation flow, separate from interview-specific models and behaviors
-- [ ] The system durably stores full meeting transcripts as utterance/message history for later retrieval
 - [ ] The system generates batch-based meeting summaries during an active session instead of invoking AI on every utterance
 - [ ] AI record summaries capture short summaries, key points, decisions, action items, notes, and follow-up questions
 - [ ] The system stores meeting summaries in a dedicated summary collection linked to the meeting conversation
-- [ ] The transcript can label anonymous participants as speaker-style identifiers (for example `speaker 1`, `speaker 2`) without requiring real-name mapping
-- [ ] The frontend/client can select supported meeting language values such as `vi` or `en` for transcription
 
 ### Out of Scope
 
@@ -75,4 +74,4 @@ Deepgram capabilities are a strong fit for this direction. The latest official d
 | Let the client declare transcription language | The service should support meetings in different languages without hardcoding one default | Pending |
 
 ---
-*Last updated: 2026-03-19 after initialization*
+*Last updated: 2026-03-20 after Phase 2 completion*

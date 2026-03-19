@@ -157,6 +157,28 @@ class MongoDB:
         )
         logger.info("Created index: idx_meeting_records_status_org_started")
 
+        # Indexes for meeting_transcript_items collection
+        # Supports: idempotent segment upserts and oldest-first transcript review
+        await cls.db.meeting_transcript_items.create_index(
+            [("meeting_id", ASCENDING), ("segment_id", ASCENDING)],
+            name="idx_meeting_transcript_meeting_segment",
+            unique=True,
+            background=True,
+        )
+        logger.info("Created index: idx_meeting_transcript_meeting_segment")
+
+        await cls.db.meeting_transcript_items.create_index(
+            [
+                ("organization_id", ASCENDING),
+                ("meeting_id", ASCENDING),
+                ("block_sequence", ASCENDING),
+                ("segment_index", ASCENDING),
+            ],
+            name="idx_meeting_transcript_org_meeting_sequence",
+            background=True,
+        )
+        logger.info("Created index: idx_meeting_transcript_org_meeting_sequence")
+
         # Indexes for sheet_connections collection
         await cls.db.sheet_connections.create_index(
             [("user_id", ASCENDING), ("organization_id", ASCENDING)],

@@ -292,6 +292,13 @@ class MeetingRecordOwnershipError(AppException):
     status_code = 403
 
 
+class MeetingRecordNotFoundError(AppException):
+    """Raised when a meeting record cannot be found."""
+
+    default_message = "Meeting record not found"
+    status_code = 404
+
+
 class UnsupportedMeetingLanguageError(AppException):
     """Raised when a requested meeting transcription language is unsupported."""
 

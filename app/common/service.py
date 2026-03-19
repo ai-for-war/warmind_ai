@@ -10,6 +10,7 @@ from app.common.repo import (
     get_interview_conversation_repo,
     get_interview_utterance_repo,
     get_meeting_record_repo,
+    get_meeting_transcript_repo,
     get_member_repo,
     get_message_repo,
     get_org_repo,
@@ -39,6 +40,7 @@ from app.services.image.image_generation_service import ImageGenerationService
 from app.services.interview.answer_service import InterviewAnswerService
 from app.services.meeting.meeting_service import MeetingService
 from app.services.meeting.session_manager import MeetingSessionManager
+from app.services.meeting.transcript_service import MeetingTranscriptService
 from app.services.organization.organization_service import OrganizationService
 from app.services.sheet_crawler.crawler_service import SheetCrawlerService
 from app.services.stt.context_store import RedisInterviewContextStore
@@ -304,8 +306,18 @@ def get_meeting_service() -> MeetingService:
     return MeetingService(
         session_manager=get_meeting_session_manager(),
         meeting_record_repo=get_meeting_record_repo(),
+        transcript_service=get_meeting_transcript_service(),
         organization_repo=get_org_repo(),
         member_repo=get_member_repo(),
+    )
+
+
+@lru_cache
+def get_meeting_transcript_service() -> MeetingTranscriptService:
+    """Get singleton meeting transcript service instance."""
+    return MeetingTranscriptService(
+        meeting_record_repo=get_meeting_record_repo(),
+        meeting_transcript_repo=get_meeting_transcript_repo(),
     )
 
 

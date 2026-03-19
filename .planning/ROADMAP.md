@@ -13,7 +13,7 @@ This roadmap takes the existing AI platform from brownfield speech infrastructur
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Meeting Domain Foundation** - Create the dedicated AI record domain, session lifecycle, and language-aware meeting start/stop flow
-- [ ] **Phase 2: Live Transcript Capture** - Deliver stable transcript ingest, persistence, timestamps, and anonymous speaker grouping
+- [x] **Phase 2: Live Transcript Capture** - Deliver stable transcript ingest, persistence, timestamps, and anonymous speaker grouping
 - [ ] **Phase 3: Summary Foundation** - Add debounced batch summary generation during the meeting and finalize summary output at session end
 - [ ] **Phase 4: Structured Meeting Insights** - Expand summaries into key points, decisions, action items, notes, and follow-up questions
 - [ ] **Phase 5: Meeting History and Review** - Deliver meeting history/detail review on top of durable transcript and summary storage
@@ -31,7 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: Define meeting-native models, schemas, repos, and event contracts
+- [x] 01-01: Define meeting-native models, schemas, repos, and event contracts
 - [x] 01-02: Implement session lifecycle, auth/org scoping, and language-aware meeting start/stop flow
 
 ### Phase 2: Live Transcript Capture
@@ -46,8 +46,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 02-01: Adapt live STT ingest to meeting transcript assembly with diarization and utterance closure
-- [ ] 02-02: Persist meeting utterances and expose transcript read paths for active and completed sessions
+- [x] 02-01: Adapt live STT ingest to meeting transcript assembly with diarization and utterance closure
+- [x] 02-02: Persist meeting utterances and expose transcript read paths for active and completed sessions
 
 ### Phase 3: Summary Foundation
 **Goal**: Users receive a short batch-updated meeting summary during the session and a finalized summary when the meeting ends.
@@ -99,7 +99,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Meeting Domain Foundation | 2/2 | Complete | 2026-03-19 |
-| 2. Live Transcript Capture | 0/2 | Not started | - |
+| 2. Live Transcript Capture | 2/2 | Complete | 2026-03-20 |
 | 3. Summary Foundation | 0/2 | Not started | - |
 | 4. Structured Meeting Insights | 0/2 | Not started | - |
 | 5. Meeting History and Review | 0/2 | Not started | - |

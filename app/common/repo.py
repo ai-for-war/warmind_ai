@@ -10,6 +10,7 @@ from app.repo.image_repo import ImageRepository
 from app.repo.interview_conversation_repo import InterviewConversationRepository
 from app.repo.interview_utterance_repo import InterviewUtteranceRepository
 from app.repo.meeting_record_repo import MeetingRecordRepository
+from app.repo.meeting_transcript_repo import MeetingTranscriptRepository
 from app.repo.message_repo import MessageRepository
 from app.repo.organization_member_repo import OrganizationMemberRepository
 from app.repo.organization_repo import OrganizationRepository
@@ -167,3 +168,10 @@ def get_meeting_record_repo() -> MeetingRecordRepository:
     """Get singleton meeting record repository instance."""
     db = MongoDB.get_db()
     return MeetingRecordRepository(db)
+
+
+@lru_cache
+def get_meeting_transcript_repo() -> MeetingTranscriptRepository:
+    """Get singleton meeting transcript repository instance."""
+    db = MongoDB.get_db()
+    return MeetingTranscriptRepository(db)
