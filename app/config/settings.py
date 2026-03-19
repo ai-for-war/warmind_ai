@@ -4,6 +4,89 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+NOVA3_MONOLINGUAL_LANGUAGE_CODES = (
+    "ar",
+    "ar-ae",
+    "ar-sa",
+    "ar-qa",
+    "ar-kw",
+    "ar-sy",
+    "ar-lb",
+    "ar-ps",
+    "ar-jo",
+    "ar-eg",
+    "ar-sd",
+    "ar-td",
+    "ar-ma",
+    "ar-dz",
+    "ar-tn",
+    "ar-iq",
+    "ar-ir",
+    "be",
+    "bn",
+    "bs",
+    "bg",
+    "ca",
+    "zh-hk",
+    "hr",
+    "cs",
+    "da",
+    "da-dk",
+    "nl",
+    "en",
+    "en-us",
+    "en-au",
+    "en-gb",
+    "en-in",
+    "en-nz",
+    "et",
+    "fi",
+    "nl-be",
+    "fr",
+    "fr-ca",
+    "de",
+    "de-ch",
+    "el",
+    "he",
+    "hi",
+    "hu",
+    "id",
+    "it",
+    "ja",
+    "kn",
+    "ko",
+    "ko-kr",
+    "lv",
+    "lt",
+    "mk",
+    "ms",
+    "mr",
+    "no",
+    "fa",
+    "pl",
+    "pt",
+    "pt-br",
+    "pt-pt",
+    "ro",
+    "ru",
+    "sr",
+    "sk",
+    "sl",
+    "es",
+    "es-419",
+    "sv",
+    "sv-se",
+    "tl",
+    "ta",
+    "te",
+    "th",
+    "th-th",
+    "tr",
+    "uk",
+    "ur",
+    "vi",
+)
+
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
@@ -64,6 +147,15 @@ class Settings(BaseSettings):
     INTERVIEW_STT_UTTERANCE_END_MS: int = 1000
     INTERVIEW_STT_KEEPALIVE_INTERVAL_SECONDS: int = 5
     INTERVIEW_TURN_CLOSE_GRACE_MS: int = 300
+
+    # Meeting STT
+    MEETING_STT_CHANNELS: int = 1
+    MEETING_STT_MULTICHANNEL: bool = False
+    MEETING_STT_ENDPOINTING_MS: int = 400
+    MEETING_STT_UTTERANCE_END_MS: int = 1000
+    MEETING_STT_KEEPALIVE_INTERVAL_SECONDS: int = 5
+    # Stored in lowercase to match request payload normalization before validation.
+    MEETING_SUPPORTED_LANGUAGES: list[str] = list(NOVA3_MONOLINGUAL_LANGUAGE_CODES)
 
     # Cloudinary
     CLOUDINARY_CLOUD_NAME: str

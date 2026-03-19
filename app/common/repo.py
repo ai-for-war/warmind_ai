@@ -9,6 +9,7 @@ from app.repo.image_generation_job_repo import ImageGenerationJobRepository
 from app.repo.image_repo import ImageRepository
 from app.repo.interview_conversation_repo import InterviewConversationRepository
 from app.repo.interview_utterance_repo import InterviewUtteranceRepository
+from app.repo.meeting_record_repo import MeetingRecordRepository
 from app.repo.message_repo import MessageRepository
 from app.repo.organization_member_repo import OrganizationMemberRepository
 from app.repo.organization_repo import OrganizationRepository
@@ -159,3 +160,10 @@ def get_interview_utterance_repo() -> InterviewUtteranceRepository:
     """Get singleton interview utterance repository instance."""
     db = MongoDB.get_db()
     return InterviewUtteranceRepository(db)
+
+
+@lru_cache
+def get_meeting_record_repo() -> MeetingRecordRepository:
+    """Get singleton meeting record repository instance."""
+    db = MongoDB.get_db()
+    return MeetingRecordRepository(db)

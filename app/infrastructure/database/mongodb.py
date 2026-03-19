@@ -133,6 +133,30 @@ class MongoDB:
         )
         logger.info("Created index: idx_interview_conversations_conversation_id_unique")
 
+        # Indexes for meeting_records collection
+        # Supports: meeting lifecycle lookups and future meeting history queries
+        await cls.db.meeting_records.create_index(
+            [
+                ("user_id", ASCENDING),
+                ("organization_id", ASCENDING),
+                ("started_at", DESCENDING),
+            ],
+            name="idx_meeting_records_user_org_started",
+            background=True,
+        )
+        logger.info("Created index: idx_meeting_records_user_org_started")
+
+        await cls.db.meeting_records.create_index(
+            [
+                ("status", ASCENDING),
+                ("organization_id", ASCENDING),
+                ("started_at", DESCENDING),
+            ],
+            name="idx_meeting_records_status_org_started",
+            background=True,
+        )
+        logger.info("Created index: idx_meeting_records_status_org_started")
+
         # Indexes for sheet_connections collection
         await cls.db.sheet_connections.create_index(
             [("user_id", ASCENDING), ("organization_id", ASCENDING)],

@@ -60,6 +60,18 @@ class InterviewEvents:
     ANSWER_FAILED = "interview:answer:failed"
 
 
+class MeetingRecordEvents:
+    """Socket events for meeting recording realtime flows."""
+
+    START = "meeting_record:start"
+    AUDIO = "meeting_record:audio"
+    STOP = "meeting_record:stop"
+    STARTED = "meeting_record:started"
+    STOPPING = "meeting_record:stopping"
+    COMPLETED = "meeting_record:completed"
+    ERROR = "meeting_record:error"
+
+
 class TextToImageGenerationEvents:
     """Socket events for text-to-image generation lifecycle."""
 

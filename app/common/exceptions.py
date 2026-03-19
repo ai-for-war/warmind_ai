@@ -271,6 +271,34 @@ class InvalidInterviewConversationStateError(AppException):
     status_code = 409
 
 
+class InvalidMeetingRecordStateError(AppException):
+    """Raised when a meeting record action is invalid for its state."""
+
+    default_message = "Invalid meeting record state"
+    status_code = 409
+
+
+class ActiveMeetingRecordConflictError(AppException):
+    """Raised when a socket attempts to open a second active meeting."""
+
+    default_message = "An active meeting record already exists for this socket"
+    status_code = 409
+
+
+class MeetingRecordOwnershipError(AppException):
+    """Raised when a socket attempts to control a meeting it does not own."""
+
+    default_message = "Socket does not own this meeting record"
+    status_code = 403
+
+
+class UnsupportedMeetingLanguageError(AppException):
+    """Raised when a requested meeting transcription language is unsupported."""
+
+    default_message = "Unsupported meeting language"
+    status_code = 400
+
+
 class RedisContextWriteError(AppException):
     """Raised when stable interview context cannot be written to Redis."""
 
