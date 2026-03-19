@@ -6,8 +6,14 @@ import contextlib
 import socketio
 from pydantic import ValidationError
 
-from app.common.event_socket import InterviewEvents, STTEvents
+from app.common.event_socket import InterviewEvents, MeetingRecordEvents, STTEvents
 from app.common.repo import get_member_repo
+from app.domain.schemas.meeting_record import (
+    MeetingRecordAudioMetadata,
+    MeetingRecordErrorPayload,
+    MeetingRecordStartRequest,
+    MeetingRecordStopRequest,
+)
 from app.domain.schemas.stt import (
     STTAudioMetadata,
     STTErrorPayload,
@@ -17,6 +23,7 @@ from app.domain.schemas.stt import (
 )
 from app.socket_gateway.auth import authenticate
 from app.socket_gateway.manager import get_server_manager
+from app.services.meeting.session import MeetingSessionEvent, MeetingSessionEventKind
 from app.services.stt.session import STTSessionEvent, STTSessionEventKind
 
 # Get Redis manager (may be None if Redis not configured)
@@ -75,9 +82,17 @@ async def disconnect(sid: str) -> None:
     session = await _get_socket_session(sid)
     user_id = session.get("user_id")
     organization_id = session.get("organization_id")
+    meeting_service = _get_meeting_service()
     service = _get_stt_service()
 
+    meeting_emitted = await meeting_service.handle_disconnect(sid)
     emitted = await service.handle_disconnect(sid)
+    if user_id:
+        await _emit_meeting_session_events(
+            user_id=user_id,
+            organization_id=organization_id,
+            events=meeting_emitted,
+        )
     if user_id:
         await _emit_stt_session_events(
             user_id=user_id,
@@ -86,6 +101,110 @@ async def disconnect(sid: str) -> None:
         )
 
     await _cancel_stt_listener(sid)
+
+
+@sio.on(MeetingRecordEvents.START)
+async def meeting_record_start(sid: str, payload: dict) -> None:
+    user_id = await _get_authenticated_user_id(sid)
+    service = _get_meeting_service()
+
+    try:
+        request = MeetingRecordStartRequest.model_validate(payload)
+        emitted = await service.start_session(
+            sid=sid,
+            user_id=user_id,
+            organization_id=request.organization_id,
+            language=request.language,
+        )
+    except Exception as exc:
+        organization_id = payload.get("organization_id") if isinstance(payload, dict) else None
+        await _emit_meeting_error(
+            user_id=user_id,
+            organization_id=organization_id,
+            meeting_id=None,
+            error=exc,
+        )
+        return
+
+    await _persist_socket_organization_id(sid, user_id, request.organization_id)
+    await _emit_meeting_session_events(
+        user_id=user_id,
+        organization_id=request.organization_id,
+        events=emitted,
+    )
+
+
+@sio.on(MeetingRecordEvents.AUDIO)
+async def meeting_record_audio(
+    sid: str,
+    metadata_payload: dict,
+    audio_payload: bytes | bytearray | memoryview,
+) -> None:
+    socket_session = await _get_socket_session(sid)
+    user_id = await _get_authenticated_user_id(sid)
+    organization_id = socket_session.get("organization_id")
+    service = _get_meeting_service()
+
+    try:
+        metadata = MeetingRecordAudioMetadata.model_validate(metadata_payload)
+        if not isinstance(audio_payload, (bytes, bytearray, memoryview)):
+            raise ValueError("Meeting audio payload must be binary")
+        emitted = await service.push_audio(
+            sid=sid,
+            user_id=user_id,
+            meeting_id=metadata.meeting_id,
+            chunk=bytes(audio_payload),
+        )
+    except Exception as exc:
+        meeting_id = (
+            metadata_payload.get("meeting_id")
+            if isinstance(metadata_payload, dict)
+            else None
+        )
+        await _emit_meeting_error(
+            user_id=user_id,
+            organization_id=organization_id,
+            meeting_id=meeting_id,
+            error=exc,
+        )
+        return
+
+    await _emit_meeting_session_events(
+        user_id=user_id,
+        organization_id=organization_id,
+        events=emitted,
+    )
+
+
+@sio.on(MeetingRecordEvents.STOP)
+async def meeting_record_stop(sid: str, payload: dict) -> None:
+    socket_session = await _get_socket_session(sid)
+    user_id = await _get_authenticated_user_id(sid)
+    organization_id = socket_session.get("organization_id")
+    service = _get_meeting_service()
+
+    try:
+        request = MeetingRecordStopRequest.model_validate(payload)
+        emitted = await service.stop_session(
+            sid=sid,
+            user_id=user_id,
+            meeting_id=request.meeting_id,
+        )
+    except Exception as exc:
+        meeting_id = payload.get("meeting_id") if isinstance(payload, dict) else None
+        await _emit_meeting_error(
+            user_id=user_id,
+            organization_id=organization_id,
+            meeting_id=meeting_id,
+            error=exc,
+        )
+        return
+
+    await _emit_meeting_session_events(
+        user_id=user_id,
+        organization_id=organization_id,
+        events=emitted,
+    )
 
 
 @sio.on(STTEvents.START)
@@ -233,6 +352,14 @@ async def _get_socket_session(sid: str) -> dict:
     except KeyError:
         return {}
     return session or {}
+
+
+async def _get_authenticated_user_id(sid: str) -> str:
+    socket_session = await _get_socket_session(sid)
+    user_id = socket_session.get("user_id")
+    if not user_id:
+        raise PermissionError("Socket session is not authenticated")
+    return user_id
 
 
 async def _get_stt_identity(sid: str) -> tuple[str, str | None]:
@@ -393,7 +520,67 @@ async def _emit_stt_error(
     )
 
 
+async def _emit_meeting_session_events(
+    *,
+    user_id: str,
+    organization_id: str | None,
+    events: list[MeetingSessionEvent],
+) -> None:
+    if not events:
+        return
+
+    from app.socket_gateway import gateway
+
+    event_names = {
+        MeetingSessionEventKind.STARTED: MeetingRecordEvents.STARTED,
+        MeetingSessionEventKind.STOPPING: MeetingRecordEvents.STOPPING,
+        MeetingSessionEventKind.COMPLETED: MeetingRecordEvents.COMPLETED,
+        MeetingSessionEventKind.ERROR: MeetingRecordEvents.ERROR,
+    }
+
+    for event in events:
+        await gateway.emit_to_user(
+            user_id=user_id,
+            event=event_names[event.kind],
+            data=event.payload.model_dump(exclude_none=True, by_alias=True),
+            organization_id=organization_id,
+        )
+
+
+async def _emit_meeting_error(
+    *,
+    user_id: str,
+    organization_id: str | None,
+    meeting_id: str | None,
+    error: Exception,
+) -> None:
+    from app.socket_gateway import gateway
+
+    error_message = (
+        "Invalid meeting record payload"
+        if isinstance(error, ValidationError)
+        else str(error)
+    )
+    payload = MeetingRecordErrorPayload(
+        meeting_id=meeting_id,
+        error_code="meeting_record_request_error",
+        error_message=error_message,
+    )
+    await gateway.emit_to_user(
+        user_id=user_id,
+        event=MeetingRecordEvents.ERROR,
+        data=payload.model_dump(exclude_none=True, by_alias=True),
+        organization_id=organization_id,
+    )
+
+
 def _get_stt_service():
     from app.common.service import get_stt_service
 
     return get_stt_service()
+
+
+def _get_meeting_service():
+    from app.common.service import get_meeting_service
+
+    return get_meeting_service()

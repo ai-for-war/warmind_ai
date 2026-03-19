@@ -12,7 +12,7 @@ This roadmap takes the existing AI platform from brownfield speech infrastructur
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Meeting Domain Foundation** - Create the dedicated AI record domain, session lifecycle, and language-aware meeting start/stop flow
+- [x] **Phase 1: Meeting Domain Foundation** - Create the dedicated AI record domain, session lifecycle, and language-aware meeting start/stop flow
 - [ ] **Phase 2: Live Transcript Capture** - Deliver stable transcript ingest, persistence, timestamps, and anonymous speaker grouping
 - [ ] **Phase 3: Summary Foundation** - Add debounced batch summary generation during the meeting and finalize summary output at session end
 - [ ] **Phase 4: Structured Meeting Insights** - Expand summaries into key points, decisions, action items, notes, and follow-up questions
@@ -32,7 +32,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Plans:
 - [ ] 01-01: Define meeting-native models, schemas, repos, and event contracts
-- [ ] 01-02: Implement session lifecycle, auth/org scoping, and language-aware meeting start/stop flow
+- [x] 01-02: Implement session lifecycle, auth/org scoping, and language-aware meeting start/stop flow
 
 ### Phase 2: Live Transcript Capture
 **Goal**: Users can view and later review a full saved meeting transcript with timestamps and anonymous speaker grouping.
@@ -98,7 +98,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Meeting Domain Foundation | 0/2 | Not started | - |
+| 1. Meeting Domain Foundation | 2/2 | Complete | 2026-03-19 |
 | 2. Live Transcript Capture | 0/2 | Not started | - |
 | 3. Summary Foundation | 0/2 | Not started | - |
 | 4. Structured Meeting Insights | 0/2 | Not started | - |

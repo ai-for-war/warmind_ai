@@ -9,6 +9,7 @@ from app.common.repo import (
     get_image_repo,
     get_interview_conversation_repo,
     get_interview_utterance_repo,
+    get_meeting_record_repo,
     get_member_repo,
     get_message_repo,
     get_org_repo,
@@ -18,6 +19,7 @@ from app.common.repo import (
     get_user_repo,
     get_voice_repo,
 )
+from app.config.settings import get_settings
 from app.infrastructure.cloudinary.client import CloudinaryClient
 from app.infrastructure.deepgram.client import DeepgramLiveClient
 from app.infrastructure.google_sheets.client import GoogleSheetClient
@@ -35,6 +37,8 @@ from app.services.auth.auth_service import AuthService
 from app.services.image.image_service import ImageService
 from app.services.image.image_generation_service import ImageGenerationService
 from app.services.interview.answer_service import InterviewAnswerService
+from app.services.meeting.meeting_service import MeetingService
+from app.services.meeting.session_manager import MeetingSessionManager
 from app.services.organization.organization_service import OrganizationService
 from app.services.sheet_crawler.crawler_service import SheetCrawlerService
 from app.services.stt.context_store import RedisInterviewContextStore
@@ -227,6 +231,18 @@ def get_deepgram_live_client() -> DeepgramLiveClient:
     return DeepgramLiveClient()
 
 
+def get_meeting_deepgram_live_client() -> DeepgramLiveClient:
+    """Get a Deepgram live client wrapper configured for meetings."""
+    settings = get_settings()
+    return DeepgramLiveClient(
+        channels=settings.MEETING_STT_CHANNELS,
+        multichannel=settings.MEETING_STT_MULTICHANNEL,
+        endpointing_ms=settings.MEETING_STT_ENDPOINTING_MS,
+        utterance_end_ms=settings.MEETING_STT_UTTERANCE_END_MS,
+        keepalive_interval_seconds=settings.MEETING_STT_KEEPALIVE_INTERVAL_SECONDS,
+    )
+
+
 @lru_cache
 def get_interview_context_store() -> RedisInterviewContextStore:
     """Get singleton Redis-backed interview context store instance."""
@@ -271,6 +287,25 @@ def get_stt_session_manager() -> STTSessionManager:
 def get_stt_service() -> STTService:
     """Get singleton STT service instance."""
     return STTService(session_manager=get_stt_session_manager())
+
+
+@lru_cache
+def get_meeting_session_manager() -> MeetingSessionManager:
+    """Get singleton meeting session manager instance."""
+    return MeetingSessionManager(
+        deepgram_client_factory=get_meeting_deepgram_live_client,
+    )
+
+
+@lru_cache
+def get_meeting_service() -> MeetingService:
+    """Get singleton meeting service instance."""
+    return MeetingService(
+        session_manager=get_meeting_session_manager(),
+        meeting_record_repo=get_meeting_record_repo(),
+        organization_repo=get_org_repo(),
+        member_repo=get_member_repo(),
+    )
 
 
 @lru_cache
