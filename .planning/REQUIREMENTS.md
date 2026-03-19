@@ -64,28 +64,28 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MEET-01 | Unmapped | Pending |
-| MEET-02 | Unmapped | Pending |
-| MEET-03 | Unmapped | Pending |
-| TRNS-01 | Unmapped | Pending |
-| TRNS-02 | Unmapped | Pending |
-| TRNS-03 | Unmapped | Pending |
-| TRNS-04 | Unmapped | Pending |
-| SUMM-01 | Unmapped | Pending |
-| SUMM-02 | Unmapped | Pending |
-| SUMM-03 | Unmapped | Pending |
-| SUMM-04 | Unmapped | Pending |
-| SUMM-05 | Unmapped | Pending |
-| SUMM-06 | Unmapped | Pending |
-| SUMM-07 | Unmapped | Pending |
-| HIST-01 | Unmapped | Pending |
-| HIST-02 | Unmapped | Pending |
+| MEET-01 | Phase 1 | Pending |
+| MEET-02 | Phase 1 | Pending |
+| MEET-03 | Phase 1 | Pending |
+| TRNS-01 | Phase 2 | Pending |
+| TRNS-02 | Phase 2 | Pending |
+| TRNS-03 | Phase 2 | Pending |
+| TRNS-04 | Phase 2 | Pending |
+| SUMM-01 | Phase 3 | Pending |
+| SUMM-02 | Phase 4 | Pending |
+| SUMM-03 | Phase 4 | Pending |
+| SUMM-04 | Phase 4 | Pending |
+| SUMM-05 | Phase 4 | Pending |
+| SUMM-06 | Phase 4 | Pending |
+| SUMM-07 | Phase 3 | Pending |
+| HIST-01 | Phase 5 | Pending |
+| HIST-02 | Phase 5 | Pending |
 
 **Coverage:**
 - v1 requirements: 16 total
-- Mapped to phases: 0
-- Unmapped: 16
+- Mapped to phases: 16
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-19*
-*Last updated: 2026-03-19 after initial definition*
+*Last updated: 2026-03-19 after roadmap mapping*
