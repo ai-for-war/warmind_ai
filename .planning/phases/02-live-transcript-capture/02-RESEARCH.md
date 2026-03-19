@@ -10,15 +10,15 @@
 ### Locked Decisions
 - During an active meeting, users should see transcript text live before the utterance is fully stabilized.
 - When provider output is corrected by a later finalized transcript fragment, the current live text should be rewritten in place rather than appended as a correction trail.
-- The transcript should be shaped around stable utterances. Once one utterance is considered stable, the next transcript content should begin a new transcript block.
-- Transcript storage and presentation should be utterance-first, not speaker-merged. Each stable utterance remains its own transcript item.
+- The live transcript should be shaped around transcript blocks. Each block can contain multiple finalized speaker segments plus one draft segment, and the next transcript content should begin a new block after a provider boundary closes the current one.
+- Transcript storage and presentation should preserve chronological segment order, not collapse a whole block into one dominant speaker label.
 - Anonymous speaker labels do not need to remain perfectly stable across an entire meeting session.
 - The preferred visible label format is `speaker 1`, `speaker 2`, and so on.
-- If diarization is unclear for a captured utterance, the system should still retain that utterance and use a fallback label such as `speaker unknown` rather than dropping transcript text.
-- Saved transcript items should carry both utterance start and utterance end timestamps.
+- If diarization is unclear for a captured segment, the system should still retain that segment and use a fallback label such as `speaker unknown` rather than dropping transcript text.
+- Saved transcript items should carry both segment or block start and end timestamps as appropriate for the read model.
 - The canonical stored timing representation should be milliseconds from meeting start rather than preformatted display strings.
-- Saved transcript review should be a chronological list of utterance items.
-- Each saved transcript item should minimally include anonymous speaker label, utterance text, and timestamps.
+- Saved transcript review should be a chronological list of transcript items.
+- Each saved transcript item should minimally include anonymous speaker label, transcript text, and timestamps.
 - Read paths for completed transcripts should be paginated in Phase 2 rather than only returning the full transcript in one fetch.
 - Paginated transcript review should default to oldest-first ordering.
 
@@ -76,7 +76,7 @@ The official Nova streaming docs explicitly document:
 - Deepgram explicitly recommends concatenating finalized segments until `speech_final: true` when reconstructing a complete utterance.
 - The interim-results docs also show that finalized segments can split and re-boundary speech in ways that do not match the latest interim text one-to-one.
 
-**Planning implication:** the live UI should update one open utterance in place, but the server must treat utterance truth as an accumulation of finalized segments, not a single final packet.
+**Planning implication:** the live UI should update one open transcript block in place, but the server must treat transcript truth as an accumulation of finalized segments, not a single final packet.
 
 ### 5. `UtteranceEnd` is useful, but it depends on `interim_results`
 - The official Utterance End docs state that:
@@ -131,9 +131,9 @@ Phase 2 should stay on the current Deepgram Nova streaming path and adapt the ex
 
 What is missing is the meeting-native transcript lane:
 - a listener-driven meeting provider event loop
-- meeting transcript socket updates keyed by a stable utterance id
+- meeting transcript socket updates keyed by a stable block id
 - word-level speaker extraction from Deepgram diarization
-- stable utterance persistence
+- stable transcript block or segment persistence
 - paginated transcript read APIs
 
 **Primary recommendation:** implement meeting transcript capture around official Deepgram streaming primitives that are explicitly documented now: `interim_results`, `endpointing`, `utterance_end_ms`, `diarize`, `Finalize`, `CloseStream`, and `KeepAlive`. Do not make `utterances=true` a required assumption for Phase 2.
@@ -147,18 +147,18 @@ What is missing is the meeting-native transcript lane:
 
 **Why it fits:** transcript truth depends on receiving post-finalize results before the session is closed.
 
-### Pattern 2: Stable utterance id for live rewrite-in-place
-**What:** open one server-side utterance record, emit repeated updates for that same `utterance_id`, and only persist when the utterance is closed.
+### Pattern 2: Stable block id for live rewrite-in-place
+**What:** open one server-side transcript block, emit repeated updates for that same `block_id`, and return the full current block snapshot on every update.
 
-**Why it fits:** this exactly matches the product requirement that live transcript text be rewritten in place rather than appended as correction noise.
+**Why it fits:** this matches the product requirement that live transcript text be rewritten in place while still allowing finalized content to accumulate within the current block.
 
-### Pattern 3: Word-level diarization folded into utterance-level anonymous labels
-**What:** derive a stable `speaker_key` for the utterance from the dominant or only word-level `speaker` values returned by Deepgram, then render `speaker {n+1}` or `speaker unknown`.
+### Pattern 3: Word-level diarization projected into finalized block segments
+**What:** split finalized transcript fragments by word-level `speaker` changes, keep the resulting speaker-tagged segments in chronological order, and render `speaker {n+1}` or `speaker unknown` per segment.
 
-**Why it fits:** official docs confirm live streaming only gives word-level `speaker`, so the utterance label must be application-derived.
+**Why it fits:** official docs confirm live streaming only gives word-level `speaker`, so multi-speaker UI support must be application-derived from those word boundaries.
 
-### Pattern 4: Durable-only persistence for closed utterances
-**What:** persist only closed stable utterances with `start_ms` / `end_ms`, not partial preview text.
+### Pattern 4: Durable-only persistence for finalized transcript segments
+**What:** persist only finalized transcript content with `start_ms` / `end_ms`, not partial preview text.
 
 **Why it fits:** official docs show interim text may change and finalized segments may split boundaries. Saved review should be stable, chronological, and clean.
 
@@ -190,9 +190,9 @@ What is missing is the meeting-native transcript lane:
 **How to avoid:** treat `is_final` as finalized segment accuracy and `speech_final` / `UtteranceEnd` as closure signals.
 
 ### Pitfall 3: Incorrect speaker grouping
-**What goes wrong:** labels are taken from one late word instead of the utterance as a whole.
+**What goes wrong:** the runtime collapses a whole block into one dominant speaker and loses speaker alternation inside the block.
 **Why it happens:** live diarization is word-level.
-**How to avoid:** aggregate word speakers across the stable utterance, then render one anonymous label.
+**How to avoid:** keep finalized fragments split by speaker change and emit them as ordered segments within the same block.
 
 ### Pitfall 4: Over-relying on KeepAlive
 **What goes wrong:** the app assumes KeepAlive alone is enough forever.
@@ -219,7 +219,7 @@ What is missing is the meeting-native transcript lane:
 ### Phase Requirements -> Test Map
 | Req ID | Behavior | Test Type | Automated Command | File Exists? |
 |--------|----------|-----------|-------------------|-------------|
-| TRNS-01 | live transcript updates rewrite in place | integration | `pytest tests/integration/socket_gateway/test_meeting_record_socket.py -q` | planned |
+| TRNS-01 | live transcript block updates rewrite in place | integration | `pytest tests/integration/socket_gateway/test_meeting_record_socket.py -q` | planned |
 | TRNS-02 | completed transcript is durably reviewable | integration | `pytest tests/integration/api/test_meeting_transcript_api.py -q` | planned |
 | TRNS-03 | utterances carry anonymous speaker labels | unit | `pytest tests/unit/test_meeting_transcript_session.py -q` | planned |
 | TRNS-04 | saved utterances persist `start_ms` and `end_ms` | unit | `pytest tests/unit/repo/test_meeting_transcript_repo.py -q` | planned |
@@ -241,7 +241,7 @@ What is missing is the meeting-native transcript lane:
    - Recommendation: durable-only for Phase 2; keep volatile preview socket-only.
 
 2. **Should we normalize speaker labels by first-seen speaker id or by provider numeric id directly?**
-   - Recommendation: persist both `speaker_key` and rendered `speaker_label`; render `speaker {n+1}` for UI, keep provider key internal.
+   - Recommendation: persist both `speaker_key` and rendered `speaker_label`; render `speaker {n+1}` for UI, keep provider key internal even when one block contains multiple speakers.
 
 3. **Do we want reconnect recovery in this phase?**
    - Recommendation: no. But if it is added later, timestamp offsetting must be handled in application code because Deepgram restarts timestamps from zero on a new connection.

@@ -39,6 +39,7 @@ sio = socketio.AsyncServer(
 )
 
 _stt_listener_tasks: dict[str, asyncio.Task[None]] = {}
+_meeting_listener_tasks: dict[str, asyncio.Task[None]] = {}
 
 
 @sio.event
@@ -99,7 +100,11 @@ async def disconnect(sid: str) -> None:
             organization_id=organization_id,
             events=emitted,
         )
+    if any(event.kind == MeetingSessionEventKind.STOPPING for event in meeting_emitted):
+        meeting_service.acknowledge_stop_emitted(sid)
 
+    if meeting_service.get_session(sid) is None:
+        await _cancel_meeting_listener(sid)
     await _cancel_stt_listener(sid)
 
 
@@ -132,6 +137,7 @@ async def meeting_record_start(sid: str, payload: dict) -> None:
         organization_id=request.organization_id,
         events=emitted,
     )
+    _ensure_meeting_listener_task(sid=sid, user_id=user_id)
 
 
 @sio.on(MeetingRecordEvents.AUDIO)
@@ -174,6 +180,8 @@ async def meeting_record_audio(
         organization_id=organization_id,
         events=emitted,
     )
+    if service.get_session(sid) is None:
+        await _cancel_meeting_listener(sid)
 
 
 @sio.on(MeetingRecordEvents.STOP)
@@ -205,6 +213,10 @@ async def meeting_record_stop(sid: str, payload: dict) -> None:
         organization_id=organization_id,
         events=emitted,
     )
+    if any(event.kind == MeetingSessionEventKind.STOPPING for event in emitted):
+        service.acknowledge_stop_emitted(sid)
+    if service.get_session(sid) is None:
+        await _cancel_meeting_listener(sid)
 
 
 @sio.on(STTEvents.START)
@@ -417,8 +429,26 @@ def _ensure_stt_listener_task(*, sid: str, user_id: str) -> None:
     )
 
 
+def _ensure_meeting_listener_task(*, sid: str, user_id: str) -> None:
+    existing = _meeting_listener_tasks.get(sid)
+    if existing is not None and not existing.done():
+        return
+    _meeting_listener_tasks[sid] = asyncio.create_task(
+        _run_meeting_listener(sid=sid, user_id=user_id)
+    )
+
+
 async def _cancel_stt_listener(sid: str) -> None:
     task = _stt_listener_tasks.pop(sid, None)
+    if task is None:
+        return
+    task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await task
+
+
+async def _cancel_meeting_listener(sid: str) -> None:
+    task = _meeting_listener_tasks.pop(sid, None)
     if task is None:
         return
     task.cancel()
@@ -461,6 +491,37 @@ async def _run_stt_listener(*, sid: str, user_id: str) -> None:
                 return
     finally:
         _stt_listener_tasks.pop(sid, None)
+
+
+async def _run_meeting_listener(*, sid: str, user_id: str) -> None:
+    service = _get_meeting_service()
+    try:
+        while True:
+            session = service.get_session(sid)
+            if session is None:
+                return
+
+            emitted = await service.collect_session_events(
+                sid=sid,
+                wait_for_first=True,
+                timeout_seconds=1.0,
+            )
+            if not emitted:
+                if service.get_session(sid) is None:
+                    return
+                await asyncio.sleep(0.1)
+                continue
+
+            await _emit_meeting_session_events(
+                user_id=user_id,
+                organization_id=session.organization_id,
+                events=emitted,
+            )
+
+            if service.get_session(sid) is None:
+                return
+    finally:
+        _meeting_listener_tasks.pop(sid, None)
 
 
 async def _emit_stt_session_events(
@@ -533,6 +594,7 @@ async def _emit_meeting_session_events(
 
     event_names = {
         MeetingSessionEventKind.STARTED: MeetingRecordEvents.STARTED,
+        MeetingSessionEventKind.TRANSCRIPT: MeetingRecordEvents.TRANSCRIPT,
         MeetingSessionEventKind.STOPPING: MeetingRecordEvents.STOPPING,
         MeetingSessionEventKind.COMPLETED: MeetingRecordEvents.COMPLETED,
         MeetingSessionEventKind.ERROR: MeetingRecordEvents.ERROR,

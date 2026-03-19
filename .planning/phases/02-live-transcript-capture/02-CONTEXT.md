@@ -6,7 +6,7 @@
 <domain>
 ## Phase Boundary
 
-Phase 2 delivers durable live and saved meeting transcript capture for the meeting-native workflow introduced in Phase 1. The scope is transcript ingest, stable utterance assembly, anonymous speaker labeling, timestamped persistence, and read paths for active and completed meetings. Summary generation, speaker identity mapping, and broader meeting history UX remain outside this phase.
+Phase 2 delivers durable live and saved meeting transcript capture for the meeting-native workflow introduced in Phase 1. The scope is transcript ingest, live transcript block assembly, anonymous speaker labeling, timestamped persistence, and read paths for active and completed meetings. Summary generation, speaker identity mapping, and broader meeting history UX remain outside this phase.
 
 </domain>
 
@@ -16,14 +16,14 @@ Phase 2 delivers durable live and saved meeting transcript capture for the meeti
 ### Live transcript behavior
 - During an active meeting, users should see transcript text live before the utterance is fully stabilized.
 - When provider output is corrected by a later finalized transcript fragment, the current live text should be rewritten in place rather than appended as a correction trail.
-- The transcript should be shaped around stable utterances. Once one utterance is considered stable, the next transcript content should begin a new transcript block.
+- The live transcript should be shaped around transcript blocks. Each block can contain multiple finalized speaker segments plus one draft segment, and the next transcript content should begin a new transcript block after a provider boundary closes the current one.
 - Frontend scrolling behavior is not locked in this phase discussion and can remain implementation discretion.
 
 ### Speaker grouping and labeling
-- Transcript storage and presentation should be utterance-first, not speaker-merged. Each stable utterance remains its own transcript item.
+- Transcript storage and presentation should preserve chronological segment order inside a transcript block rather than collapsing the whole block into one speaker label.
 - Anonymous speaker labels do not need to remain perfectly stable across an entire meeting session.
 - The preferred visible label format is `speaker 1`, `speaker 2`, and so on.
-- If diarization is unclear for a captured utterance, the system should still retain that utterance and use a fallback label such as `speaker unknown` rather than dropping transcript text.
+- If diarization is unclear for a captured segment, the system should still retain that segment and use a fallback label such as `speaker unknown` rather than dropping transcript text.
 
 ### Timestamp fidelity
 - Saved transcript items should carry both utterance start and utterance end timestamps.
@@ -32,8 +32,8 @@ Phase 2 delivers durable live and saved meeting transcript capture for the meeti
 - If provider timing is imperfect, the system should persist best-effort timestamps instead of rejecting otherwise valid transcript content.
 
 ### Saved transcript review shape
-- Saved transcript review should be a chronological list of utterance items rather than speaker-grouped sections.
-- Each saved transcript item should minimally include anonymous speaker label, utterance text, and timestamps.
+- Saved transcript review should be a chronological list of transcript items rather than speaker-grouped sections.
+- Each saved transcript item should minimally include anonymous speaker label, transcript text, and timestamps.
 - Read paths for completed transcripts should be paginated in Phase 2 rather than only returning the full transcript in one fetch.
 - Paginated transcript review should default to oldest-first ordering so review reads naturally from meeting start to meeting end.
 
@@ -67,7 +67,7 @@ Phase 2 delivers durable live and saved meeting transcript capture for the meeti
 ## Existing Code Insights
 
 ### Reusable Assets
-- `app/services/stt/session.py`: already assembles partial, final, utterance-closed, and timed transcript state from provider events; this is the strongest reference for utterance lifecycle behavior even though it is interview-oriented today.
+- `app/services/stt/session.py`: already assembles partial, final, utterance-closed, and timed transcript state from provider events; this is the strongest reference for provider-boundary lifecycle behavior even though it is interview-oriented today.
 - `app/infrastructure/deepgram/client.py`: already normalizes Deepgram partial/final transcript events, utterance boundaries, diarization metadata, and word timing into provider-agnostic events.
 - `app/socket_gateway/server.py`: already owns the meeting-native socket contract for `meeting_record:*` events and the long-lived listener pattern for STT provider event collection.
 - `app/services/meeting/session.py`: already owns meeting-native provider lifecycle for start/stop/finalize, but currently stops at lifecycle events and does not yet project transcript events upward.
@@ -92,8 +92,8 @@ Phase 2 delivers durable live and saved meeting transcript capture for the meeti
 <specifics>
 ## Specific Ideas
 
-- Transcript should be treated as an utterance timeline first, not as a speaker-merged document.
-- Live transcript can show provisional text, but saved transcript should reflect stabilized utterance content.
+- Transcript should be treated as a block timeline with ordered speaker segments, not as a speaker-merged document.
+- Live transcript can show provisional multi-speaker text in `draft_segments[]`, but finalized `segments[]` should preserve the stable transcript content accumulated for the block.
 - Frontend scrolling behavior for the live transcript is intentionally left to frontend implementation and does not need to be locked in Phase 2 planning.
 
 </specifics>

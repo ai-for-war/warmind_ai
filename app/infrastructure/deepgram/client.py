@@ -34,6 +34,16 @@ class ProviderEventKind(str, Enum):
 
 
 @dataclass(slots=True)
+class ProviderTranscriptWord:
+    """Normalized word-level transcript metadata from the provider."""
+
+    text: str
+    speaker: int | None = None
+    start_ms: int | None = None
+    end_ms: int | None = None
+
+
+@dataclass(slots=True)
 class ProviderTranscriptEvent:
     """Normalized transcript payload emitted by the provider adapter."""
 
@@ -45,6 +55,9 @@ class ProviderTranscriptEvent:
     is_final: bool = False
     speech_final: bool = False
     from_finalize: bool = False
+    speaker: int | None = None
+    speaker_sequence: list[int] | None = None
+    words: list[ProviderTranscriptWord] | None = None
 
 
 @dataclass(slots=True)
@@ -75,6 +88,7 @@ class DeepgramLiveClient:
         model: str | None = None,
         channels: int | None = None,
         multichannel: bool | None = None,
+        diarize: bool | None = None,
         endpointing_ms: int | None = None,
         utterance_end_ms: int | None = None,
         keepalive_interval_seconds: int | None = None,
@@ -90,6 +104,7 @@ class DeepgramLiveClient:
             if multichannel is not None
             else settings.INTERVIEW_STT_MULTICHANNEL
         )
+        self.diarize = diarize
         self.endpointing_ms = (
             endpointing_ms
             if endpointing_ms is not None
@@ -116,7 +131,7 @@ class DeepgramLiveClient:
 
     def get_runtime_config(self, *, language: str | None = None) -> dict[str, Any]:
         """Return verified Listen V1 connect options for the active STT runtime."""
-        return {
+        config = {
             "model": self.model,
             "encoding": "linear16",
             # Deepgram's websocket query parser expects string query values.
@@ -129,6 +144,9 @@ class DeepgramLiveClient:
             "utterance_end_ms": str(self.utterance_end_ms),
             "language": language or "en",
         }
+        if self.diarize is not None:
+            config["diarize"] = str(self.diarize).lower()
+        return config
 
     async def open(self, *, language: str | None = None) -> None:
         """Open an async Listen V1 websocket and register SDK event handlers."""
@@ -160,6 +178,7 @@ class DeepgramLiveClient:
                     "language": listen_options["language"],
                     "channels": self.channels,
                     "multichannel": self.multichannel,
+                    "diarize": listen_options.get("diarize"),
                     "endpointing": listen_options["endpointing"],
                     "utterance_end_ms": listen_options["utterance_end_ms"],
                 },
@@ -397,6 +416,8 @@ class DeepgramLiveClient:
 
         words = getattr(first_alternative, "words", None)
         start_ms, end_ms = self._extract_word_window(words)
+        speaker, speaker_sequence = self._extract_speaker_metadata(words)
+        normalized_words = self._extract_transcript_words(words)
 
         return ProviderTranscriptEvent(
             transcript=transcript,
@@ -407,6 +428,9 @@ class DeepgramLiveClient:
             is_final=bool(getattr(message, "is_final", False)),
             speech_final=bool(getattr(message, "speech_final", False)),
             from_finalize=bool(getattr(message, "from_finalize", False)),
+            speaker=speaker,
+            speaker_sequence=speaker_sequence,
+            words=normalized_words,
         )
 
     def _extract_word_window(self, words: Any) -> tuple[int | None, int | None]:
@@ -419,6 +443,62 @@ class DeepgramLiveClient:
             self._seconds_to_ms(getattr(first, "start", None)),
             self._seconds_to_ms(getattr(last, "end", None)),
         )
+
+    def _extract_transcript_words(
+        self,
+        words: Any,
+    ) -> list[ProviderTranscriptWord] | None:
+        if not isinstance(words, list) or not words:
+            return None
+
+        normalized_words: list[ProviderTranscriptWord] = []
+        for word in words:
+            text = str(
+                getattr(word, "punctuated_word", None)
+                or getattr(word, "word", None)
+                or ""
+            ).strip()
+            if not text:
+                continue
+            normalized_words.append(
+                ProviderTranscriptWord(
+                    text=text,
+                    speaker=self._safe_int(getattr(word, "speaker", None)),
+                    start_ms=self._seconds_to_ms(getattr(word, "start", None)),
+                    end_ms=self._seconds_to_ms(getattr(word, "end", None)),
+                )
+            )
+
+        return normalized_words or None
+
+    @classmethod
+    def _extract_speaker_metadata(
+        cls,
+        words: Any,
+    ) -> tuple[int | None, list[int] | None]:
+        if not isinstance(words, list) or not words:
+            return None, None
+
+        speaker_sequence: list[int] = []
+        dominant_speaker: int | None = None
+        dominant_count = 0
+        speaker_counts: dict[int, int] = {}
+
+        for word in words:
+            speaker = cls._safe_int(getattr(word, "speaker", None))
+            if speaker is None:
+                continue
+            speaker_sequence.append(speaker)
+            next_count = speaker_counts.get(speaker, 0) + 1
+            speaker_counts[speaker] = next_count
+            if next_count > dominant_count:
+                dominant_speaker = speaker
+                dominant_count = next_count
+
+        if not speaker_sequence:
+            return None, None
+
+        return dominant_speaker, speaker_sequence
 
     def _publish_event(self, event: ProviderEvent) -> None:
         if self._event_loop is None:

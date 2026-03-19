@@ -151,6 +151,7 @@ class Settings(BaseSettings):
     # Meeting STT
     MEETING_STT_CHANNELS: int = 1
     MEETING_STT_MULTICHANNEL: bool = False
+    MEETING_STT_DIARIZE: bool = True
     MEETING_STT_ENDPOINTING_MS: int = 400
     MEETING_STT_UTTERANCE_END_MS: int = 1000
     MEETING_STT_KEEPALIVE_INTERVAL_SECONDS: int = 5

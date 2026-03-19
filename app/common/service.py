@@ -237,6 +237,7 @@ def get_meeting_deepgram_live_client() -> DeepgramLiveClient:
     return DeepgramLiveClient(
         channels=settings.MEETING_STT_CHANNELS,
         multichannel=settings.MEETING_STT_MULTICHANNEL,
+        diarize=settings.MEETING_STT_DIARIZE,
         endpointing_ms=settings.MEETING_STT_ENDPOINTING_MS,
         utterance_end_ms=settings.MEETING_STT_UTTERANCE_END_MS,
         keepalive_interval_seconds=settings.MEETING_STT_KEEPALIVE_INTERVAL_SECONDS,

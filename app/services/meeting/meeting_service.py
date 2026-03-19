@@ -13,7 +13,11 @@ from app.config.settings import get_settings
 from app.repo.meeting_record_repo import MeetingRecordRepository
 from app.repo.organization_member_repo import OrganizationMemberRepository
 from app.repo.organization_repo import OrganizationRepository
-from app.services.meeting.session import MeetingSession, MeetingSessionEvent
+from app.services.meeting.session import (
+    MeetingSession,
+    MeetingSessionEvent,
+    MeetingSessionEventKind,
+)
 from app.services.meeting.session_manager import MeetingSessionManager
 
 MEETING_SUPPORTED_LANGUAGES = frozenset(get_settings().MEETING_SUPPORTED_LANGUAGES)
@@ -38,6 +42,10 @@ class MeetingService:
     def get_session(self, sid: str) -> MeetingSession | None:
         """Return the live meeting session for a socket, if any."""
         return self.session_manager.get_session(sid)
+
+    def acknowledge_stop_emitted(self, sid: str) -> None:
+        """Release pending provider events after STOPPING is emitted."""
+        self.session_manager.acknowledge_stop_emitted(sid)
 
     async def start_session(
         self,
@@ -89,17 +97,19 @@ class MeetingService:
         chunk: bytes,
     ) -> list[MeetingSessionEvent]:
         """Push one audio chunk into the active meeting session."""
-        self._require_owned_session(
+        session = self._require_owned_session(
             sid=sid,
             user_id=user_id,
             meeting_id=meeting_id,
         )
-        return await self.session_manager.push_audio(
+        events = await self.session_manager.push_audio(
             sid=sid,
             user_id=user_id,
             meeting_id=meeting_id,
             chunk=chunk,
         )
+        await self._sync_record_state_from_events(session=session, events=events)
+        return events
 
     async def stop_session(
         self,
@@ -133,10 +143,7 @@ class MeetingService:
             )
             raise
 
-        await self.meeting_record_repo.mark_completed(
-            meeting_id=meeting_id,
-            organization_id=session.organization_id,
-        )
+        await self._sync_record_state_from_events(session=session, events=events)
         return events
 
     async def handle_disconnect(self, sid: str) -> list[MeetingSessionEvent]:
@@ -160,10 +167,27 @@ class MeetingService:
             )
             return [session.fail(str(exc))]
 
-        await self.meeting_record_repo.mark_completed(
-            meeting_id=session.meeting_id,
-            organization_id=session.organization_id,
+        await self._sync_record_state_from_events(session=session, events=events)
+        return events
+
+    async def collect_session_events(
+        self,
+        *,
+        sid: str,
+        wait_for_first: bool = False,
+        timeout_seconds: float | None = None,
+    ) -> list[MeetingSessionEvent]:
+        """Collect pending provider-driven meeting events."""
+        session = self.session_manager.get_session(sid)
+        if session is None:
+            return []
+
+        events = await self.session_manager.collect_session_events(
+            sid=sid,
+            wait_for_first=wait_for_first,
+            timeout_seconds=timeout_seconds,
         )
+        await self._sync_record_state_from_events(session=session, events=events)
         return events
 
     async def _validate_org_membership(
@@ -200,6 +224,30 @@ class MeetingService:
             raise MeetingRecordOwnershipError()
         session.assert_owner(sid=sid, user_id=user_id, meeting_id=meeting_id)
         return session
+
+    async def _sync_record_state_from_events(
+        self,
+        *,
+        session: MeetingSession,
+        events: list[MeetingSessionEvent],
+    ) -> None:
+        if not events:
+            return
+
+        for event in events:
+            if event.kind == MeetingSessionEventKind.COMPLETED:
+                await self.meeting_record_repo.mark_completed(
+                    meeting_id=session.meeting_id,
+                    organization_id=session.organization_id,
+                )
+                return
+            if event.kind == MeetingSessionEventKind.ERROR:
+                await self.meeting_record_repo.mark_failed(
+                    meeting_id=session.meeting_id,
+                    organization_id=session.organization_id,
+                    error_message=event.payload.error_message,
+                )
+                return
 
     @staticmethod
     def _normalize_language(language: str | None) -> str:
