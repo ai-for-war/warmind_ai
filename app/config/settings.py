@@ -127,8 +127,14 @@ class Settings(BaseSettings):
     IMAGE_GENERATION_MAX_CONCURRENCY: int = 4
 
     # OpenAI
-    OPENAI_API_KEY: str  # Required for LLM operations
+    OPENAI_API_KEY: str | None = None
     OPENAI_API_BASE: str | None = None  # Optional custom API base URL
+
+    # Azure OpenAI
+    AZURE_OPENAI_API_KEY: str | None = None
+    AZURE_OPENAI_ENDPOINT: str | None = None
+    AZURE_OPENAI_API_VERSION: str | None = None
+    AZURE_OPENAI_LEGACY_CHAT_DEPLOYMENT: str | None = None
 
     # MiniMax
     MINIMAX_API_KEY: str
