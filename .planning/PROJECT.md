@@ -2,7 +2,7 @@
 
 ## What This Is
 
-AI Service is an internal modular AI backend built around FastAPI, LangGraph, Socket.IO, MongoDB, and Redis. It already supports authenticated multi-tenant APIs, AI chat/orchestration, media generation, speech features, analytics, Google Sheets ingestion, and a dedicated AI record flow for meetings. The next major capability is batch summary generation and structured review on top of the meeting transcript foundation.
+AI Service is an internal modular AI backend built around FastAPI, LangGraph, Socket.IO, MongoDB, and Redis. It already supports authenticated multi-tenant APIs, AI chat/orchestration, media generation, speech features, analytics, Google Sheets ingestion, and a dedicated AI record flow for meetings with durable transcript plus live/final short-summary generation. The next major capability is structured review on top of the transcript and summary foundation.
 
 The AI record flow is not an extension of the interview assistant domain. It is a separate meeting-oriented workflow that can reuse shared STT, socket, queue, and LLM infrastructure where useful, while keeping its own conversation semantics, persistence model, prompts, and summary pipeline so the feature can evolve independently.
 
@@ -25,12 +25,13 @@ Internal teams can stream meeting audio to the service and get a durable transcr
 - [x] AI record sessions store the meeting as its own meeting-native flow, separate from interview-specific models and behaviors - validated in Phases 1-2
 - [x] The system durably stores and retrieves full meeting transcripts with anonymous speaker labels and timestamps - validated in Phase 2
 - [x] The frontend/client can select supported meeting language values such as `vi` or `en` for transcription - validated in Phase 1
+- [x] The system generates batch-based meeting summaries during an active session instead of invoking AI on every utterance - validated in Phase 3
+- [x] The system stores short meeting summaries in a dedicated summary collection linked to the meeting flow - validated in Phase 3
+- [x] The system reuses the same summary surface for live updates and finalized short-summary output - validated in Phase 3
 
 ### Active
 
-- [ ] The system generates batch-based meeting summaries during an active session instead of invoking AI on every utterance
 - [ ] AI record summaries capture short summaries, key points, decisions, action items, notes, and follow-up questions
-- [ ] The system stores meeting summaries in a dedicated summary collection linked to the meeting conversation
 
 ### Out of Scope
 
@@ -68,10 +69,10 @@ Deepgram capabilities are a strong fit for this direction. The latest official d
 | Model AI record as a separate meeting workflow | Interview semantics are too specialized and would create accidental coupling | Pending |
 | Use frontend-streamed audio for v1 | Fastest path to value without Meet bot/integration complexity | Pending |
 | Persist transcripts as meeting conversation messages/utterances | Conversation-style storage matches the way the user wants to view meetings | Pending |
-| Store summaries in a dedicated collection | Summary lifecycle differs from transcript lifecycle and should evolve independently | Pending |
-| Use batch summarization during live meetings | Reduces noise/cost and better matches note-taking use case | Pending |
+| Store summaries in a dedicated collection | Summary lifecycle differs from transcript lifecycle and should evolve independently | Validated in Phase 3 |
+| Use batch summarization during live meetings | Reduces noise/cost and better matches note-taking use case | Validated in Phase 3 |
 | Allow anonymous diarized speakers instead of identity mapping | `speaker 1`, `speaker 2` is good enough for v1 and lowers complexity | Pending |
 | Let the client declare transcription language | The service should support meetings in different languages without hardcoding one default | Pending |
 
 ---
-*Last updated: 2026-03-20 after Phase 2 completion*
+*Last updated: 2026-03-20 after Phase 3 completion*

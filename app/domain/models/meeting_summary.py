@@ -13,7 +13,10 @@ class MeetingSummaryStatus(str, Enum):
 
     PENDING = "pending"
     PROCESSING = "processing"
+    UPDATING = "updating"
     READY = "ready"
+    FINALIZING = "finalizing"
+    FINAL_READY = "final_ready"
     FAILED = "failed"
 
 

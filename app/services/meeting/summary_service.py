@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+import json
+from collections.abc import Sequence
+from typing import Any
+
+from langchain_core.messages import HumanMessage, SystemMessage
+
 from app.common.exceptions import AppException, MeetingRecordNotFoundError
 from app.config.settings import get_settings
 from app.domain.models.meeting_summary import MeetingSummary, MeetingSummaryStatus
@@ -10,7 +16,12 @@ from app.domain.models.meeting_summary_job import (
     MeetingSummaryJobKind,
     MeetingSummaryJobStatus,
 )
+from app.infrastructure.llm.factory import get_chat_openai_legacy
 from app.infrastructure.redis.redis_queue import RedisQueue
+from app.prompts.system.meeting_summary import (
+    MEETING_SUMMARY_SYSTEM_PROMPT,
+    build_meeting_summary_user_prompt,
+)
 from app.repo.meeting_record_repo import MeetingRecordRepository
 from app.repo.meeting_summary_job_repo import MeetingSummaryJobRepository
 from app.repo.meeting_summary_repo import MeetingSummaryRepository
@@ -111,13 +122,8 @@ class MeetingSummaryService:
         self,
         *,
         job: MeetingSummaryJob,
-    ) -> MeetingSummaryJob:
-        """Execute one claimed summary job.
-
-        Phase 03-01 only establishes the durable queue lane. Actual transcript-to-summary
-        generation lands in Phase 03-02, so this entrypoint currently validates
-        prerequisites and closes the job cleanly.
-        """
+    ) -> MeetingSummary:
+        """Execute one claimed summary job and persist the latest summary."""
         record = await self.meeting_record_repo.get_by_id(
             meeting_id=job.meeting_id,
             organization_id=job.organization_id,
@@ -127,21 +133,170 @@ class MeetingSummaryService:
                 f"Meeting '{job.meeting_id}' was not found"
             )
 
-        transcript_segment_count = await self.meeting_transcript_repo.count_by_meeting(
+        latest_summary = await self.meeting_summary_repo.get_latest_by_meeting(
             meeting_id=job.meeting_id,
             organization_id=job.organization_id,
         )
-        if transcript_segment_count <= 0:
-            raise AppException(
-                f"No persisted transcript segments found for meeting '{job.meeting_id}'"
+        covered_summary = self._get_covered_summary_for_job(
+            job=job,
+            latest_summary=latest_summary,
+        )
+        if covered_summary is not None:
+            if (
+                job.job_kind == MeetingSummaryJobKind.FINALIZE
+                and covered_summary.bullets
+                and not covered_summary.is_final
+            ):
+                return await self.meeting_summary_repo.upsert_latest_summary(
+                    meeting_id=job.meeting_id,
+                    organization_id=job.organization_id,
+                    language=covered_summary.language,
+                    status="final_ready",
+                    bullets=covered_summary.bullets,
+                    is_final=True,
+                    source_block_sequence=covered_summary.source_block_sequence,
+                    error_message=None,
+                )
+            return covered_summary
+
+        return await self.generate_summary_for_job(
+            job=job,
+            language=record.language,
+            latest_summary=latest_summary,
+        )
+
+    async def generate_summary_for_job(
+        self,
+        *,
+        job: MeetingSummaryJob,
+        language: str,
+        latest_summary: MeetingSummary | None = None,
+    ) -> MeetingSummary:
+        """Generate and persist one live or final short summary."""
+        min_block_sequence_exclusive = self._get_previous_summary_sequence(
+            latest_summary=latest_summary,
+        )
+        transcript_segments = (
+            await self.meeting_transcript_repo.list_up_to_block_sequence(
+                meeting_id=job.meeting_id,
+                organization_id=job.organization_id,
+                max_block_sequence=job.target_block_sequence,
+                limit=self.settings.MEETING_SUMMARY_MAX_INPUT_SEGMENTS,
+                min_block_sequence_exclusive=min_block_sequence_exclusive,
+            )
+        )
+        if not transcript_segments:
+            return await self._persist_existing_summary(
+                job=job,
+                language=language,
+                latest_summary=latest_summary,
             )
 
-        completed = await self.meeting_summary_job_repo.mark_completed(job.id)
-        if completed is None:
-            raise AppException(
-                f"Failed to mark summary job '{job.id}' as completed"
+        transcript_text = self._build_transcript_text(transcript_segments)
+        if not transcript_text:
+            return await self._persist_existing_summary(
+                job=job,
+                language=language,
+                latest_summary=latest_summary,
             )
-        return completed
+
+        llm = get_chat_openai_legacy(
+            model=self.settings.MEETING_SUMMARY_MODEL,
+            temperature=0.2,
+            streaming=False,
+            max_tokens=self.settings.MEETING_SUMMARY_MAX_TOKENS,
+        )
+        response = await llm.ainvoke(
+            [
+                SystemMessage(content=MEETING_SUMMARY_SYSTEM_PROMPT),
+                HumanMessage(
+                    content=build_meeting_summary_user_prompt(
+                        language=language,
+                        transcript_text=transcript_text,
+                        existing_bullets=(
+                            list(latest_summary.bullets[-10:])
+                            if latest_summary is not None and latest_summary.bullets
+                            else None
+                        ),
+                    )
+                ),
+            ]
+        )
+        should_update, bullets = self._parse_summary_result(
+            self._extract_message_text(response.content)
+        )
+        if not should_update:
+            return await self._persist_existing_summary(
+                job=job,
+                language=language,
+                latest_summary=latest_summary,
+            )
+        # Live jobs persist status="ready"; finalize jobs persist status="final_ready".
+        status = (
+            "final_ready" if job.job_kind == MeetingSummaryJobKind.FINALIZE else "ready"
+        )
+        is_final = job.job_kind == MeetingSummaryJobKind.FINALIZE
+
+        return await self.meeting_summary_repo.upsert_latest_summary(
+            meeting_id=job.meeting_id,
+            organization_id=job.organization_id,
+            language=language,
+            status=status,
+            bullets=bullets,
+            is_final=is_final,
+            source_block_sequence=job.target_block_sequence,
+            error_message=None,
+        )
+
+    async def get_summary_language(
+        self,
+        *,
+        meeting_id: str,
+        organization_id: str,
+        latest_summary: MeetingSummary | None = None,
+    ) -> str:
+        """Resolve the authoritative summary language for one meeting."""
+        if latest_summary is not None and latest_summary.language:
+            return latest_summary.language
+
+        record = await self.meeting_record_repo.get_by_id(
+            meeting_id=meeting_id,
+            organization_id=organization_id,
+        )
+        if record is not None and record.language:
+            return record.language
+        return "en"
+
+    async def mark_job_failed(
+        self,
+        *,
+        job: MeetingSummaryJob,
+        error_message: str,
+        latest_summary: MeetingSummary | None = None,
+    ) -> MeetingSummary:
+        """Persist failed summary lifecycle state without discarding last good bullets."""
+        language = await self.get_summary_language(
+            meeting_id=job.meeting_id,
+            organization_id=job.organization_id,
+            latest_summary=latest_summary,
+        )
+        source_block_sequence = (
+            latest_summary.source_block_sequence
+            if latest_summary is not None
+            else job.target_block_sequence
+        )
+        bullets = latest_summary.bullets if latest_summary is not None else []
+
+        return await self.meeting_summary_repo.mark_status(
+            meeting_id=job.meeting_id,
+            organization_id=job.organization_id,
+            language=language,
+            status=MeetingSummaryStatus.FAILED,
+            source_block_sequence=source_block_sequence,
+            is_final=False,
+            error_message=error_message,
+            bullets=bullets,
+        )
 
     async def _create_and_enqueue_job(
         self,
@@ -157,19 +312,8 @@ class MeetingSummaryService:
             organization_id=organization_id,
         )
         if record is None:
-            raise MeetingRecordNotFoundError(
-                f"Meeting '{meeting_id}' was not found"
-            )
+            raise MeetingRecordNotFoundError(f"Meeting '{meeting_id}' was not found")
 
-        await self.meeting_summary_repo.mark_status(
-            meeting_id=meeting_id,
-            organization_id=organization_id,
-            language=language or record.language,
-            status=MeetingSummaryStatus.PENDING,
-            is_final=False,
-            source_block_sequence=target_block_sequence,
-            error_message=None,
-        )
         job = await self.meeting_summary_job_repo.create_or_get_pending_job(
             meeting_id=meeting_id,
             organization_id=organization_id,
@@ -213,3 +357,138 @@ class MeetingSummaryService:
         if not candidates:
             return None
         return max(candidates)
+
+    @staticmethod
+    def _build_transcript_text(transcript_segments: Sequence[Any]) -> str:
+        lines: list[str] = []
+        for segment in transcript_segments:
+            text = segment.text.strip()
+            if not text:
+                continue
+            speaker_label = (segment.speaker_label or "speaker").strip()
+            lines.append(f"{speaker_label}: {text}")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _extract_message_text(content: Any) -> str:
+        if isinstance(content, str):
+            return content.strip()
+        if isinstance(content, list):
+            parts: list[str] = []
+            for item in content:
+                if isinstance(item, str):
+                    parts.append(item)
+                    continue
+                if isinstance(item, dict):
+                    if item.get("type") == "text":
+                        parts.append(str(item.get("text", "")))
+                        continue
+                    parts.append(str(item.get("content", "")))
+                    continue
+                parts.append(str(item))
+            return "".join(parts).strip()
+        return str(content).strip()
+
+    @staticmethod
+    def _parse_summary_result(raw_response: str) -> tuple[bool, list[str]]:
+        normalized = raw_response.strip()
+        if normalized.startswith("```"):
+            lines = normalized.splitlines()
+            if len(lines) >= 3 and lines[-1].strip() == "```":
+                normalized = "\n".join(lines[1:-1]).strip()
+
+        try:
+            parsed = json.loads(normalized)
+        except json.JSONDecodeError as exc:
+            raise AppException("Meeting summary model returned invalid JSON") from exc
+
+        if not isinstance(parsed, dict):
+            raise AppException("Meeting summary model must return a JSON object")
+
+        should_update = parsed.get("should_update")
+        if not isinstance(should_update, bool):
+            raise AppException(
+                'Meeting summary JSON must contain a boolean "should_update" field'
+            )
+
+        bullets = parsed.get("bullets")
+        if not isinstance(bullets, list):
+            raise AppException('Meeting summary JSON must contain a "bullets" array')
+
+        normalized_bullets = [
+            bullet.strip()
+            for bullet in bullets
+            if isinstance(bullet, str) and bullet.strip()
+        ]
+        if not should_update:
+            if normalized_bullets:
+                raise AppException(
+                    'Meeting summary JSON with "should_update": false must return an empty "bullets" array'
+                )
+            return False, []
+
+        if len(normalized_bullets) not in {2, 3}:
+            raise AppException(
+                "Meeting summary model must return exactly 2 or 3 bullet strings"
+            )
+        return True, normalized_bullets
+
+    @staticmethod
+    def _get_covered_summary_for_job(
+        *,
+        job: MeetingSummaryJob,
+        latest_summary: MeetingSummary | None,
+    ) -> MeetingSummary | None:
+        if latest_summary is None:
+            return None
+        if latest_summary.source_block_sequence < job.target_block_sequence:
+            return None
+        if latest_summary.status not in {
+            MeetingSummaryStatus.READY,
+            MeetingSummaryStatus.FINAL_READY,
+        }:
+            return None
+        return latest_summary
+
+    @staticmethod
+    def _get_previous_summary_sequence(
+        *,
+        latest_summary: MeetingSummary | None,
+    ) -> int | None:
+        if latest_summary is None:
+            return None
+        if latest_summary.status not in {
+            MeetingSummaryStatus.READY,
+            MeetingSummaryStatus.FINAL_READY,
+        }:
+            return None
+        return latest_summary.source_block_sequence
+
+    async def _persist_existing_summary(
+        self,
+        *,
+        job: MeetingSummaryJob,
+        language: str,
+        latest_summary: MeetingSummary | None,
+    ) -> MeetingSummary:
+        if latest_summary is None or not latest_summary.bullets:
+            raise AppException(
+                "No previous summary is available to carry forward for this job"
+            )
+
+        status = (
+            "final_ready" if job.job_kind == MeetingSummaryJobKind.FINALIZE else "ready"
+        )
+        is_final = job.job_kind == MeetingSummaryJobKind.FINALIZE
+        resolved_language = latest_summary.language or language
+
+        return await self.meeting_summary_repo.upsert_latest_summary(
+            meeting_id=job.meeting_id,
+            organization_id=job.organization_id,
+            language=resolved_language,
+            status=status,
+            bullets=list(latest_summary.bullets),
+            is_final=is_final,
+            source_block_sequence=job.target_block_sequence,
+            error_message=None,
+        )

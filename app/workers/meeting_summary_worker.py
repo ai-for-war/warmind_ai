@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+from app.common.event_socket import MeetingRecordEvents
 from app.common.repo import (
     get_meeting_record_repo,
     get_meeting_summary_job_repo,
@@ -17,10 +18,14 @@ from app.common.repo import (
     get_meeting_transcript_repo,
 )
 from app.config.settings import get_settings
+from app.domain.models.meeting_summary import MeetingSummary, MeetingSummaryStatus
+from app.domain.models.meeting_summary_job import MeetingSummaryJobKind
+from app.domain.schemas.meeting_summary import MeetingSummaryPayload
 from app.infrastructure.database.mongodb import MongoDB
 from app.infrastructure.redis.client import RedisClient
 from app.infrastructure.redis.redis_queue import RedisQueue
 from app.repo.meeting_summary_job_repo import MeetingSummaryJobRepository
+from app.socket_gateway.worker_gateway import worker_gateway
 from app.services.meeting.summary_service import MeetingSummaryService
 
 logger = logging.getLogger(__name__)
@@ -150,8 +155,41 @@ class MeetingSummaryWorker:
             )
             return
 
+        latest_summary = await self.summary_service.get_latest_summary(
+            meeting_id=claimed.meeting_id,
+            organization_id=claimed.organization_id,
+        )
+
         try:
-            await self.summary_service.process_job(job=claimed)
+            if self._should_emit_started_event(
+                latest_summary=latest_summary,
+                job_kind=claimed.job_kind,
+                target_block_sequence=claimed.target_block_sequence,
+            ):
+                await self._emit_lifecycle_event(
+                    user_id=claimed.user_id,
+                    organization_id=claimed.organization_id,
+                    payload=await self._build_in_progress_payload(
+                        latest_summary=latest_summary,
+                        meeting_id=claimed.meeting_id,
+                        organization_id=claimed.organization_id,
+                        job_kind=claimed.job_kind,
+                        target_block_sequence=claimed.target_block_sequence,
+                    ),
+                )
+
+            summary = await self.summary_service.process_job(job=claimed)
+            await self._emit_lifecycle_event(
+                user_id=claimed.user_id,
+                organization_id=claimed.organization_id,
+                payload=self._build_summary_payload(summary),
+            )
+            completed = await self.job_repo.mark_completed(claimed.id)
+            if completed is None:
+                logger.warning(
+                    "Job %s emitted success but could not be marked completed",
+                    claimed.id,
+                )
         except Exception as exc:  # noqa: BLE001
             failed = await self.job_repo.mark_failed(
                 job_id=task.job_id,
@@ -162,7 +200,105 @@ class MeetingSummaryWorker:
                     "Job %s failed but terminal state could not be persisted",
                     task.job_id,
                 )
+            failed_summary = await self.summary_service.mark_job_failed(
+                job=claimed,
+                error_message=str(exc),
+                latest_summary=latest_summary,
+            )
+            await self._emit_lifecycle_event(
+                user_id=claimed.user_id,
+                organization_id=claimed.organization_id,
+                payload=self._build_summary_payload(failed_summary),
+            )
             raise
+
+    async def _build_in_progress_payload(
+        self,
+        *,
+        latest_summary: MeetingSummary | None,
+        meeting_id: str,
+        organization_id: str,
+        job_kind: MeetingSummaryJobKind,
+        target_block_sequence: int,
+    ) -> MeetingSummaryPayload:
+        """Build the live or finalizing payload while keeping last good bullets visible."""
+        language = await self.summary_service.get_summary_language(
+            meeting_id=meeting_id,
+            organization_id=organization_id,
+            latest_summary=latest_summary,
+        )
+        # Worker emits status="updating"/"finalizing" before generation starts.
+        return MeetingSummaryPayload(
+            meeting_id=meeting_id,
+            status=(
+                "finalizing"
+                if job_kind == MeetingSummaryJobKind.FINALIZE
+                else "updating"
+            ),
+            bullets=list(latest_summary.bullets) if latest_summary is not None else [],
+            is_final=False,
+            language=language,
+            source_block_sequence=(
+                latest_summary.source_block_sequence
+                if latest_summary is not None
+                else target_block_sequence
+            ),
+            error_message=None,
+        )
+
+    @staticmethod
+    def _build_summary_payload(summary: MeetingSummary) -> MeetingSummaryPayload:
+        """Convert persisted summary state into socket payload."""
+        # Success/failure payloads collapse to status="ready"/"final_ready"/"failed".
+        return MeetingSummaryPayload(
+            meeting_id=summary.meeting_id,
+            status=(
+                "final_ready"
+                if summary.status == MeetingSummaryStatus.FINAL_READY
+                else "failed"
+                if summary.status == MeetingSummaryStatus.FAILED
+                else "ready"
+            ),
+            bullets=list(summary.bullets),
+            is_final=summary.is_final,
+            language=summary.language,
+            source_block_sequence=summary.source_block_sequence,
+            error_message=summary.error_message,
+        )
+
+    async def _emit_lifecycle_event(
+        self,
+        *,
+        user_id: str,
+        organization_id: str,
+        payload: MeetingSummaryPayload,
+    ) -> None:
+        """Emit one meeting summary lifecycle event to the user room."""
+        await worker_gateway.emit_to_user(
+            user_id=user_id,
+            event=MeetingRecordEvents.SUMMARY,
+            data=payload.model_dump(exclude_none=True, by_alias=True),
+            organization_id=organization_id,
+        )
+
+    @staticmethod
+    def _should_emit_started_event(
+        *,
+        latest_summary: MeetingSummary | None,
+        job_kind: MeetingSummaryJobKind,
+        target_block_sequence: int,
+    ) -> bool:
+        """Skip transient events when the queued job is already superseded."""
+        if latest_summary is None:
+            return True
+        if latest_summary.source_block_sequence < target_block_sequence:
+            return True
+        if job_kind == MeetingSummaryJobKind.FINALIZE:
+            return not latest_summary.is_final
+        return latest_summary.status not in {
+            MeetingSummaryStatus.READY,
+            MeetingSummaryStatus.FINAL_READY,
+        }
 
     async def start(self) -> None:
         """Start the worker processing loop."""

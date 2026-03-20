@@ -20,13 +20,13 @@
 
 ### Summaries
 
-- [ ] **SUMM-01**: User can see an in-progress short meeting summary that updates in batches during an active meeting
+- [x] **SUMM-01**: User can see an in-progress short meeting summary that updates in batches during an active meeting
 - [ ] **SUMM-02**: User can review key points extracted from the meeting transcript
 - [ ] **SUMM-03**: User can review decisions extracted from the meeting transcript
 - [ ] **SUMM-04**: User can review action items extracted from the meeting transcript
 - [ ] **SUMM-05**: User can review meeting notes extracted from the meeting transcript
 - [ ] **SUMM-06**: User can review follow-up questions extracted from the meeting transcript
-- [ ] **SUMM-07**: User can review the finalized summary after the meeting ends
+- [x] **SUMM-07**: User can review the finalized summary after the meeting ends
 
 ### History
 
@@ -71,13 +71,13 @@
 | TRNS-02 | Phase 2 | Complete |
 | TRNS-03 | Phase 2 | Complete |
 | TRNS-04 | Phase 2 | Complete |
-| SUMM-01 | Phase 3 | Pending |
+| SUMM-01 | Phase 3 | Complete |
 | SUMM-02 | Phase 4 | Pending |
 | SUMM-03 | Phase 4 | Pending |
 | SUMM-04 | Phase 4 | Pending |
 | SUMM-05 | Phase 4 | Pending |
 | SUMM-06 | Phase 4 | Pending |
-| SUMM-07 | Phase 3 | Pending |
+| SUMM-07 | Phase 3 | Complete |
 | HIST-01 | Phase 5 | Pending |
 | HIST-02 | Phase 5 | Pending |
 
@@ -88,4 +88,4 @@
 
 ---
 *Requirements defined: 2026-03-19*
-*Last updated: 2026-03-20 after Phase 2 completion*
+*Last updated: 2026-03-20 after Phase 3 completion*

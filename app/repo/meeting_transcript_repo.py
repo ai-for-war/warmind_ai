@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from pymongo import ASCENDING, ReturnDocument
+from pymongo import ASCENDING, DESCENDING, ReturnDocument
 
 from app.domain.models.meeting_transcript_item import MeetingTranscriptItem
 from app.domain.schemas.meeting_transcript import MeetingTranscriptSegmentPayload
@@ -118,3 +118,49 @@ class MeetingTranscriptRepository:
                 "organization_id": organization_id,
             }
         )
+
+    async def list_up_to_block_sequence(
+        self,
+        *,
+        meeting_id: str,
+        organization_id: str,
+        max_block_sequence: int,
+        limit: int,
+        min_block_sequence_exclusive: int | None = None,
+    ) -> list[MeetingTranscriptItem]:
+        """Return the latest finalized segments up to one block sequence.
+
+        The repository keeps the returned items in chronological order while still
+        bounding the input window to the newest `limit` stable transcript segments.
+        """
+        if limit <= 0:
+            return []
+
+        query: dict[str, object] = {
+            "meeting_id": meeting_id,
+            "organization_id": organization_id,
+            "block_sequence": {"$lte": max_block_sequence},
+        }
+        if min_block_sequence_exclusive is not None:
+            query["block_sequence"] = {
+                "$gt": min_block_sequence_exclusive,
+                "$lte": max_block_sequence,
+            }
+
+        cursor = (
+            self.collection.find(query)
+            .sort(
+                [
+                    ("block_sequence", DESCENDING),
+                    ("segment_index", DESCENDING),
+                ]
+            )
+            .limit(limit)
+        )
+
+        documents: list[MeetingTranscriptItem] = []
+        async for document in cursor:
+            documents.append(MeetingTranscriptItem(**document))
+
+        documents.sort(key=lambda item: (item.block_sequence, item.segment_index))
+        return documents

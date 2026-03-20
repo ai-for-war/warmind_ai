@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Meeting Domain Foundation** - Create the dedicated AI record domain, session lifecycle, and language-aware meeting start/stop flow
 - [x] **Phase 2: Live Transcript Capture** - Deliver stable transcript ingest, persistence, timestamps, and anonymous speaker grouping
-- [ ] **Phase 3: Summary Foundation** - Add debounced batch summary generation during the meeting and finalize summary output at session end
+- [x] **Phase 3: Summary Foundation** - Add debounced batch summary generation during the meeting and finalize summary output at session end
 - [ ] **Phase 4: Structured Meeting Insights** - Expand summaries into key points, decisions, action items, notes, and follow-up questions
 - [ ] **Phase 5: Meeting History and Review** - Deliver meeting history/detail review on top of durable transcript and summary storage
 
@@ -60,8 +60,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: Build debounced summary triggering and queue/worker orchestration
-- [ ] 03-02: Implement finalized and in-progress short-summary generation with dedicated summary storage
+- [x] 03-01: Build debounced summary triggering and queue/worker orchestration
+- [x] 03-02: Implement finalized and in-progress short-summary generation with dedicated summary storage
 
 ### Phase 4: Structured Meeting Insights
 **Goal**: Users can review structured meeting outputs beyond the short summary, including decisions and follow-up work.
@@ -100,6 +100,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 |-------|----------------|--------|-----------|
 | 1. Meeting Domain Foundation | 2/2 | Complete | 2026-03-19 |
 | 2. Live Transcript Capture | 2/2 | Complete | 2026-03-20 |
-| 3. Summary Foundation | 0/2 | Not started | - |
+| 3. Summary Foundation | 2/2 | Complete | 2026-03-20 |
 | 4. Structured Meeting Insights | 0/2 | Not started | - |
 | 5. Meeting History and Review | 0/2 | Not started | - |
