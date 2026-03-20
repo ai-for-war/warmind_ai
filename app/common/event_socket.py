@@ -68,6 +68,7 @@ class MeetingRecordEvents:
     STOP = "meeting_record:stop"
     STARTED = "meeting_record:started"
     TRANSCRIPT = "meeting_record:transcript"
+    SUMMARY = "meeting_record:summary"
     STOPPING = "meeting_record:stopping"
     COMPLETED = "meeting_record:completed"
     ERROR = "meeting_record:error"

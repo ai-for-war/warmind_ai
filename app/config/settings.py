@@ -125,6 +125,10 @@ class Settings(BaseSettings):
     SHEET_SYNC_QUEUE_NAME: str = "sheet_sync_tasks"
     IMAGE_GENERATION_QUEUE_NAME: str = "image_generation_tasks"
     IMAGE_GENERATION_MAX_CONCURRENCY: int = 4
+    MEETING_SUMMARY_QUEUE_NAME: str = "meeting_summary_tasks"
+    MEETING_SUMMARY_MAX_CONCURRENCY: int = 2
+    MEETING_SUMMARY_MIN_BLOCKS_FOR_LIVE: int = 2
+    MEETING_SUMMARY_MIN_NEW_BLOCKS: int = 2
 
     # OpenAI
     OPENAI_API_KEY: str | None = None

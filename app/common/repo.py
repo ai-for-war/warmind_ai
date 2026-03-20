@@ -10,6 +10,8 @@ from app.repo.image_repo import ImageRepository
 from app.repo.interview_conversation_repo import InterviewConversationRepository
 from app.repo.interview_utterance_repo import InterviewUtteranceRepository
 from app.repo.meeting_record_repo import MeetingRecordRepository
+from app.repo.meeting_summary_job_repo import MeetingSummaryJobRepository
+from app.repo.meeting_summary_repo import MeetingSummaryRepository
 from app.repo.meeting_transcript_repo import MeetingTranscriptRepository
 from app.repo.message_repo import MessageRepository
 from app.repo.organization_member_repo import OrganizationMemberRepository
@@ -168,6 +170,20 @@ def get_meeting_record_repo() -> MeetingRecordRepository:
     """Get singleton meeting record repository instance."""
     db = MongoDB.get_db()
     return MeetingRecordRepository(db)
+
+
+@lru_cache
+def get_meeting_summary_repo() -> MeetingSummaryRepository:
+    """Get singleton meeting summary repository instance."""
+    db = MongoDB.get_db()
+    return MeetingSummaryRepository(db)
+
+
+@lru_cache
+def get_meeting_summary_job_repo() -> MeetingSummaryJobRepository:
+    """Get singleton meeting summary job repository instance."""
+    db = MongoDB.get_db()
+    return MeetingSummaryJobRepository(db)
 
 
 @lru_cache

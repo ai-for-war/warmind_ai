@@ -10,6 +10,8 @@ from app.common.repo import (
     get_interview_conversation_repo,
     get_interview_utterance_repo,
     get_meeting_record_repo,
+    get_meeting_summary_job_repo,
+    get_meeting_summary_repo,
     get_meeting_transcript_repo,
     get_member_repo,
     get_message_repo,
@@ -40,6 +42,7 @@ from app.services.image.image_generation_service import ImageGenerationService
 from app.services.interview.answer_service import InterviewAnswerService
 from app.services.meeting.meeting_service import MeetingService
 from app.services.meeting.session_manager import MeetingSessionManager
+from app.services.meeting.summary_service import MeetingSummaryService
 from app.services.meeting.transcript_service import MeetingTranscriptService
 from app.services.organization.organization_service import OrganizationService
 from app.services.sheet_crawler.crawler_service import SheetCrawlerService
@@ -301,12 +304,25 @@ def get_meeting_session_manager() -> MeetingSessionManager:
 
 
 @lru_cache
+def get_meeting_summary_service() -> MeetingSummaryService:
+    """Get singleton meeting summary service instance."""
+    return MeetingSummaryService(
+        meeting_summary_repo=get_meeting_summary_repo(),
+        meeting_summary_job_repo=get_meeting_summary_job_repo(),
+        meeting_transcript_repo=get_meeting_transcript_repo(),
+        meeting_record_repo=get_meeting_record_repo(),
+        redis_queue=get_redis_queue(),
+    )
+
+
+@lru_cache
 def get_meeting_service() -> MeetingService:
     """Get singleton meeting service instance."""
     return MeetingService(
         session_manager=get_meeting_session_manager(),
         meeting_record_repo=get_meeting_record_repo(),
         transcript_service=get_meeting_transcript_service(),
+        summary_service=get_meeting_summary_service(),
         organization_repo=get_org_repo(),
         member_repo=get_member_repo(),
     )

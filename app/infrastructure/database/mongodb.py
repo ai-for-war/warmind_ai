@@ -179,6 +179,51 @@ class MongoDB:
         )
         logger.info("Created index: idx_meeting_transcript_org_meeting_sequence")
 
+        # Indexes for meeting_summaries collection
+        # Supports: one latest summary document per meeting and org/final state reads
+        await cls.db.meeting_summaries.create_index(
+            [("meeting_id", ASCENDING)],
+            name="idx_meeting_summaries_meeting_unique",
+            unique=True,
+            background=True,
+        )
+        logger.info("Created index: idx_meeting_summaries_meeting_unique")
+
+        await cls.db.meeting_summaries.create_index(
+            [
+                ("organization_id", ASCENDING),
+                ("is_final", ASCENDING),
+                ("updated_at", DESCENDING),
+            ],
+            name="idx_meeting_summaries_org_final_updated",
+            background=True,
+        )
+        logger.info("Created index: idx_meeting_summaries_org_final_updated")
+
+        # Indexes for meeting_summary_jobs collection
+        # Supports: durable deduplication and oldest-first worker claims
+        await cls.db.meeting_summary_jobs.create_index(
+            [
+                ("meeting_id", ASCENDING),
+                ("job_kind", ASCENDING),
+                ("target_block_sequence", ASCENDING),
+            ],
+            name="idx_meeting_summary_jobs_unique_target",
+            unique=True,
+            background=True,
+        )
+        logger.info("Created index: idx_meeting_summary_jobs_unique_target")
+
+        await cls.db.meeting_summary_jobs.create_index(
+            [
+                ("status", ASCENDING),
+                ("queued_at", ASCENDING),
+            ],
+            name="idx_meeting_summary_jobs_status_queued",
+            background=True,
+        )
+        logger.info("Created index: idx_meeting_summary_jobs_status_queued")
+
         # Indexes for sheet_connections collection
         await cls.db.sheet_connections.create_index(
             [("user_id", ASCENDING), ("organization_id", ASCENDING)],

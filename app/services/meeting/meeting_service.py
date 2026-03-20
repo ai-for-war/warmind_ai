@@ -21,7 +21,9 @@ from app.services.meeting.session import (
     MeetingSession,
     MeetingSessionEvent,
     MeetingSessionEventKind,
+    MeetingSessionState,
 )
+from app.services.meeting.summary_service import MeetingSummaryService
 from app.services.meeting.session_manager import MeetingSessionManager
 from app.services.meeting.transcript_service import MeetingTranscriptService
 
@@ -38,12 +40,14 @@ class MeetingService:
         session_manager: MeetingSessionManager,
         meeting_record_repo: MeetingRecordRepository,
         transcript_service: MeetingTranscriptService,
+        summary_service: MeetingSummaryService,
         organization_repo: OrganizationRepository,
         member_repo: OrganizationMemberRepository,
     ) -> None:
         self.session_manager = session_manager
         self.meeting_record_repo = meeting_record_repo
         self.transcript_service = transcript_service
+        self.summary_service = summary_service
         self.organization_repo = organization_repo
         self.member_repo = member_repo
 
@@ -250,6 +254,8 @@ class MeetingService:
                         sid=session.sid,
                         payload=payload,
                         organization_id=session.organization_id,
+                        language=session.language,
+                        finalize_summary=session.state == MeetingSessionState.FINALIZING,
                     )
                 continue
             if event.kind == MeetingSessionEventKind.COMPLETED:
@@ -281,12 +287,16 @@ class MeetingService:
         sid: str,
         payload: MeetingTranscriptBlockPayload,
         organization_id: str,
+        language: str,
+        finalize_summary: bool,
     ) -> None:
         asyncio.create_task(
             self._persist_transcript_block_in_background(
                 sid=sid,
                 payload=payload,
                 organization_id=organization_id,
+                language=language,
+                finalize_summary=finalize_summary,
             )
         )
 
@@ -296,15 +306,39 @@ class MeetingService:
         sid: str,
         payload: MeetingTranscriptBlockPayload,
         organization_id: str,
+        language: str,
+        finalize_summary: bool,
     ) -> None:
+        persisted_segments = [
+            segment
+            for segment in payload.segments
+            if segment.is_final and segment.text.strip()
+        ]
+        if not persisted_segments:
+            return
+
         try:
             await self.transcript_service.append_closed_block_payload(
                 payload,
                 organization_id=organization_id,
             )
+            if finalize_summary:
+                await self.summary_service.enqueue_final_summary(
+                    meeting_id=payload.meeting_id,
+                    organization_id=organization_id,
+                    language=language,
+                    target_block_sequence=payload.sequence,
+                )
+            else:
+                await self.summary_service.maybe_enqueue_live_summary(
+                    meeting_id=payload.meeting_id,
+                    organization_id=organization_id,
+                    language=language,
+                    target_block_sequence=payload.sequence,
+                )
         except Exception:
             logger.exception(
-                "Async meeting transcript persistence failed for sid=%s meeting_id=%s block_id=%s",
+                "Async meeting transcript persistence or summary enqueue failed for sid=%s meeting_id=%s block_id=%s",
                 sid,
                 payload.meeting_id,
                 payload.block_id,
