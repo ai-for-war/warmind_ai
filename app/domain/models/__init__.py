@@ -23,6 +23,14 @@ from app.domain.models.interview_utterance import (
     InterviewUtterance,
     InterviewUtteranceStatus,
 )
+from app.domain.models.meeting import (
+    Meeting,
+    MeetingStatus,
+)
+from app.domain.models.meeting_utterance import (
+    MeetingUtterance,
+    MeetingUtteranceMessage,
+)
 from app.domain.models.message import (
     Attachment,
     AttachmentType,
@@ -58,6 +66,10 @@ __all__ = [
     "InterviewUtterance",
     "InterviewUtteranceStatus",
     "DURABLE_INTERVIEW_UTTERANCE_STATUSES",
+    "Meeting",
+    "MeetingStatus",
+    "MeetingUtterance",
+    "MeetingUtteranceMessage",
     # Image models
     "Image",
     "ImageSource",

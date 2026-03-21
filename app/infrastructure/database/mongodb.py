@@ -178,6 +178,41 @@ class MongoDB:
         )
         logger.info("Created index: idx_interview_utterances_conversation_turn_closed")
 
+        # Indexes for meetings collection
+        await cls.db.meetings.create_index(
+            [("organization_id", ASCENDING), ("started_at", DESCENDING)],
+            name="idx_meetings_organization_started_desc",
+            background=True,
+        )
+        logger.info("Created index: idx_meetings_organization_started_desc")
+
+        await cls.db.meetings.create_index(
+            [
+                ("created_by", ASCENDING),
+                ("organization_id", ASCENDING),
+                ("started_at", DESCENDING),
+            ],
+            name="idx_meetings_creator_org_started_desc",
+            background=True,
+        )
+        logger.info("Created index: idx_meetings_creator_org_started_desc")
+
+        await cls.db.meetings.create_index(
+            [("status", ASCENDING), ("started_at", DESCENDING)],
+            name="idx_meetings_status_started_desc",
+            background=True,
+        )
+        logger.info("Created index: idx_meetings_status_started_desc")
+
+        # Index for meeting_utterances collection
+        await cls.db.meeting_utterances.create_index(
+            [("meeting_id", ASCENDING), ("sequence", ASCENDING)],
+            name="idx_meeting_utterances_meeting_sequence_unique",
+            unique=True,
+            background=True,
+        )
+        logger.info("Created index: idx_meeting_utterances_meeting_sequence_unique")
+
         # Indexes for image_generation_jobs collection
         await cls.db.image_generation_jobs.create_index(
             [
