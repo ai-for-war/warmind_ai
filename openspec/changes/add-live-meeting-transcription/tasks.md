@@ -19,10 +19,10 @@
 
 ## 4. Session manager và lifecycle cleanup
 
-- [ ] 4.1 Tạo `MeetingSessionManager` để enforce tối đa một meeting session đang hoạt động trên mỗi socket
-- [ ] 4.2 Ràng buộc ownership của `stream_id` với socket đã tạo session cho mọi event `meeting:audio`, `meeting:finalize`, `meeting:stop`
-- [ ] 4.3 Xử lý `meeting:finalize` và `meeting:stop` theo luồng flush provider, persist utterance cuối nếu hợp lệ, rồi đánh dấu `completed`
-- [ ] 4.4 Xử lý disconnect theo luồng `Finalize -> drain grace window -> persist cuối -> close provider -> interrupted`
+- [x] 4.1 Tạo `MeetingSessionManager` để enforce tối đa một meeting session đang hoạt động trên mỗi socket
+- [x] 4.2 Ràng buộc ownership của `stream_id` với socket đã tạo session cho mọi event `meeting:audio`, `meeting:finalize`, `meeting:stop`
+- [x] 4.3 Xử lý `meeting:finalize` và `meeting:stop` theo luồng flush provider, persist utterance cuối nếu hợp lệ, rồi đánh dấu `completed`
+- [x] 4.4 Xử lý disconnect theo luồng `Finalize -> drain grace window -> persist cuối -> close provider -> interrupted`
 
 ## 5. Socket contract và service wiring
 

@@ -9,6 +9,8 @@ from app.common.repo import (
     get_image_repo,
     get_interview_conversation_repo,
     get_interview_utterance_repo,
+    get_meeting_repo,
+    get_meeting_utterance_repo,
     get_member_repo,
     get_message_repo,
     get_org_repo,
@@ -35,6 +37,7 @@ from app.services.auth.auth_service import AuthService
 from app.services.image.image_service import ImageService
 from app.services.image.image_generation_service import ImageGenerationService
 from app.services.interview.answer_service import InterviewAnswerService
+from app.services.meeting.session_manager import MeetingSessionManager
 from app.services.organization.organization_service import OrganizationService
 from app.services.sheet_crawler.crawler_service import SheetCrawlerService
 from app.services.stt.context_store import RedisInterviewContextStore
@@ -230,6 +233,16 @@ def get_deepgram_live_client() -> DeepgramLiveClient:
 def get_meeting_deepgram_live_client() -> DeepgramLiveClient:
     """Get a Deepgram client wrapper pinned to the meeting runtime contract."""
     return DeepgramLiveClient.for_meeting()
+
+
+@lru_cache
+def get_meeting_session_manager() -> MeetingSessionManager:
+    """Get singleton meeting session manager instance."""
+    return MeetingSessionManager(
+        deepgram_client_factory=get_meeting_deepgram_live_client,
+        meeting_repo=get_meeting_repo(),
+        utterance_repo=get_meeting_utterance_repo(),
+    )
 
 
 @lru_cache

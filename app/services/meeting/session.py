@@ -415,26 +415,20 @@ class MeetingSession:
             return []
 
         persisted = await self._persist_closed_utterance(utterance)
-        return [
-            MeetingSessionEvent(
-                kind=MeetingSessionEventKind.UTTERANCE_CLOSED,
-                payload=MeetingUtteranceClosedPayload(
-                    stream_id=self.stream_id,
-                    meeting_id=persisted.meeting_id,
-                    utterance_id=persisted.id,
-                    sequence=persisted.sequence,
-                    messages=[
-                        MeetingUtteranceMessageRecord(
-                            speaker_index=message.speaker_index,
-                            speaker_label=message.speaker_label,
-                            text=message.text,
-                        )
-                        for message in persisted.messages
-                    ],
-                    created_at=persisted.created_at,
-                ),
-            )
-        ]
+        return [self._build_utterance_closed_event(persisted)]
+
+    async def flush_open_utterance(self) -> list[MeetingSessionEvent]:
+        """Persist any remaining finalized words before terminal cleanup."""
+        utterance = self._open_utterance
+        if utterance is None or not utterance.has_final_words:
+            return []
+
+        self._open_utterance = None
+        if utterance.ended_at is None:
+            utterance.ended_at = self._utcnow()
+
+        persisted = await self._persist_closed_utterance(utterance)
+        return [self._build_utterance_closed_event(persisted)]
 
     async def _handle_close_event(
         self,
@@ -497,6 +491,29 @@ class MeetingSession:
         )
         self._next_sequence += 1
         return persisted
+
+    def _build_utterance_closed_event(
+        self,
+        persisted: MeetingUtterance,
+    ) -> MeetingSessionEvent:
+        return MeetingSessionEvent(
+            kind=MeetingSessionEventKind.UTTERANCE_CLOSED,
+            payload=MeetingUtteranceClosedPayload(
+                stream_id=self.stream_id,
+                meeting_id=persisted.meeting_id,
+                utterance_id=persisted.id,
+                sequence=persisted.sequence,
+                messages=[
+                    MeetingUtteranceMessageRecord(
+                        speaker_index=message.speaker_index,
+                        speaker_label=message.speaker_label,
+                        text=message.text,
+                    )
+                    for message in persisted.messages
+                ],
+                created_at=persisted.created_at,
+            ),
+        )
 
     def _get_or_create_open_utterance(self) -> OpenMeetingUtterance:
         utterance = self._open_utterance
