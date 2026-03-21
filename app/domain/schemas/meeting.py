@@ -220,7 +220,7 @@ class MeetingFinalPayload(MeetingSchemaBase):
 
 
 class MeetingUtteranceClosedPayload(MeetingSchemaBase):
-    """Payload emitted when one canonical meeting utterance is persisted."""
+    """Payload emitted when one canonical meeting utterance closes."""
 
     stream_id: str = Field(..., min_length=1, max_length=128)
     meeting_id: str = Field(..., min_length=1, max_length=128)

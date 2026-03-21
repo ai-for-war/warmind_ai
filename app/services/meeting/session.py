@@ -17,7 +17,6 @@ from app.common.exceptions import (
     STTStreamOwnershipError,
 )
 from app.domain.models.meeting import MeetingStatus
-from app.domain.models.meeting_utterance import MeetingUtterance
 from app.domain.schemas.meeting import (
     MeetingCompletedPayload,
     MeetingErrorPayload,
@@ -35,7 +34,6 @@ from app.infrastructure.deepgram.client import (
     ProviderTranscriptWord,
 )
 from app.repo.meeting_repo import MeetingRepository
-from app.repo.meeting_utterance_repo import MeetingUtteranceRepository
 
 _NO_LEADING_SPACE_PATTERN = re.compile(r"^[,.;:!?%)\]\}]+$")
 _ATTACHED_SUFFIX_TOKENS = {"'s", "'re", "'ve", "'m", "'d", "'ll", "n't"}
@@ -106,7 +104,6 @@ class MeetingSession:
         stream_id: str,
         provider_client: DeepgramLiveClient,
         meeting_repo: MeetingRepository,
-        utterance_repo: MeetingUtteranceRepository,
         meeting_id: str | None = None,
         title: str | None = None,
         language: str | None = None,
@@ -118,7 +115,6 @@ class MeetingSession:
         self.stream_id = stream_id
         self.provider_client = provider_client
         self.meeting_repo = meeting_repo
-        self.utterance_repo = utterance_repo
         self.meeting_id = meeting_id
         self.title = title
         self.language = (language or "en").strip().lower() or "en"
@@ -145,6 +141,11 @@ class MeetingSession:
             MeetingStatus.INTERRUPTED,
             MeetingStatus.FAILED,
         }
+
+    @property
+    def last_allocated_sequence(self) -> int:
+        """Return the highest meeting-local utterance sequence assigned so far."""
+        return max(self._next_sequence - 1, 0)
 
     async def start(self) -> list[MeetingSessionEvent]:
         """Create the durable meeting record and open the provider stream."""
@@ -414,31 +415,27 @@ class MeetingSession:
         if not utterance.has_final_words:
             return []
 
-        persisted = await self._persist_closed_utterance(utterance)
-        return [self._build_utterance_closed_event(persisted)]
+        return [self._close_utterance(utterance)]
 
     async def flush_open_utterance(self) -> list[MeetingSessionEvent]:
-        """Persist any remaining finalized words before terminal cleanup."""
+        """Close any remaining finalized words before terminal cleanup."""
         utterance = self._open_utterance
         if utterance is None or not utterance.has_final_words:
             return []
 
         self._open_utterance = None
-        if utterance.ended_at is None:
-            utterance.ended_at = self._utcnow()
-
-        persisted = await self._persist_closed_utterance(utterance)
-        return [self._build_utterance_closed_event(persisted)]
+        return [self._close_utterance(utterance)]
 
     async def _handle_close_event(
         self,
         event: ProviderEvent,
     ) -> list[MeetingSessionEvent]:
         if self.state == MeetingStatus.FINALIZING:
+            emitted = await self.flush_open_utterance()
             terminal_state = self._terminal_state_on_close
             await self._transition_terminal_state(terminal_state)
             if terminal_state == MeetingStatus.INTERRUPTED:
-                return [
+                emitted.append(
                     MeetingSessionEvent(
                         kind=MeetingSessionEventKind.INTERRUPTED,
                         payload=MeetingInterruptedPayload(
@@ -446,8 +443,9 @@ class MeetingSession:
                             meeting_id=self._require_meeting_id(),
                         ),
                     )
-                ]
-            return [
+                )
+                return emitted
+            emitted.append(
                 MeetingSessionEvent(
                     kind=MeetingSessionEventKind.COMPLETED,
                     payload=MeetingCompletedPayload(
@@ -455,7 +453,8 @@ class MeetingSession:
                         meeting_id=self._require_meeting_id(),
                     ),
                 )
-            ]
+            )
+            return emitted
 
         if self.state in {
             MeetingStatus.COMPLETED,
@@ -474,44 +473,27 @@ class MeetingSession:
             )
         ]
 
-    async def _persist_closed_utterance(
+    def _close_utterance(
         self,
         utterance: OpenMeetingUtterance,
-    ) -> MeetingUtterance:
+    ) -> MeetingSessionEvent:
         messages = self._group_words_by_speaker(utterance.final_words)
         if not messages:
             raise ValueError("Meeting utterance has no canonical speaker messages")
 
         sequence = self._next_sequence
-        persisted = await self.utterance_repo.append(
-            meeting_id=self._require_meeting_id(),
-            sequence=sequence,
-            messages=[message.model_dump(mode="python") for message in messages],
-            utterance_id=utterance.utterance_id,
-        )
         self._next_sequence += 1
-        return persisted
-
-    def _build_utterance_closed_event(
-        self,
-        persisted: MeetingUtterance,
-    ) -> MeetingSessionEvent:
+        closed_at = self._utcnow()
+        utterance.ended_at = closed_at
         return MeetingSessionEvent(
             kind=MeetingSessionEventKind.UTTERANCE_CLOSED,
             payload=MeetingUtteranceClosedPayload(
                 stream_id=self.stream_id,
-                meeting_id=persisted.meeting_id,
-                utterance_id=persisted.id,
-                sequence=persisted.sequence,
-                messages=[
-                    MeetingUtteranceMessageRecord(
-                        speaker_index=message.speaker_index,
-                        speaker_label=message.speaker_label,
-                        text=message.text,
-                    )
-                    for message in persisted.messages
-                ],
-                created_at=persisted.created_at,
+                meeting_id=self._require_meeting_id(),
+                utterance_id=utterance.utterance_id,
+                sequence=sequence,
+                messages=messages,
+                created_at=closed_at,
             ),
         )
 

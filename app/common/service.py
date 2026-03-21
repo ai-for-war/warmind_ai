@@ -10,7 +10,6 @@ from app.common.repo import (
     get_interview_conversation_repo,
     get_interview_utterance_repo,
     get_meeting_repo,
-    get_meeting_utterance_repo,
     get_member_repo,
     get_message_repo,
     get_org_repo,
@@ -20,6 +19,7 @@ from app.common.repo import (
     get_user_repo,
     get_voice_repo,
 )
+from app.config.settings import get_settings
 from app.infrastructure.cloudinary.client import CloudinaryClient
 from app.infrastructure.deepgram.client import DeepgramLiveClient
 from app.infrastructure.google_sheets.client import GoogleSheetClient
@@ -239,10 +239,12 @@ def get_meeting_deepgram_live_client() -> DeepgramLiveClient:
 @lru_cache
 def get_meeting_session_manager() -> MeetingSessionManager:
     """Get singleton meeting session manager instance."""
+    settings = get_settings()
     return MeetingSessionManager(
         deepgram_client_factory=get_meeting_deepgram_live_client,
         meeting_repo=get_meeting_repo(),
-        utterance_repo=get_meeting_utterance_repo(),
+        meeting_note_queue=get_redis_queue(),
+        meeting_note_queue_name=settings.MEETING_NOTE_QUEUE_NAME,
     )
 
 

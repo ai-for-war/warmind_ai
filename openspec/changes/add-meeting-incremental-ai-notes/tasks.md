@@ -6,9 +6,9 @@
 
 ## 2. Realtime Meeting Session Changes
 
-- [ ] 2.1 Update `MeetingSession` to allocate `sequence` at utterance close time and emit a canonical closed-utterance payload without writing Mongo inline
-- [ ] 2.2 Update `MeetingSessionManager` to enqueue closed meeting utterances for background persistence and note processing
-- [ ] 2.3 Update meeting finalize/disconnect handling to enqueue terminal note-flush work with `final_sequence` while allowing `completed` and `interrupted` to finish before background drain completes
+- [x] 2.1 Update `MeetingSession` to allocate `sequence` at utterance close time and emit a canonical closed-utterance payload without writing Mongo inline
+- [x] 2.2 Update `MeetingSessionManager` to enqueue closed meeting utterances for background persistence and note processing
+- [x] 2.3 Update meeting finalize/disconnect handling to enqueue terminal note-flush work with `final_sequence` while allowing `completed` and `interrupted` to finish before background drain completes
 
 ## 3. Redis Hot State And Locking
 

@@ -19,16 +19,24 @@ from app.common.exceptions import (
     STTStreamOwnershipError,
 )
 from app.domain.models.meeting import MeetingStatus
+from app.domain.schemas.meeting import MeetingErrorPayload
 from app.infrastructure.deepgram.client import (
     DeepgramLiveClient,
     ProviderEvent,
     ProviderEventKind,
 )
+from app.infrastructure.redis.redis_queue import RedisQueue
 from app.repo.meeting_repo import MeetingRepository
-from app.repo.meeting_utterance_repo import MeetingUtteranceRepository
-from app.services.meeting.session import MeetingSession, MeetingSessionEvent
+from app.services.meeting.session import (
+    MeetingSession,
+    MeetingSessionEvent,
+    MeetingSessionEventKind,
+)
 
 logger = logging.getLogger(__name__)
+
+_UTTERANCE_CLOSED_TASK_KIND = "utterance_closed"
+_MEETING_TERMINAL_TASK_KIND = "meeting_terminal"
 
 
 class MeetingSessionManager:
@@ -39,13 +47,17 @@ class MeetingSessionManager:
         *,
         deepgram_client_factory: Callable[[], DeepgramLiveClient],
         meeting_repo: MeetingRepository,
-        utterance_repo: MeetingUtteranceRepository,
+        meeting_note_queue: RedisQueue,
+        meeting_note_queue_name: str = "meeting_note_tasks",
         max_pending_audio_chunks: int = 32,
         finalize_grace_timeout_seconds: float = 10.0,
     ) -> None:
         self._deepgram_client_factory = deepgram_client_factory
         self._meeting_repo = meeting_repo
-        self._utterance_repo = utterance_repo
+        self._meeting_note_queue = meeting_note_queue
+        self._meeting_note_queue_name = (
+            meeting_note_queue_name.strip() or "meeting_note_tasks"
+        )
         self._max_pending_audio_chunks = max(max_pending_audio_chunks, 1)
         self._finalize_grace_timeout_seconds = max(
             finalize_grace_timeout_seconds,
@@ -112,7 +124,6 @@ class MeetingSessionManager:
             stream_id=stream_id,
             provider_client=self.create_provider_client(),
             meeting_repo=self._meeting_repo,
-            utterance_repo=self._utterance_repo,
             meeting_id=meeting_id,
             title=title,
             language=language,
@@ -334,8 +345,9 @@ class MeetingSessionManager:
                 break
 
         if session.is_active and session.state == MeetingStatus.FINALIZING:
-            emitted.extend(await session.flush_open_utterance())
-            emitted.extend(await self._close_finalized_session(session))
+            trailing_events = await session.flush_open_utterance()
+            trailing_events.extend(await self._close_finalized_session(session))
+            emitted.extend(await self._process_session_events(session, trailing_events))
         return emitted
 
     async def _collect_session_events(
@@ -378,7 +390,7 @@ class MeetingSessionManager:
         if should_close_after_finalize and session.is_active:
             emitted.extend(await session.flush_open_utterance())
             emitted.extend(await self._close_finalized_session(session))
-        return emitted
+        return await self._process_session_events(session, emitted)
 
     async def _handle_idle_session(
         self,
@@ -424,6 +436,90 @@ class MeetingSessionManager:
             close_events.append(ProviderEvent(kind=ProviderEventKind.CLOSE))
 
         return await session.consume_provider_events(close_events)
+
+    async def _process_session_events(
+        self,
+        session: MeetingSession,
+        events: list[MeetingSessionEvent],
+    ) -> list[MeetingSessionEvent]:
+        processed: list[MeetingSessionEvent] = []
+        for event in events:
+            processed.append(event)
+            task_payload = self._build_background_task_payload(session, event)
+            if task_payload is None:
+                continue
+
+            enqueued = await self._meeting_note_queue.enqueue(
+                self._meeting_note_queue_name,
+                task_payload,
+            )
+            if enqueued:
+                continue
+
+            logger.error(
+                "Failed to enqueue meeting background task %s for meeting %s",
+                task_payload["kind"],
+                task_payload["meeting_id"],
+            )
+            processed.append(
+                self._build_enqueue_error_event(
+                    session,
+                    task_kind=str(task_payload["kind"]),
+                )
+            )
+        return processed
+
+    def _build_background_task_payload(
+        self,
+        session: MeetingSession,
+        event: MeetingSessionEvent,
+    ) -> dict[str, object] | None:
+        if event.kind == MeetingSessionEventKind.UTTERANCE_CLOSED:
+            payload = event.payload.model_dump(mode="json")
+            return {
+                "kind": _UTTERANCE_CLOSED_TASK_KIND,
+                "organization_id": session.organization_id,
+                "created_by_user_id": session.user_id,
+                "retry_count": 0,
+                **payload,
+            }
+
+        if event.kind in {
+            MeetingSessionEventKind.COMPLETED,
+            MeetingSessionEventKind.INTERRUPTED,
+        }:
+            payload = event.payload.model_dump(mode="json")
+            return {
+                "kind": _MEETING_TERMINAL_TASK_KIND,
+                "organization_id": session.organization_id,
+                "created_by_user_id": session.user_id,
+                "stream_id": session.stream_id,
+                "meeting_id": payload["meeting_id"],
+                "status": payload["status"],
+                "final_sequence": session.last_allocated_sequence,
+                "retry_count": 0,
+            }
+
+        return None
+
+    def _build_enqueue_error_event(
+        self,
+        session: MeetingSession,
+        *,
+        task_kind: str,
+    ) -> MeetingSessionEvent:
+        return MeetingSessionEvent(
+            kind=MeetingSessionEventKind.ERROR,
+            payload=MeetingErrorPayload(
+                stream_id=session.stream_id,
+                meeting_id=session.meeting_id,
+                error_code="meeting_background_enqueue_failed",
+                error_message=(
+                    "Failed to enqueue meeting background task "
+                    f"'{task_kind}'"
+                ),
+            ),
+        )
 
     def _require_session(
         self,

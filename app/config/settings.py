@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     # Sheet Crawler
     SHEET_SYNC_QUEUE_NAME: str = "sheet_sync_tasks"
     IMAGE_GENERATION_QUEUE_NAME: str = "image_generation_tasks"
+    MEETING_NOTE_QUEUE_NAME: str = "meeting_note_tasks"
     IMAGE_GENERATION_MAX_CONCURRENCY: int = 4
 
     # OpenAI
