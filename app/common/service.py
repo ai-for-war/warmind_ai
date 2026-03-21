@@ -227,6 +227,11 @@ def get_deepgram_live_client() -> DeepgramLiveClient:
     return DeepgramLiveClient()
 
 
+def get_meeting_deepgram_live_client() -> DeepgramLiveClient:
+    """Get a Deepgram client wrapper pinned to the meeting runtime contract."""
+    return DeepgramLiveClient.for_meeting()
+
+
 @lru_cache
 def get_interview_context_store() -> RedisInterviewContextStore:
     """Get singleton Redis-backed interview context store instance."""

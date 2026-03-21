@@ -6,9 +6,9 @@
 
 ## 2. Deepgram adapter cho meeting
 
-- [ ] 2.1 Mở rộng normalized provider event để hỗ trợ word-level speaker data theo hướng additive, không đổi semantics field cũ của interview
-- [ ] 2.2 Thêm cấu hình Deepgram riêng cho meeting với `PCM16`, `16kHz`, `1-channel`, `diarize=true`, `interim_results=true`
-- [ ] 2.3 Giữ nguyên default config và code path interview để tránh regression khi meeting bật diarization
+- [x] 2.1 Mở rộng normalized provider event để hỗ trợ word-level speaker data theo hướng additive, không đổi semantics field cũ của interview
+- [x] 2.2 Thêm cấu hình Deepgram riêng cho meeting với `PCM16`, `16kHz`, `1-channel`, `diarize=true`, `interim_results=true`
+- [x] 2.3 Giữ nguyên default config và code path interview để tránh regression khi meeting bật diarization
 
 ## 3. Meeting session core
 

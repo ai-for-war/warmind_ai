@@ -45,6 +45,18 @@ class ProviderTranscriptEvent:
     is_final: bool = False
     speech_final: bool = False
     from_finalize: bool = False
+    words: tuple["ProviderTranscriptWord", ...] = ()
+
+
+@dataclass(slots=True)
+class ProviderTranscriptWord:
+    """Normalized word-level transcript token for additive diarization support."""
+
+    text: str
+    speaker_index: int | None = None
+    confidence: float | None = None
+    start_ms: int | None = None
+    end_ms: int | None = None
 
 
 @dataclass(slots=True)
@@ -73,15 +85,24 @@ class DeepgramLiveClient:
         *,
         api_key: str | None = None,
         model: str | None = None,
+        encoding: str | None = None,
+        sample_rate: int | None = None,
         channels: int | None = None,
         multichannel: bool | None = None,
+        interim_results: bool | None = None,
+        vad_events: bool | None = None,
         endpointing_ms: int | None = None,
         utterance_end_ms: int | None = None,
+        diarize: bool | None = None,
+        smart_format: bool | None = None,
+        punctuate: bool | None = None,
         keepalive_interval_seconds: int | None = None,
     ) -> None:
         settings = get_settings()
         self.api_key = api_key or settings.DEEPGRAM_API_KEY
         self.model = model or settings.DEEPGRAM_MODEL
+        self.encoding = encoding or "linear16"
+        self.sample_rate = sample_rate or 16000
         self.channels = (
             channels if channels is not None else settings.INTERVIEW_STT_CHANNELS
         )
@@ -90,6 +111,10 @@ class DeepgramLiveClient:
             if multichannel is not None
             else settings.INTERVIEW_STT_MULTICHANNEL
         )
+        self.interim_results = (
+            interim_results if interim_results is not None else True
+        )
+        self.vad_events = vad_events if vad_events is not None else True
         self.endpointing_ms = (
             endpointing_ms
             if endpointing_ms is not None
@@ -100,6 +125,9 @@ class DeepgramLiveClient:
             if utterance_end_ms is not None
             else settings.INTERVIEW_STT_UTTERANCE_END_MS
         )
+        self.diarize = diarize
+        self.smart_format = smart_format
+        self.punctuate = punctuate
         self.keepalive_interval_seconds = (
             keepalive_interval_seconds
             if keepalive_interval_seconds is not None
@@ -114,21 +142,48 @@ class DeepgramLiveClient:
         self._connect_options: dict[str, Any] | None = None
         self._last_request_metadata: dict[str, Any] | None = None
 
+    @classmethod
+    def for_meeting(cls) -> "DeepgramLiveClient":
+        """Build a Deepgram client pinned to the meeting transcription contract."""
+        settings = get_settings()
+        return cls(
+            encoding=settings.MEETING_STT_ENCODING,
+            sample_rate=settings.MEETING_STT_SAMPLE_RATE,
+            channels=settings.MEETING_STT_CHANNELS,
+            multichannel=settings.MEETING_STT_MULTICHANNEL,
+            interim_results=settings.MEETING_STT_INTERIM_RESULTS,
+            vad_events=settings.MEETING_STT_VAD_EVENTS,
+            endpointing_ms=settings.MEETING_STT_ENDPOINTING_MS,
+            utterance_end_ms=settings.MEETING_STT_UTTERANCE_END_MS,
+            diarize=settings.MEETING_STT_DIARIZE,
+            smart_format=settings.MEETING_STT_SMART_FORMAT,
+            punctuate=settings.MEETING_STT_PUNCTUATE,
+            keepalive_interval_seconds=settings.MEETING_STT_KEEPALIVE_INTERVAL_SECONDS,
+        )
+
     def get_runtime_config(self, *, language: str | None = None) -> dict[str, Any]:
         """Return verified Listen V1 connect options for the active STT runtime."""
-        return {
+        runtime_config = {
             "model": self.model,
-            "encoding": "linear16",
+            "encoding": self.encoding,
             # Deepgram's websocket query parser expects string query values.
-            "sample_rate": "16000",
+            "sample_rate": str(self.sample_rate),
             "channels": str(self.channels),
             "multichannel": str(self.multichannel).lower(),
-            "interim_results": "true",
-            "vad_events": "true",
+            "interim_results": str(self.interim_results).lower(),
+            "vad_events": str(self.vad_events).lower(),
             "endpointing": str(self.endpointing_ms),
             "utterance_end_ms": str(self.utterance_end_ms),
             "language": language or "en",
         }
+        for key, value in {
+            "diarize": self.diarize,
+            "smart_format": self.smart_format,
+            "punctuate": self.punctuate,
+        }.items():
+            if value is not None:
+                runtime_config[key] = str(value).lower()
+        return runtime_config
 
     async def open(self, *, language: str | None = None) -> None:
         """Open an async Listen V1 websocket and register SDK event handlers."""
@@ -397,6 +452,7 @@ class DeepgramLiveClient:
 
         words = getattr(first_alternative, "words", None)
         start_ms, end_ms = self._extract_word_window(words)
+        normalized_words = self._extract_transcript_words(words)
 
         return ProviderTranscriptEvent(
             transcript=transcript,
@@ -407,6 +463,7 @@ class DeepgramLiveClient:
             is_final=bool(getattr(message, "is_final", False)),
             speech_final=bool(getattr(message, "speech_final", False)),
             from_finalize=bool(getattr(message, "from_finalize", False)),
+            words=normalized_words,
         )
 
     def _extract_word_window(self, words: Any) -> tuple[int | None, int | None]:
@@ -419,6 +476,36 @@ class DeepgramLiveClient:
             self._seconds_to_ms(getattr(first, "start", None)),
             self._seconds_to_ms(getattr(last, "end", None)),
         )
+
+    def _extract_transcript_words(
+        self,
+        words: Any,
+    ) -> tuple[ProviderTranscriptWord, ...]:
+        if not isinstance(words, list) or not words:
+            return ()
+
+        normalized_words: list[ProviderTranscriptWord] = []
+        for raw_word in words:
+            word_payload = self._coerce_object_to_dict(raw_word)
+            text = str(
+                word_payload.get("punctuated_word")
+                or word_payload.get("word")
+                or ""
+            ).strip()
+            if not text:
+                continue
+
+            normalized_words.append(
+                ProviderTranscriptWord(
+                    text=text,
+                    speaker_index=self._safe_int(word_payload.get("speaker")),
+                    confidence=self._safe_float(word_payload.get("confidence")),
+                    start_ms=self._seconds_to_ms(word_payload.get("start")),
+                    end_ms=self._seconds_to_ms(word_payload.get("end")),
+                )
+            )
+
+        return tuple(normalized_words)
 
     def _publish_event(self, event: ProviderEvent) -> None:
         if self._event_loop is None:
@@ -492,6 +579,35 @@ class DeepgramLiveClient:
             return float(value)
         except (TypeError, ValueError):
             return None
+
+    @staticmethod
+    def _coerce_object_to_dict(value: Any) -> dict[str, Any]:
+        if isinstance(value, dict):
+            return value
+
+        if hasattr(value, "to_dict"):
+            try:
+                mapped = value.to_dict()
+            except Exception:
+                mapped = None
+            if isinstance(mapped, dict):
+                return mapped
+
+        if hasattr(value, "__dict__"):
+            return dict(vars(value))
+
+        return {
+            key: getattr(value, key)
+            for key in (
+                "word",
+                "punctuated_word",
+                "speaker",
+                "confidence",
+                "start",
+                "end",
+            )
+            if hasattr(value, key)
+        }
 
     @classmethod
     def _extract_channel_indices(cls, value: Any) -> tuple[int, ...] | None:
