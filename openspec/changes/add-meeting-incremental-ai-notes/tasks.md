@@ -12,9 +12,9 @@
 
 ## 3. Redis Hot State And Locking
 
-- [ ] 3.1 Add meeting note Redis helpers for `note_state`, `pending_sequences`, and `pending_utterances`
-- [ ] 3.2 Store canonical pending utterance payloads in Redis with precomputed text suitable for prompt assembly
-- [ ] 3.3 Add a per-meeting Redis summary lock with token-based acquire/release semantics for multi-worker safety
+- [x] 3.1 Add meeting note Redis helpers for `note_state`, `pending_sequences`, and `pending_utterances`
+- [x] 3.2 Store canonical pending utterance payloads in Redis with precomputed text suitable for prompt assembly
+- [x] 3.3 Add a per-meeting Redis summary lock with token-based acquire/release semantics for multi-worker safety
 
 ## 4. Background Worker And Note Generation
 

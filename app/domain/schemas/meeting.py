@@ -230,6 +230,52 @@ class MeetingUtteranceClosedPayload(MeetingSchemaBase):
     created_at: datetime
 
 
+class MeetingPendingUtterancePayload(MeetingSchemaBase):
+    """Canonical pending utterance payload stored in Redis hot note state."""
+
+    utterance_id: str = Field(..., min_length=1, max_length=128)
+    meeting_id: str = Field(..., min_length=1, max_length=128)
+    sequence: int = Field(..., ge=1)
+    messages: list[MeetingUtteranceMessageRecord] = Field(..., min_length=1)
+    flat_text: str = Field(..., min_length=1)
+    created_at: datetime
+
+    @field_validator("flat_text", mode="before")
+    @classmethod
+    def normalize_flat_text(cls, value: str) -> str:
+        """Require flattened prompt text to remain non-blank."""
+        if not isinstance(value, str):
+            raise TypeError("flat_text must be a string")
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("flat_text must not be blank")
+        return normalized
+
+
+class MeetingNoteState(MeetingSchemaBase):
+    """Per-meeting Redis summary state for incremental note generation."""
+
+    meeting_id: str = Field(..., min_length=1, max_length=128)
+    organization_id: str = Field(..., min_length=1, max_length=128)
+    created_by_user_id: str = Field(..., min_length=1, max_length=128)
+    status: MeetingStatus = MeetingStatus.STREAMING
+    last_summarized_sequence: int = Field(default=0, ge=0)
+    final_sequence: int | None = Field(default=None, ge=1)
+
+    @model_validator(mode="after")
+    def validate_sequence_bounds(self) -> "MeetingNoteState":
+        """Keep the terminal sequence aligned with the summarized watermark."""
+        if (
+            self.final_sequence is not None
+            and self.final_sequence < self.last_summarized_sequence
+        ):
+            raise ValueError(
+                "final_sequence must be greater than or equal to "
+                "last_summarized_sequence"
+            )
+        return self
+
+
 class MeetingCompletedPayload(MeetingSchemaBase):
     """Payload emitted when a meeting session completes cleanly."""
 
