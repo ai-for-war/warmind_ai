@@ -27,6 +27,10 @@ from app.domain.models.meeting import (
     Meeting,
     MeetingStatus,
 )
+from app.domain.models.meeting_note_chunk import (
+    MeetingNoteActionItem,
+    MeetingNoteChunk,
+)
 from app.domain.models.meeting_utterance import (
     MeetingUtterance,
     MeetingUtteranceMessage,
@@ -68,6 +72,8 @@ __all__ = [
     "DURABLE_INTERVIEW_UTTERANCE_STATUSES",
     "Meeting",
     "MeetingStatus",
+    "MeetingNoteActionItem",
+    "MeetingNoteChunk",
     "MeetingUtterance",
     "MeetingUtteranceMessage",
     # Image models

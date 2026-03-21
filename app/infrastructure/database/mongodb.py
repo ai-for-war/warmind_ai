@@ -204,7 +204,7 @@ class MongoDB:
         )
         logger.info("Created index: idx_meetings_status_started_desc")
 
-        # Index for meeting_utterances collection
+        # Unique sequence index for idempotent meeting utterance persistence
         await cls.db.meeting_utterances.create_index(
             [("meeting_id", ASCENDING), ("sequence", ASCENDING)],
             name="idx_meeting_utterances_meeting_sequence_unique",
@@ -212,6 +212,19 @@ class MongoDB:
             background=True,
         )
         logger.info("Created index: idx_meeting_utterances_meeting_sequence_unique")
+
+        # Unique range index for idempotent meeting note chunk persistence
+        await cls.db.meeting_note_chunks.create_index(
+            [
+                ("meeting_id", ASCENDING),
+                ("from_sequence", ASCENDING),
+                ("to_sequence", ASCENDING),
+            ],
+            name="idx_meeting_note_chunks_meeting_range_unique",
+            unique=True,
+            background=True,
+        )
+        logger.info("Created index: idx_meeting_note_chunks_meeting_range_unique")
 
         # Indexes for image_generation_jobs collection
         await cls.db.image_generation_jobs.create_index(

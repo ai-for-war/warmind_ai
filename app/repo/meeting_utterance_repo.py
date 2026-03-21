@@ -30,7 +30,7 @@ class MeetingUtteranceRepository:
         utterance_id: str | None = None,
         created_at: datetime | None = None,
     ) -> MeetingUtterance:
-        """Persist one canonical meeting utterance."""
+        """Persist one canonical meeting utterance idempotently by sequence."""
         normalized_messages = self._normalize_messages(messages)
         document = {
             "_id": utterance_id or uuid4().hex,
@@ -42,7 +42,7 @@ class MeetingUtteranceRepository:
             "created_at": created_at or datetime.now(timezone.utc),
         }
         persisted = await self.collection.find_one_and_update(
-            {"_id": document["_id"]},
+            {"meeting_id": meeting_id, "sequence": sequence},
             {"$setOnInsert": document},
             upsert=True,
             return_document=ReturnDocument.AFTER,

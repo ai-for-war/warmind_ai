@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Literal
 
@@ -22,6 +23,28 @@ class MeetingSchemaBase(BaseModel):
         str_strip_whitespace=True,
         use_enum_values=True,
     )
+
+
+def _normalize_non_empty_text_list(
+    value: Sequence[str] | None,
+    *,
+    field_name: str,
+) -> list[str]:
+    """Normalize persisted note text lists for meeting schemas."""
+    if value is None:
+        return []
+    if isinstance(value, (str, bytes)):
+        raise TypeError(f"{field_name} must be a sequence of strings")
+
+    normalized: list[str] = []
+    for item in value:
+        if not isinstance(item, str):
+            raise TypeError(f"{field_name} must contain only strings")
+        stripped = item.strip()
+        if not stripped:
+            raise ValueError(f"{field_name} entries must not be blank")
+        normalized.append(stripped)
+    return normalized
 
 
 class MeetingRecord(MeetingSchemaBase):
@@ -66,6 +89,59 @@ class MeetingUtteranceRecord(MeetingSchemaBase):
     sequence: int = Field(..., ge=1)
     messages: list[MeetingUtteranceMessageRecord] = Field(..., min_length=1)
     created_at: datetime
+
+
+class MeetingNoteActionItemRecord(MeetingSchemaBase):
+    """Schema representing one structured meeting note action item."""
+
+    text: str = Field(..., min_length=1)
+    owner_text: str | None = None
+    due_text: str | None = None
+
+    @field_validator("owner_text", "due_text", mode="before")
+    @classmethod
+    def normalize_optional_text(cls, value: str | None) -> str | None:
+        """Collapse blank optional values to null for stable transport."""
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
+
+class MeetingNoteChunkRecord(MeetingSchemaBase):
+    """Schema representing one durable structured meeting note chunk."""
+
+    id: str = Field(..., min_length=1)
+    meeting_id: str = Field(..., min_length=1)
+    from_sequence: int = Field(..., ge=1)
+    to_sequence: int = Field(..., ge=1)
+    key_points: list[str] = Field(default_factory=list)
+    decisions: list[str] = Field(default_factory=list)
+    action_items: list[MeetingNoteActionItemRecord] = Field(default_factory=list)
+    created_at: datetime
+
+    @field_validator("key_points", mode="before")
+    @classmethod
+    def normalize_key_points(cls, value: Sequence[str] | None) -> list[str]:
+        """Normalize note key points for transport and persistence."""
+        return _normalize_non_empty_text_list(value, field_name="key_points")
+
+    @field_validator("decisions", mode="before")
+    @classmethod
+    def normalize_decisions(cls, value: Sequence[str] | None) -> list[str]:
+        """Normalize note decisions for transport and persistence."""
+        return _normalize_non_empty_text_list(value, field_name="decisions")
+
+    @model_validator(mode="after")
+    def validate_range_and_content(self) -> "MeetingNoteChunkRecord":
+        """Require a valid note range and at least one visible note item."""
+        if self.from_sequence > self.to_sequence:
+            raise ValueError("from_sequence must be less than or equal to to_sequence")
+        if not self.key_points and not self.decisions and not self.action_items:
+            raise ValueError(
+                "meeting note chunk must include at least one note item"
+            )
+        return self
 
 
 class MeetingStartRequest(MeetingSchemaBase):

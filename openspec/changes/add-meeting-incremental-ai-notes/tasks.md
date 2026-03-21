@@ -1,8 +1,8 @@
 ## 1. Meeting Note Persistence
 
-- [ ] 1.1 Add durable model and schema definitions for `meeting_note_chunks` with `key_points`, `decisions`, and `action_items`
-- [ ] 1.2 Create `meeting_note_chunk` repository methods and unique indexes for `(meeting_id, from_sequence, to_sequence)`
-- [ ] 1.3 Update meeting utterance repository/indexing to guarantee idempotent writes by `(meeting_id, sequence)`
+- [x] 1.1 Add durable model and schema definitions for `meeting_note_chunks` with `key_points`, `decisions`, and `action_items`
+- [x] 1.2 Create `meeting_note_chunk` repository methods and unique indexes for `(meeting_id, from_sequence, to_sequence)`
+- [x] 1.3 Update meeting utterance repository/indexing to guarantee idempotent writes by `(meeting_id, sequence)`
 
 ## 2. Realtime Meeting Session Changes
 
