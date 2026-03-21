@@ -1,12 +1,17 @@
-"""Schemas for durable meeting transcript records."""
+"""Schemas for meeting transcript records and realtime payloads."""
 
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.domain.models.meeting import MeetingStatus
+
+PHASE1_MEETING_ENCODING = "linear16"
+PHASE1_MEETING_SAMPLE_RATE = 16000
+PHASE1_MEETING_CHANNELS = 1
 
 
 class MeetingSchemaBase(BaseModel):
@@ -61,3 +66,62 @@ class MeetingUtteranceRecord(MeetingSchemaBase):
     sequence: int = Field(..., ge=1)
     messages: list[MeetingUtteranceMessageRecord] = Field(..., min_length=1)
     created_at: datetime
+
+
+class MeetingStartedPayload(MeetingSchemaBase):
+    """Payload emitted when a live meeting transcript session starts."""
+
+    stream_id: str = Field(..., min_length=1, max_length=128)
+    meeting_id: str = Field(..., min_length=1, max_length=128)
+    language: str = Field(default="en", min_length=2, max_length=32)
+    encoding: Literal["linear16"] = PHASE1_MEETING_ENCODING
+    sample_rate: Literal[16000] = PHASE1_MEETING_SAMPLE_RATE
+    channels: Literal[1] = PHASE1_MEETING_CHANNELS
+    status: Literal["streaming"] = "streaming"
+
+
+class MeetingFinalPayload(MeetingSchemaBase):
+    """Payload emitted for one finalized realtime transcript fragment."""
+
+    stream_id: str = Field(..., min_length=1, max_length=128)
+    meeting_id: str = Field(..., min_length=1, max_length=128)
+    utterance_id: str = Field(..., min_length=1, max_length=128)
+    messages: list[MeetingUtteranceMessageRecord] = Field(..., min_length=1)
+    is_final: Literal[True] = True
+
+
+class MeetingUtteranceClosedPayload(MeetingSchemaBase):
+    """Payload emitted when one canonical meeting utterance is persisted."""
+
+    stream_id: str = Field(..., min_length=1, max_length=128)
+    meeting_id: str = Field(..., min_length=1, max_length=128)
+    utterance_id: str = Field(..., min_length=1, max_length=128)
+    sequence: int = Field(..., ge=1)
+    messages: list[MeetingUtteranceMessageRecord] = Field(..., min_length=1)
+    created_at: datetime
+
+
+class MeetingCompletedPayload(MeetingSchemaBase):
+    """Payload emitted when a meeting session completes cleanly."""
+
+    stream_id: str = Field(..., min_length=1, max_length=128)
+    meeting_id: str = Field(..., min_length=1, max_length=128)
+    status: Literal["completed"] = "completed"
+
+
+class MeetingInterruptedPayload(MeetingSchemaBase):
+    """Payload emitted when a meeting session ends in interrupted state."""
+
+    stream_id: str = Field(..., min_length=1, max_length=128)
+    meeting_id: str = Field(..., min_length=1, max_length=128)
+    status: Literal["interrupted"] = "interrupted"
+
+
+class MeetingErrorPayload(MeetingSchemaBase):
+    """Payload emitted when a meeting session cannot continue."""
+
+    stream_id: str | None = Field(default=None, min_length=1, max_length=128)
+    meeting_id: str | None = Field(default=None, min_length=1, max_length=128)
+    error_code: str = Field(..., min_length=1, max_length=64)
+    error_message: str = Field(..., min_length=1, max_length=500)
+    retryable: bool = False

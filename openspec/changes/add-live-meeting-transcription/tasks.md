@@ -12,10 +12,10 @@
 
 ## 3. Meeting session core
 
-- [ ] 3.1 Tạo `MeetingSession` với state machine `streaming -> finalizing -> completed|interrupted|failed`
-- [ ] 3.2 Buffer chỉ các final words của meeting và emit `meeting:final` cho frontend, không forward partial transcript
-- [ ] 3.3 Implement thuật toán group final words theo speaker liên tiếp để build `messages[]` canonical
-- [ ] 3.4 Persist `meeting_utterance` chỉ khi nhận `utterance_end`, gán `sequence` tăng dần theo từng meeting
+- [x] 3.1 Tạo `MeetingSession` với state machine `streaming -> finalizing -> completed|interrupted|failed`
+- [x] 3.2 Buffer chỉ các final words của meeting và emit `meeting:final` cho frontend, không forward partial transcript
+- [x] 3.3 Implement thuật toán group final words theo speaker liên tiếp để build `messages[]` canonical
+- [x] 3.4 Persist `meeting_utterance` chỉ khi nhận `utterance_end`, gán `sequence` tăng dần theo từng meeting
 
 ## 4. Session manager và lifecycle cleanup
 
