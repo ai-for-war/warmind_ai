@@ -6,8 +6,15 @@ import contextlib
 import socketio
 from pydantic import ValidationError
 
-from app.common.event_socket import InterviewEvents, STTEvents
+from app.common.event_socket import InterviewEvents, MeetingEvents, STTEvents
 from app.common.repo import get_member_repo
+from app.domain.schemas.meeting import (
+    MeetingAudioMetadata,
+    MeetingErrorPayload,
+    MeetingFinalizeRequest,
+    MeetingStartRequest,
+    MeetingStopRequest,
+)
 from app.domain.schemas.stt import (
     STTAudioMetadata,
     STTErrorPayload,
@@ -17,6 +24,7 @@ from app.domain.schemas.stt import (
 )
 from app.socket_gateway.auth import authenticate
 from app.socket_gateway.manager import get_server_manager
+from app.services.meeting.session import MeetingSessionEvent, MeetingSessionEventKind
 from app.services.stt.session import STTSessionEvent, STTSessionEventKind
 
 # Get Redis manager (may be None if Redis not configured)
@@ -32,6 +40,7 @@ sio = socketio.AsyncServer(
 )
 
 _stt_listener_tasks: dict[str, asyncio.Task[None]] = {}
+_meeting_listener_tasks: dict[str, asyncio.Task[None]] = {}
 
 
 @sio.event
@@ -75,17 +84,33 @@ async def disconnect(sid: str) -> None:
     session = await _get_socket_session(sid)
     user_id = session.get("user_id")
     organization_id = session.get("organization_id")
-    service = _get_stt_service()
+    stt_service = _get_stt_service()
+    meeting_service = _get_meeting_service()
 
-    emitted = await service.handle_disconnect(sid)
-    if user_id:
+    stt_session = stt_service.get_session(sid)
+    stt_org_id = stt_session.organization_id if stt_session is not None else organization_id
+    emitted = await stt_service.handle_disconnect(sid)
+    if user_id and emitted:
         await _emit_stt_session_events(
             user_id=user_id,
-            organization_id=organization_id,
+            organization_id=stt_org_id,
+            events=emitted,
+        )
+
+    meeting_session = meeting_service.get_session(sid)
+    meeting_org_id = (
+        meeting_session.organization_id if meeting_session is not None else organization_id
+    )
+    emitted = await meeting_service.handle_disconnect(sid)
+    if user_id and emitted:
+        await _emit_meeting_session_events(
+            user_id=user_id,
+            organization_id=meeting_org_id,
             events=emitted,
         )
 
     await _cancel_stt_listener(sid)
+    await _cancel_meeting_listener(sid)
 
 
 @sio.on(STTEvents.START)
@@ -227,6 +252,157 @@ async def stt_stop(sid: str, payload: dict) -> None:
     await _cancel_stt_listener(sid)
 
 
+@sio.on(MeetingEvents.START)
+async def meeting_start(sid: str, payload: dict) -> None:
+    user_id = await _get_authenticated_user_id(sid)
+    service = _get_meeting_service()
+
+    try:
+        request = MeetingStartRequest.model_validate(payload)
+        emitted = await service.start_session(
+            sid=sid,
+            user_id=user_id,
+            organization_id=request.organization_id,
+            stream_id=request.stream_id,
+            title=request.title,
+            language=request.language,
+            source=request.source,
+        )
+    except Exception as exc:
+        stream_id = payload.get("stream_id") if isinstance(payload, dict) else None
+        organization_id = (
+            payload.get("organization_id") if isinstance(payload, dict) else None
+        )
+        await _emit_meeting_error(
+            sid=sid,
+            user_id=user_id,
+            organization_id=organization_id,
+            stream_id=stream_id,
+            error=exc,
+        )
+        return
+
+    await _emit_meeting_session_events(
+        user_id=user_id,
+        organization_id=request.organization_id,
+        events=emitted,
+    )
+    _ensure_meeting_listener_task(sid=sid, user_id=user_id)
+
+
+@sio.on(MeetingEvents.AUDIO)
+async def meeting_audio(
+    sid: str,
+    metadata_payload: dict,
+    audio_payload: bytes | bytearray | memoryview,
+) -> None:
+    user_id = await _get_authenticated_user_id(sid)
+    service = _get_meeting_service()
+    active_session = service.get_session(sid)
+    organization_id = (
+        active_session.organization_id if active_session is not None else None
+    )
+
+    try:
+        metadata = MeetingAudioMetadata.model_validate(metadata_payload)
+        if not isinstance(audio_payload, (bytes, bytearray, memoryview)):
+            raise ValueError("Meeting audio payload must be binary")
+
+        emitted = await service.push_audio(
+            sid=sid,
+            stream_id=metadata.stream_id,
+            chunk=bytes(audio_payload),
+        )
+    except Exception as exc:
+        stream_id = (
+            metadata_payload.get("stream_id")
+            if isinstance(metadata_payload, dict)
+            else None
+        )
+        await _emit_meeting_error(
+            sid=sid,
+            user_id=user_id,
+            organization_id=organization_id,
+            stream_id=stream_id,
+            error=exc,
+        )
+        return
+
+    await _emit_meeting_session_events(
+        user_id=user_id,
+        organization_id=organization_id,
+        events=emitted,
+    )
+
+
+@sio.on(MeetingEvents.FINALIZE)
+async def meeting_finalize(sid: str, payload: dict) -> None:
+    user_id = await _get_authenticated_user_id(sid)
+    service = _get_meeting_service()
+    active_session = service.get_session(sid)
+    organization_id = (
+        active_session.organization_id if active_session is not None else None
+    )
+
+    try:
+        request = MeetingFinalizeRequest.model_validate(payload)
+        emitted = await service.finalize_session(
+            sid=sid,
+            stream_id=request.stream_id,
+        )
+    except Exception as exc:
+        stream_id = payload.get("stream_id") if isinstance(payload, dict) else None
+        await _emit_meeting_error(
+            sid=sid,
+            user_id=user_id,
+            organization_id=organization_id,
+            stream_id=stream_id,
+            error=exc,
+        )
+        return
+
+    await _emit_meeting_session_events(
+        user_id=user_id,
+        organization_id=organization_id,
+        events=emitted,
+    )
+    await _cancel_meeting_listener(sid)
+
+
+@sio.on(MeetingEvents.STOP)
+async def meeting_stop(sid: str, payload: dict) -> None:
+    user_id = await _get_authenticated_user_id(sid)
+    service = _get_meeting_service()
+    active_session = service.get_session(sid)
+    organization_id = (
+        active_session.organization_id if active_session is not None else None
+    )
+
+    try:
+        request = MeetingStopRequest.model_validate(payload)
+        emitted = await service.stop_session(
+            sid=sid,
+            stream_id=request.stream_id,
+        )
+    except Exception as exc:
+        stream_id = payload.get("stream_id") if isinstance(payload, dict) else None
+        await _emit_meeting_error(
+            sid=sid,
+            user_id=user_id,
+            organization_id=organization_id,
+            stream_id=stream_id,
+            error=exc,
+        )
+        return
+
+    await _emit_meeting_session_events(
+        user_id=user_id,
+        organization_id=organization_id,
+        events=emitted,
+    )
+    await _cancel_meeting_listener(sid)
+
+
 async def _get_socket_session(sid: str) -> dict:
     try:
         session = await sio.get_session(sid)
@@ -244,6 +420,14 @@ async def _get_stt_identity(sid: str) -> tuple[str, str | None]:
     if organization_id is None:
         organization_id = await _resolve_socket_organization_id(user_id)
     return user_id, organization_id
+
+
+async def _get_authenticated_user_id(sid: str) -> str:
+    socket_session = await _get_socket_session(sid)
+    user_id = socket_session.get("user_id")
+    if not user_id:
+        raise PermissionError("Socket session is not authenticated")
+    return user_id
 
 
 async def _persist_socket_organization_id(
@@ -299,6 +483,24 @@ async def _cancel_stt_listener(sid: str) -> None:
         await task
 
 
+def _ensure_meeting_listener_task(*, sid: str, user_id: str) -> None:
+    existing = _meeting_listener_tasks.get(sid)
+    if existing is not None and not existing.done():
+        return
+    _meeting_listener_tasks[sid] = asyncio.create_task(
+        _run_meeting_listener(sid=sid, user_id=user_id)
+    )
+
+
+async def _cancel_meeting_listener(sid: str) -> None:
+    task = _meeting_listener_tasks.pop(sid, None)
+    if task is None:
+        return
+    task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await task
+
+
 async def _run_stt_listener(*, sid: str, user_id: str) -> None:
     service = _get_stt_service()
     try:
@@ -336,6 +538,36 @@ async def _run_stt_listener(*, sid: str, user_id: str) -> None:
         _stt_listener_tasks.pop(sid, None)
 
 
+async def _run_meeting_listener(*, sid: str, user_id: str) -> None:
+    service = _get_meeting_service()
+    try:
+        while True:
+            session = service.get_session(sid)
+            if session is None:
+                return
+
+            emitted = await service.collect_session_events(
+                sid=sid,
+                wait_for_first=True,
+                timeout_seconds=1.0,
+            )
+            if not emitted:
+                if service.get_session(sid) is None:
+                    return
+                continue
+
+            await _emit_meeting_session_events(
+                user_id=user_id,
+                organization_id=session.organization_id,
+                events=emitted,
+            )
+
+            if service.get_session(sid) is None:
+                return
+    finally:
+        _meeting_listener_tasks.pop(sid, None)
+
+
 async def _emit_stt_session_events(
     *,
     user_id: str,
@@ -355,6 +587,35 @@ async def _emit_stt_session_events(
         STTSessionEventKind.INTERVIEW_ANSWER: InterviewEvents.ANSWER,
         STTSessionEventKind.COMPLETED: STTEvents.COMPLETED,
         STTSessionEventKind.ERROR: STTEvents.ERROR,
+    }
+
+    for event in events:
+        await gateway.emit_to_user(
+            user_id=user_id,
+            event=event_names[event.kind],
+            data=event.payload.model_dump(exclude_none=True, by_alias=True),
+            organization_id=organization_id,
+        )
+
+
+async def _emit_meeting_session_events(
+    *,
+    user_id: str,
+    organization_id: str | None,
+    events: list[MeetingSessionEvent],
+) -> None:
+    if not events:
+        return
+
+    from app.socket_gateway import gateway
+
+    event_names = {
+        MeetingSessionEventKind.STARTED: MeetingEvents.STARTED,
+        MeetingSessionEventKind.FINAL: MeetingEvents.FINAL,
+        MeetingSessionEventKind.UTTERANCE_CLOSED: MeetingEvents.UTTERANCE_CLOSED,
+        MeetingSessionEventKind.COMPLETED: MeetingEvents.COMPLETED,
+        MeetingSessionEventKind.INTERRUPTED: MeetingEvents.INTERRUPTED,
+        MeetingSessionEventKind.ERROR: MeetingEvents.ERROR,
     }
 
     for event in events:
@@ -393,7 +654,46 @@ async def _emit_stt_error(
     )
 
 
+async def _emit_meeting_error(
+    *,
+    sid: str,
+    user_id: str,
+    organization_id: str | None,
+    stream_id: str | None,
+    error: Exception,
+) -> None:
+    from app.socket_gateway import gateway
+
+    session = _get_meeting_service().get_session(sid)
+    meeting_id = None
+    if session is not None and (stream_id is None or session.stream_id == stream_id):
+        meeting_id = session.meeting_id
+    error_message = (
+        "Invalid meeting payload"
+        if isinstance(error, ValidationError)
+        else str(error)
+    )
+    payload = MeetingErrorPayload(
+        stream_id=stream_id,
+        meeting_id=meeting_id,
+        error_code="meeting_request_error",
+        error_message=error_message,
+    )
+    await gateway.emit_to_user(
+        user_id=user_id,
+        event=MeetingEvents.ERROR,
+        data=payload.model_dump(exclude_none=True, by_alias=True),
+        organization_id=organization_id,
+    )
+
+
 def _get_stt_service():
     from app.common.service import get_stt_service
 
     return get_stt_service()
+
+
+def _get_meeting_service():
+    from app.common.service import get_meeting_service
+
+    return get_meeting_service()

@@ -37,6 +37,7 @@ from app.services.auth.auth_service import AuthService
 from app.services.image.image_service import ImageService
 from app.services.image.image_generation_service import ImageGenerationService
 from app.services.interview.answer_service import InterviewAnswerService
+from app.services.meeting.meeting_service import MeetingService
 from app.services.meeting.session_manager import MeetingSessionManager
 from app.services.organization.organization_service import OrganizationService
 from app.services.sheet_crawler.crawler_service import SheetCrawlerService
@@ -242,6 +243,15 @@ def get_meeting_session_manager() -> MeetingSessionManager:
         deepgram_client_factory=get_meeting_deepgram_live_client,
         meeting_repo=get_meeting_repo(),
         utterance_repo=get_meeting_utterance_repo(),
+    )
+
+
+@lru_cache
+def get_meeting_service() -> MeetingService:
+    """Get singleton meeting transcription service instance."""
+    return MeetingService(
+        session_manager=get_meeting_session_manager(),
+        member_repo=get_member_repo(),
     )
 
 

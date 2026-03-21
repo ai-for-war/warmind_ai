@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.domain.models.meeting import MeetingStatus
 
@@ -66,6 +66,59 @@ class MeetingUtteranceRecord(MeetingSchemaBase):
     sequence: int = Field(..., ge=1)
     messages: list[MeetingUtteranceMessageRecord] = Field(..., min_length=1)
     created_at: datetime
+
+
+class MeetingStartRequest(MeetingSchemaBase):
+    """Payload for `meeting:start` requests."""
+
+    organization_id: str = Field(..., min_length=1, max_length=128)
+    stream_id: str = Field(..., min_length=1, max_length=128)
+    title: str | None = None
+    language: str | None = Field(default=None, min_length=2, max_length=32)
+    source: Literal["google_meet"] = "google_meet"
+    encoding: Literal["linear16"] = PHASE1_MEETING_ENCODING
+    sample_rate: Literal[16000] = PHASE1_MEETING_SAMPLE_RATE
+    channels: Literal[1] = PHASE1_MEETING_CHANNELS
+
+    @field_validator("language")
+    @classmethod
+    def normalize_language(cls, value: str | None) -> str | None:
+        """Normalize language values before provider-level validation."""
+        if value is None:
+            return None
+        normalized = value.strip().lower()
+        return normalized or None
+
+
+class MeetingAudioMetadata(MeetingSchemaBase):
+    """Metadata accompanying a binary `meeting:audio` payload."""
+
+    stream_id: str = Field(..., min_length=1, max_length=128)
+    encoding: Literal["linear16"] = PHASE1_MEETING_ENCODING
+    sample_rate: Literal[16000] = PHASE1_MEETING_SAMPLE_RATE
+    channels: Literal[1] = PHASE1_MEETING_CHANNELS
+    sequence: int = Field(
+        ...,
+        ge=0,
+        description="Client-maintained monotonic frame sequence per stream.",
+    )
+    timestamp_ms: int | None = Field(
+        default=None,
+        ge=0,
+        description="Optional client capture timestamp in milliseconds.",
+    )
+
+
+class MeetingFinalizeRequest(MeetingSchemaBase):
+    """Payload for `meeting:finalize` requests."""
+
+    stream_id: str = Field(..., min_length=1, max_length=128)
+
+
+class MeetingStopRequest(MeetingSchemaBase):
+    """Payload for `meeting:stop` requests."""
+
+    stream_id: str = Field(..., min_length=1, max_length=128)
 
 
 class MeetingStartedPayload(MeetingSchemaBase):

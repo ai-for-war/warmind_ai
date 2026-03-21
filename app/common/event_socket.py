@@ -50,6 +50,21 @@ class STTEvents:
     ERROR = "stt:error"
 
 
+class MeetingEvents:
+    """Socket events for live meeting transcription over Socket.IO."""
+
+    START = "meeting:start"
+    AUDIO = "meeting:audio"
+    FINALIZE = "meeting:finalize"
+    STOP = "meeting:stop"
+    STARTED = "meeting:started"
+    FINAL = "meeting:final"
+    UTTERANCE_CLOSED = "meeting:utterance_closed"
+    COMPLETED = "meeting:completed"
+    INTERRUPTED = "meeting:interrupted"
+    ERROR = "meeting:error"
+
+
 class InterviewEvents:
     """Socket events for interview-specific realtime flows."""
 

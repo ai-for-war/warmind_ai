@@ -26,9 +26,9 @@
 
 ## 5. Socket contract và service wiring
 
-- [ ] 5.1 Thêm event constants và payload schema cho `meeting:start`, `meeting:audio`, `meeting:finalize`, `meeting:stop`
-- [ ] 5.2 Tạo `MeetingService` và đăng ký handlers Socket.IO để khởi tạo session từ user/socket/organization đã xác thực
-- [ ] 5.3 Emit đầy đủ các outbound event `meeting:started`, `meeting:final`, `meeting:utterance_closed`, `meeting:completed`, `meeting:interrupted`, `meeting:error`
+- [x] 5.1 Thêm event constants và payload schema cho `meeting:start`, `meeting:audio`, `meeting:finalize`, `meeting:stop`
+- [x] 5.2 Tạo `MeetingService` và đăng ký handlers Socket.IO để khởi tạo session từ user/socket/organization đã xác thực
+- [x] 5.3 Emit đầy đủ các outbound event `meeting:started`, `meeting:final`, `meeting:utterance_closed`, `meeting:completed`, `meeting:interrupted`, `meeting:error`
 
 ## 6. Kiểm thử và xác minh
 
