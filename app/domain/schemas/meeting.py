@@ -187,7 +187,7 @@ class MeetingStartRequest(MeetingSchemaBase):
     stream_id: str = Field(..., min_length=1, max_length=128)
     title: str | None = None
     language: str | None = Field(default=None, min_length=2, max_length=32)
-    source: Literal["google_meet"] = "google_meet"
+    source: str = Field(default="google_meet", min_length=1, max_length=64)
     encoding: Literal["linear16"] = PHASE1_MEETING_ENCODING
     sample_rate: Literal[16000] = PHASE1_MEETING_SAMPLE_RATE
     channels: Literal[1] = PHASE1_MEETING_CHANNELS
@@ -200,6 +200,15 @@ class MeetingStartRequest(MeetingSchemaBase):
             return None
         normalized = value.strip().lower()
         return normalized or None
+
+    @field_validator("source")
+    @classmethod
+    def normalize_source(cls, value: str | None) -> str:
+        """Allow arbitrary source values while preserving the default."""
+        if value is None:
+            return "google_meet"
+        normalized = value.strip().lower()
+        return normalized or "google_meet"
 
 
 class MeetingAudioMetadata(MeetingSchemaBase):
