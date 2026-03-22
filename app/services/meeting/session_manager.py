@@ -19,7 +19,11 @@ from app.common.exceptions import (
     STTStreamOwnershipError,
 )
 from app.domain.models.meeting import MeetingStatus
-from app.domain.schemas.meeting import MeetingErrorPayload
+from app.domain.schemas.meeting import (
+    MeetingErrorPayload,
+    MeetingNoteTerminalTask,
+    MeetingNoteUtteranceClosedTask,
+)
 from app.infrastructure.deepgram.client import (
     DeepgramLiveClient,
     ProviderEvent,
@@ -34,9 +38,6 @@ from app.services.meeting.session import (
 )
 
 logger = logging.getLogger(__name__)
-
-_UTTERANCE_CLOSED_TASK_KIND = "utterance_closed"
-_MEETING_TERMINAL_TASK_KIND = "meeting_terminal"
 
 
 class MeetingSessionManager:
@@ -451,20 +452,20 @@ class MeetingSessionManager:
 
             enqueued = await self._meeting_note_queue.enqueue(
                 self._meeting_note_queue_name,
-                task_payload,
+                task_payload.model_dump(mode="json", exclude_none=True),
             )
             if enqueued:
                 continue
 
             logger.error(
                 "Failed to enqueue meeting background task %s for meeting %s",
-                task_payload["kind"],
-                task_payload["meeting_id"],
+                task_payload.kind,
+                task_payload.meeting_id,
             )
             processed.append(
                 self._build_enqueue_error_event(
                     session,
-                    task_kind=str(task_payload["kind"]),
+                    task_kind=task_payload.kind,
                 )
             )
         return processed
@@ -473,32 +474,29 @@ class MeetingSessionManager:
         self,
         session: MeetingSession,
         event: MeetingSessionEvent,
-    ) -> dict[str, object] | None:
+    ) -> MeetingNoteUtteranceClosedTask | MeetingNoteTerminalTask | None:
         if event.kind == MeetingSessionEventKind.UTTERANCE_CLOSED:
-            payload = event.payload.model_dump(mode="json")
-            return {
-                "kind": _UTTERANCE_CLOSED_TASK_KIND,
-                "organization_id": session.organization_id,
-                "created_by_user_id": session.user_id,
-                "retry_count": 0,
-                **payload,
-            }
+            return MeetingNoteUtteranceClosedTask(
+                organization_id=session.organization_id,
+                created_by_user_id=session.user_id,
+                retry_count=0,
+                **event.payload.model_dump(mode="json"),
+            )
 
         if event.kind in {
             MeetingSessionEventKind.COMPLETED,
             MeetingSessionEventKind.INTERRUPTED,
         }:
             payload = event.payload.model_dump(mode="json")
-            return {
-                "kind": _MEETING_TERMINAL_TASK_KIND,
-                "organization_id": session.organization_id,
-                "created_by_user_id": session.user_id,
-                "stream_id": session.stream_id,
-                "meeting_id": payload["meeting_id"],
-                "status": payload["status"],
-                "final_sequence": session.last_allocated_sequence,
-                "retry_count": 0,
-            }
+            return MeetingNoteTerminalTask(
+                organization_id=session.organization_id,
+                created_by_user_id=session.user_id,
+                stream_id=session.stream_id,
+                meeting_id=payload["meeting_id"],
+                status=payload["status"],
+                final_sequence=session.last_allocated_sequence,
+                retry_count=0,
+            )
 
         return None
 

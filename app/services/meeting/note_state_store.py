@@ -111,6 +111,13 @@ class RedisMeetingNoteStateStore:
             raise ValueError("status must be a terminal meeting status")
 
         existing_state = await self.get_note_state(meeting_id=meeting_id)
+        existing_final_sequence = (
+            existing_state.final_sequence if existing_state is not None else None
+        )
+        resolved_final_sequence = max(
+            final_sequence,
+            existing_final_sequence or 0,
+        )
         validated_state = MeetingNoteState(
             meeting_id=meeting_id,
             organization_id=organization_id,
@@ -121,7 +128,7 @@ class RedisMeetingNoteStateStore:
                 if existing_state is not None
                 else 0
             ),
-            final_sequence=final_sequence,
+            final_sequence=resolved_final_sequence,
         )
         note_state_key = self.note_state_key(meeting_id)
         pipeline = self.redis.pipeline(transaction=True)

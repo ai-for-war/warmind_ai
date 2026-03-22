@@ -4,9 +4,16 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    TypeAdapter,
+    field_validator,
+    model_validator,
+)
 
 from app.domain.models.meeting import MeetingStatus
 
@@ -144,6 +151,31 @@ class MeetingNoteChunkRecord(MeetingSchemaBase):
         return self
 
 
+class MeetingGeneratedNoteBatch(MeetingSchemaBase):
+    """Structured AI output for one processed meeting note batch."""
+
+    key_points: list[str] = Field(default_factory=list)
+    decisions: list[str] = Field(default_factory=list)
+    action_items: list[MeetingNoteActionItemRecord] = Field(default_factory=list)
+
+    @field_validator("key_points", mode="before")
+    @classmethod
+    def normalize_key_points(cls, value: Sequence[str] | None) -> list[str]:
+        """Normalize generated key points for stable downstream handling."""
+        return _normalize_non_empty_text_list(value, field_name="key_points")
+
+    @field_validator("decisions", mode="before")
+    @classmethod
+    def normalize_decisions(cls, value: Sequence[str] | None) -> list[str]:
+        """Normalize generated decisions for stable downstream handling."""
+        return _normalize_non_empty_text_list(value, field_name="decisions")
+
+    @property
+    def is_empty(self) -> bool:
+        """Return whether AI produced no note-worthy content for the batch."""
+        return not self.key_points and not self.decisions and not self.action_items
+
+
 class MeetingStartRequest(MeetingSchemaBase):
     """Payload for `meeting:start` requests."""
 
@@ -260,7 +292,7 @@ class MeetingNoteState(MeetingSchemaBase):
     created_by_user_id: str = Field(..., min_length=1, max_length=128)
     status: MeetingStatus = MeetingStatus.STREAMING
     last_summarized_sequence: int = Field(default=0, ge=0)
-    final_sequence: int | None = Field(default=None, ge=1)
+    final_sequence: int | None = Field(default=None, ge=0)
 
     @model_validator(mode="after")
     def validate_sequence_bounds(self) -> "MeetingNoteState":
@@ -274,6 +306,30 @@ class MeetingNoteState(MeetingSchemaBase):
                 "last_summarized_sequence"
             )
         return self
+
+
+class MeetingNoteUtteranceClosedTask(MeetingUtteranceClosedPayload):
+    """Queue contract for one closed meeting utterance task."""
+
+    kind: Literal["utterance_closed"] = "utterance_closed"
+    organization_id: str = Field(..., min_length=1, max_length=128)
+    created_by_user_id: str = Field(..., min_length=1, max_length=128)
+    retry_count: int = Field(default=0, ge=0)
+    queued_at: datetime | None = None
+
+
+class MeetingNoteTerminalTask(MeetingSchemaBase):
+    """Queue contract for one meeting terminal tail-flush task."""
+
+    kind: Literal["meeting_terminal"] = "meeting_terminal"
+    organization_id: str = Field(..., min_length=1, max_length=128)
+    created_by_user_id: str = Field(..., min_length=1, max_length=128)
+    stream_id: str = Field(..., min_length=1, max_length=128)
+    meeting_id: str = Field(..., min_length=1, max_length=128)
+    status: Literal["completed", "interrupted"]
+    final_sequence: int = Field(..., ge=0)
+    retry_count: int = Field(default=0, ge=0)
+    queued_at: datetime | None = None
 
 
 class MeetingCompletedPayload(MeetingSchemaBase):
@@ -300,3 +356,16 @@ class MeetingErrorPayload(MeetingSchemaBase):
     error_code: str = Field(..., min_length=1, max_length=64)
     error_message: str = Field(..., min_length=1, max_length=500)
     retryable: bool = False
+
+
+MeetingNoteTask = Annotated[
+    MeetingNoteUtteranceClosedTask | MeetingNoteTerminalTask,
+    Field(discriminator="kind"),
+]
+
+_MEETING_NOTE_TASK_ADAPTER = TypeAdapter(MeetingNoteTask)
+
+
+def parse_meeting_note_task(value: object) -> MeetingNoteTask:
+    """Parse one queued meeting note task into its typed contract."""
+    return _MEETING_NOTE_TASK_ADAPTER.validate_python(value)

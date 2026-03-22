@@ -18,12 +18,12 @@
 
 ## 4. Background Worker And Note Generation
 
-- [ ] 4.1 Add a meeting note queue payload contract for `utterance_closed` and `meeting_terminal` tasks
-- [ ] 4.2 Implement a meeting note worker that persists queued utterances and stages unsummarized state in Redis
-- [ ] 4.3 Implement contiguous batch selection rules for `7` utterances plus terminal tail flush based on `final_sequence`
-- [ ] 4.4 Implement AI note generation and structured parsing for `key_points`, `decisions`, and `action_items` with `owner_text` and `due_text`
-- [ ] 4.5 Implement empty-batch handling that advances the summarized watermark and removes consumed Redis state without persisting or emitting a note chunk
-- [ ] 4.6 Persist note chunks idempotently and clean up consumed Redis state after each processed batch
+- [x] 4.1 Add a meeting note queue payload contract for `utterance_closed` and `meeting_terminal` tasks
+- [x] 4.2 Implement a meeting note worker that persists queued utterances and stages unsummarized state in Redis
+- [x] 4.3 Implement contiguous batch selection rules for `7` utterances plus terminal tail flush based on `final_sequence`
+- [x] 4.4 Implement AI note generation and structured parsing for `key_points`, `decisions`, and `action_items` with `owner_text` and `due_text`
+- [x] 4.5 Implement empty-batch handling that advances the summarized watermark and removes consumed Redis state without persisting or emitting a note chunk
+- [x] 4.6 Persist note chunks idempotently and clean up consumed Redis state after each processed batch
 
 ## 5. Realtime Note Delivery And Service Wiring
 
