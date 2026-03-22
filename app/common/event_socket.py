@@ -60,6 +60,7 @@ class MeetingEvents:
     STARTED = "meeting:started"
     FINAL = "meeting:final"
     UTTERANCE_CLOSED = "meeting:utterance_closed"
+    NOTE_CREATED = "meeting:note:created"
     COMPLETED = "meeting:completed"
     INTERRUPTED = "meeting:interrupted"
     ERROR = "meeting:error"

@@ -10,6 +10,10 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from app.common.service import (
+    get_meeting_note_processing_service,
+    get_meeting_note_queue,
+)
 from app.config.settings import get_settings
 from app.domain.schemas.meeting import (
     MeetingNoteTask,
@@ -19,14 +23,10 @@ from app.domain.schemas.meeting import (
 from app.infrastructure.database.mongodb import MongoDB
 from app.infrastructure.redis.client import RedisClient
 from app.infrastructure.redis.redis_queue import RedisQueue
-from app.repo.meeting_note_chunk_repo import MeetingNoteChunkRepository
-from app.repo.meeting_utterance_repo import MeetingUtteranceRepository
-from app.services.meeting.note_generation_service import MeetingNoteGenerationService
 from app.services.meeting.note_processing_service import (
     MeetingNoteProcessingResult,
     MeetingNoteProcessingService,
 )
-from app.services.meeting.note_state_store import RedisMeetingNoteStateStore
 
 logger = logging.getLogger(__name__)
 
@@ -46,19 +46,13 @@ class MeetingNoteWorker:
     @property
     def queue(self) -> RedisQueue:
         if self._queue is None:
-            self._queue = RedisQueue(RedisClient.get_client())
+            self._queue = get_meeting_note_queue()
         return self._queue
 
     @property
     def processor(self) -> MeetingNoteProcessingService:
         if self._processor is None:
-            db = MongoDB.get_db()
-            self._processor = MeetingNoteProcessingService(
-                note_state_store=RedisMeetingNoteStateStore(RedisClient.get_client()),
-                utterance_repo=MeetingUtteranceRepository(db),
-                note_chunk_repo=MeetingNoteChunkRepository(db),
-                note_generation_service=MeetingNoteGenerationService(),
-            )
+            self._processor = get_meeting_note_processing_service()
         return self._processor
 
     async def process_task(self, task: MeetingNoteTask) -> MeetingNoteProcessingResult:

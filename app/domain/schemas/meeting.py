@@ -151,6 +151,10 @@ class MeetingNoteChunkRecord(MeetingSchemaBase):
         return self
 
 
+class MeetingNoteCreatedPayload(MeetingNoteChunkRecord):
+    """Payload emitted when one structured meeting note chunk is created."""
+
+
 class MeetingGeneratedNoteBatch(MeetingSchemaBase):
     """Structured AI output for one processed meeting note batch."""
 

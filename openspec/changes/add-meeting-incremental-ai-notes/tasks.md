@@ -27,9 +27,9 @@
 
 ## 5. Realtime Note Delivery And Service Wiring
 
-- [ ] 5.1 Add additive meeting note event constants and payload schemas for note chunk creation
-- [ ] 5.2 Emit note chunk events from the worker only to the meeting creator using the existing worker socket gateway
-- [ ] 5.3 Wire meeting note queue, Redis helpers, repositories, and worker dependencies into the shared service factory/container
+- [x] 5.1 Add additive meeting note event constants and payload schemas for note chunk creation
+- [x] 5.2 Emit note chunk events from the worker only to the meeting creator using the existing worker socket gateway
+- [x] 5.3 Wire meeting note queue, Redis helpers, repositories, and worker dependencies into the shared service factory/container
 
 ## 6. Verification
 
