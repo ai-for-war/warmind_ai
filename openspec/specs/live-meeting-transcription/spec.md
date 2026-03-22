@@ -8,145 +8,179 @@ storage.
 
 ## Requirements
 
-### Requirement: Phiên meeting transcription chạy trên Socket.IO đã xác thực và gắn với organization
-Hệ thống SHALL cung cấp meeting transcription realtime trên kết nối Socket.IO đã xác thực hiện có. Mỗi phiên meeting transcription MUST được gắn với đúng user khởi tạo, đúng socket khởi tạo, và đúng `organization_id` được gửi tại thời điểm bắt đầu phiên.
+### Requirement: Meeting transcription sessions run on authenticated Socket.IO connections scoped to an organization
+The system SHALL provide realtime meeting transcription on the existing
+authenticated Socket.IO connection. Each meeting transcription session MUST be
+bound to the initiating user, the initiating socket, and the `organization_id`
+provided when the meeting starts.
 
-#### Scenario: Bắt đầu một phiên meeting transcription hợp lệ
-- **WHEN** một client đã xác thực phát `meeting:start` với `organization_id` và `stream_id` hợp lệ
-- **THEN** hệ thống tạo một phiên meeting transcription mới gắn với socket đó
-- **AND** hệ thống ràng buộc phiên đó với user hiện tại và organization đã khai báo
+#### Scenario: Start a valid meeting transcription session
+- **WHEN** an authenticated client emits `meeting:start` with a valid `organization_id` and `stream_id`
+- **THEN** the system creates a new meeting transcription session bound to that socket
+- **AND** the system binds the session to the current user and declared organization
 
-#### Scenario: Từ chối yêu cầu thiếu ngữ cảnh xác thực hoặc organization
-- **WHEN** một client chưa xác thực hoặc không gửi `organization_id` hợp lệ cố gắng phát `meeting:start`
-- **THEN** hệ thống MUST từ chối tạo phiên meeting transcription
+#### Scenario: Reject a start request without authentication or organization context
+- **WHEN** an unauthenticated client or a client without a valid `organization_id` attempts to emit `meeting:start`
+- **THEN** the system MUST reject creation of the meeting transcription session
 
-### Requirement: Meeting được tạo như một transcript session bền vững với title tùy chọn
-Hệ thống SHALL tạo một record `meeting` bền vững khi phiên meeting transcription bắt đầu. Record này MUST lưu tối thiểu `organization_id`, `created_by`, `stream_id`, trạng thái vòng đời, và title tùy chọn.
+### Requirement: Meetings are created as durable transcript sessions with an optional title
+The system SHALL create a durable `meeting` record when a meeting
+transcription session starts. The record MUST store at least
+`organization_id`, `created_by`, `stream_id`, lifecycle state, and an optional
+title.
 
-#### Scenario: Tạo meeting không có title
-- **WHEN** client bắt đầu meeting transcription mà không truyền title
-- **THEN** hệ thống vẫn MUST tạo record `meeting`
-- **AND** title của meeting MUST được lưu dưới dạng rỗng hoặc `null`
+#### Scenario: Create a meeting without a title
+- **WHEN** the client starts meeting transcription without providing a title
+- **THEN** the system MUST still create the `meeting` record
+- **AND** the meeting title MUST be stored as empty or `null`
 
-#### Scenario: Tạo meeting với title được cung cấp sẵn
-- **WHEN** client bắt đầu meeting transcription với title hợp lệ
-- **THEN** hệ thống tạo record `meeting`
-- **AND** hệ thống lưu title đó cùng meeting record
+#### Scenario: Create a meeting with a provided title
+- **WHEN** the client starts meeting transcription with a valid title
+- **THEN** the system creates the `meeting` record
+- **AND** the system stores that title with the meeting record
 
-### Requirement: Audio đầu vào của meeting là PCM16 16kHz một kênh
-Hệ thống SHALL chấp nhận audio browser được stream theo cùng kiểu truyền dữ liệu như luồng interview hiện tại, nhưng đối với capability meeting phase 1, audio MUST là raw `PCM16`, `16kHz`, `1-channel`.
+### Requirement: Meeting input audio is PCM16 16kHz mono
+The system SHALL accept browser audio streamed using the same transmission
+style as the current interview flow, but for meeting phase 1 the audio MUST be
+raw `PCM16`, `16kHz`, `1-channel`.
 
-#### Scenario: Chấp nhận chunk audio hợp lệ cho meeting
-- **WHEN** client phát `meeting:audio` cho một phiên đang hoạt động với audio `PCM16`, `16kHz`, `1-channel`
-- **THEN** hệ thống chấp nhận chunk đó và tiếp tục xử lý transcript
+#### Scenario: Accept a valid meeting audio chunk
+- **WHEN** the client emits `meeting:audio` for an active session with audio encoded as `PCM16`, `16kHz`, `1-channel`
+- **THEN** the system accepts that chunk and continues transcript processing
 
-#### Scenario: Từ chối cấu hình audio không hỗ trợ
-- **WHEN** client cố gắng bắt đầu hoặc gửi audio meeting với encoding, sample rate, hoặc số channel không đúng contract
-- **THEN** hệ thống MUST từ chối yêu cầu với lỗi meeting transcription phù hợp
+#### Scenario: Reject unsupported audio configuration
+- **WHEN** the client attempts to start or send meeting audio with the wrong encoding, sample rate, or channel count
+- **THEN** the system MUST reject the request with an appropriate meeting transcription error
 
-### Requirement: Mỗi socket chỉ có tối đa một phiên meeting transcription đang hoạt động
-Hệ thống SHALL cho phép tối đa một phiên meeting transcription đang hoạt động trên mỗi socket trong phase 1.
+### Requirement: Each socket has at most one active meeting transcription session
+The system SHALL allow at most one active meeting transcription session per
+socket in phase 1.
 
-#### Scenario: Bắt đầu phiên đầu tiên trên socket
-- **WHEN** một socket chưa có phiên meeting transcription đang hoạt động phát `meeting:start`
-- **THEN** hệ thống bắt đầu phiên mới và đánh dấu đó là phiên đang hoạt động của socket
+#### Scenario: Start the first meeting session on a socket
+- **WHEN** a socket without an active meeting transcription session emits `meeting:start`
+- **THEN** the system starts the new session and marks it as the active session for that socket
 
-#### Scenario: Từ chối phiên thứ hai trên cùng socket
-- **WHEN** một socket đã có phiên meeting transcription đang hoạt động phát thêm một `meeting:start`
-- **THEN** hệ thống MUST từ chối yêu cầu mới
-- **AND** hệ thống MUST giữ nguyên phiên đang hoạt động ban đầu
+#### Scenario: Reject a second meeting session on the same socket
+- **WHEN** a socket that already has an active meeting transcription session emits another `meeting:start`
+- **THEN** the system MUST reject the new request
+- **AND** the system MUST keep the original active session unchanged
 
-### Requirement: Quyền sở hữu stream được ràng buộc với socket đã khởi tạo
-Hệ thống SHALL ràng buộc mọi audio event và control event của meeting transcription với socket đã tạo phiên. Audio hoặc control event cho một stream MUST chỉ được chấp nhận từ socket sở hữu stream đó.
+### Requirement: Stream ownership is bound to the initiating socket
+The system SHALL bind all meeting transcription audio events and control
+events to the socket that created the session. Audio or control events for a
+stream MUST only be accepted from the socket that owns that stream.
 
-#### Scenario: Chấp nhận audio và finalize từ socket sở hữu stream
-- **WHEN** socket đã tạo phiên meeting phát `meeting:audio` hoặc `meeting:finalize` cho đúng `stream_id`
-- **THEN** hệ thống xử lý yêu cầu cho phiên đang hoạt động tương ứng
+#### Scenario: Accept audio and finalize from the owning socket
+- **WHEN** the socket that created the meeting emits `meeting:audio` or `meeting:finalize` for the correct `stream_id`
+- **THEN** the system processes the request for the corresponding active session
 
-#### Scenario: Từ chối control event từ socket khác
-- **WHEN** một socket khác cố gắng gửi audio hoặc finalize cho `stream_id` mà nó không sở hữu
-- **THEN** hệ thống MUST từ chối yêu cầu đó
-- **AND** hệ thống MUST NOT thay đổi trạng thái của phiên gốc
+#### Scenario: Reject control events from another socket
+- **WHEN** a different socket attempts to send audio or finalize for a `stream_id` it does not own
+- **THEN** the system MUST reject that request
+- **AND** the system MUST NOT change the state of the original session
 
-### Requirement: Hệ thống phải dùng Deepgram live transcription với diarization cho audio trộn một kênh
-Hệ thống SHALL forward audio meeting hợp lệ tới Deepgram live transcription. Đối với capability meeting phase 1, hệ thống MUST cấu hình provider để xử lý audio trộn `1-channel` và trả về dữ liệu đủ để nhận diện speaker theo word-level diarization.
+### Requirement: The system uses Deepgram live transcription with diarization for mixed mono audio
+The system SHALL forward valid meeting audio to Deepgram live transcription.
+For meeting phase 1, the system MUST configure the provider to process mixed
+`1-channel` audio and return enough word-level data to identify speakers.
 
-#### Scenario: Forward audio meeting tới provider
-- **WHEN** hệ thống nhận chunk audio hợp lệ cho một phiên meeting đang hoạt động
-- **THEN** hệ thống stream chunk đó tới Deepgram live transcription connection của phiên đó
+#### Scenario: Forward meeting audio to the provider
+- **WHEN** the system receives a valid audio chunk for an active meeting session
+- **THEN** the system streams that chunk to the meeting session's Deepgram live transcription connection
 
-#### Scenario: Giữ được dữ liệu speaker ở mức word cho một phiên meeting
-- **WHEN** Deepgram trả về transcript final cho audio meeting đang hoạt động
-- **THEN** hệ thống MUST giữ được dữ liệu word-level cần thiết để xác định speaker cho từng từ trong bộ đệm realtime của phiên
+#### Scenario: Keep word-level speaker information for a meeting session
+- **WHEN** Deepgram returns final transcript data for active meeting audio
+- **THEN** the system MUST retain the word-level speaker data needed to determine the speaker for each word in the session's realtime buffer
 
-### Requirement: Frontend chỉ nhận transcript realtime ở mức final và utterance đã đóng
-Hệ thống SHALL stream transcript realtime cho frontend ở phase 1 chỉ bằng các final transcript fragment và các utterance đã đóng. Hệ thống MUST NOT phát transcript partial cho capability meeting.
+### Requirement: Frontend only receives final realtime transcript updates and closed utterances
+The system SHALL stream realtime meeting transcript updates to the frontend in
+phase 1 using only final transcript fragments and closed utterances. The
+system MUST NOT emit partial transcript updates for meetings.
 
-#### Scenario: Emit final transcript fragment cho frontend
-- **WHEN** Deepgram trả về một transcript fragment với trạng thái final cho phiên meeting đang hoạt động
-- **THEN** hệ thống phát event realtime final tương ứng về frontend để giao diện có thể hiển thị ngay
+#### Scenario: Emit a final transcript fragment to the frontend
+- **WHEN** Deepgram returns a final transcript fragment for an active meeting session
+- **THEN** the system emits the corresponding realtime final event to the frontend so the UI can display it immediately
 
-#### Scenario: Không emit partial transcript cho meeting
-- **WHEN** provider trả về transcript interim hoặc partial cho phiên meeting
-- **THEN** hệ thống MUST NOT phát event partial transcript cho frontend của capability meeting
+#### Scenario: Do not emit partial transcript for meetings
+- **WHEN** the provider returns an interim or partial transcript for a meeting session
+- **THEN** the system MUST NOT emit a partial transcript event for the meeting capability
 
-### Requirement: Utterance ổn định chỉ được đóng khi provider phát tín hiệu utterance_end
-Hệ thống SHALL chỉ coi một meeting utterance là ổn định khi provider phát tín hiệu `utterance_end` cho phần transcript final đang được tích lũy.
+### Requirement: Stable utterances close only when the provider emits utterance_end
+The system SHALL treat a meeting utterance as stable only when the provider
+emits `utterance_end` for the accumulated final transcript region. At that
+moment, the system MUST allocate the next meeting-local sequence, emit the
+canonical closed utterance payload, and enqueue that utterance for
+asynchronous background persistence and note processing.
 
-#### Scenario: Đóng utterance khi provider phát utterance_end
-- **WHEN** hệ thống đã tích lũy được final words cho một utterance đang mở
-- **AND** Deepgram phát tín hiệu `utterance_end` cho vùng transcript đó
-- **THEN** hệ thống đóng utterance hiện tại
-- **AND** hệ thống chuẩn bị persist utterance đó như một record bền vững
+#### Scenario: Close and enqueue an utterance when provider emits utterance_end
+- **WHEN** the system has accumulated final words for an open meeting utterance
+- **AND** Deepgram emits `utterance_end` for that transcript region
+- **THEN** the system closes the current utterance
+- **AND** the system assigns the next `sequence` for that meeting
+- **AND** the system emits the canonical closed utterance payload
+- **AND** the system enqueues the utterance for asynchronous persistence and downstream note processing
 
-#### Scenario: Không persist utterance trước khi có utterance_end
-- **WHEN** hệ thống mới chỉ nhận được final transcript fragment nhưng chưa nhận `utterance_end`
-- **THEN** hệ thống MUST NOT persist meeting utterance đó xuống durable storage
+#### Scenario: Do not enqueue a stable utterance before utterance_end
+- **WHEN** the system has only received final transcript fragments but has not yet received `utterance_end`
+- **THEN** the system MUST NOT enqueue a stable meeting utterance task
 
-### Requirement: Meeting utterance được lưu dưới dạng messages nhóm theo speaker liên tiếp
-Hệ thống SHALL xây dựng `messages[]` của mỗi `meeting_utterance` bằng cách nhóm các final words liên tiếp có cùng speaker. Mỗi message MUST chứa `speaker_index`, `speaker_label`, và `text`.
+### Requirement: Meeting utterances are stored as speaker-grouped messages
+The system SHALL build `messages[]` for each `meeting_utterance` by grouping
+consecutive final words that belong to the same speaker. Each message MUST
+contain `speaker_index`, `speaker_label`, and `text`.
 
-#### Scenario: Tạo một message khi các word liên tiếp thuộc cùng speaker
-- **WHEN** các final words liên tiếp trong một utterance đều thuộc cùng một speaker
-- **THEN** hệ thống gộp các word đó thành một message duy nhất trong `messages[]`
+#### Scenario: Create one message when consecutive words belong to the same speaker
+- **WHEN** consecutive final words within an utterance all belong to the same speaker
+- **THEN** the system groups those words into one message in `messages[]`
 
-#### Scenario: Tách thành nhiều message khi speaker thay đổi trong cùng utterance
-- **WHEN** speaker thay đổi bên trong cùng một utterance đã đóng
-- **THEN** hệ thống MUST tạo nhiều message theo đúng thứ tự xuất hiện của speaker
-- **AND** mỗi message MUST giữ `speaker_index` theo provider
-- **AND** mỗi message MUST có `speaker_label` dạng `speaker_<n>` để frontend sử dụng
+#### Scenario: Split into multiple messages when the speaker changes within an utterance
+- **WHEN** the speaker changes inside the same closed utterance
+- **THEN** the system MUST create multiple messages in the original order
+- **AND** each message MUST keep the provider `speaker_index`
+- **AND** each message MUST provide a `speaker_label` in the form `speaker_<n>` for frontend use
 
-### Requirement: Durable storage của utterance chỉ lưu dữ liệu transcript đã chuẩn hóa
-Hệ thống SHALL persist mỗi `meeting_utterance` chỉ với dữ liệu transcript đã chuẩn hóa phục vụ product behavior. Record utterance MUST tham chiếu `meeting_id`, có `sequence` tăng dần, và lưu `messages[]`. Hệ thống MUST NOT lưu file audio, raw word payload bền vững, partial transcript, hoặc một trường transcript phẳng ở mức utterance.
+### Requirement: Durable utterance storage keeps only normalized transcript data
+The system SHALL persist each `meeting_utterance` asynchronously from the
+queued closed-utterance payload, using only normalized transcript data for
+product behavior. Durable records MUST still reference `meeting_id`, keep a
+monotonic `sequence`, and store only `messages[]` plus record timestamps.
 
-#### Scenario: Lưu một meeting utterance tối thiểu
-- **WHEN** một utterance đã đóng được persist
-- **THEN** record `meeting_utterance` MUST chứa `meeting_id`, `sequence`, `messages[]`, và timestamp tạo record
+#### Scenario: Persist a queued canonical meeting utterance asynchronously
+- **WHEN** a queued closed meeting utterance task is processed successfully
+- **THEN** the system writes one durable `meeting_utterance` record containing `meeting_id`, `sequence`, `messages[]`, and record timestamps
 
-#### Scenario: Không lưu audio hoặc raw transcript payload bền vững
-- **WHEN** hệ thống persist dữ liệu transcript của meeting
-- **THEN** hệ thống MUST NOT lưu file audio
-- **AND** hệ thống MUST NOT lưu raw word payload bền vững
-- **AND** hệ thống MUST NOT lưu partial transcript
-- **AND** hệ thống MUST NOT lưu trường transcript phẳng ở mức `meeting_utterance`
+#### Scenario: Do not duplicate a meeting utterance on retry or concurrent processing
+- **WHEN** the same queued closed meeting utterance is processed more than once because of retries or concurrent workers
+- **THEN** the system MUST NOT create more than one durable `meeting_utterance` record for that meeting sequence
 
-### Requirement: Kết thúc phiên phải flush transcript cuối và đánh dấu trạng thái terminal phù hợp
-Hệ thống SHALL kết thúc phiên meeting transcription bằng cách cố gắng flush transcript cuối từ provider trước khi cleanup. Khi kết thúc chủ động, meeting MUST được đánh dấu hoàn tất sạch. Khi socket disconnect, hệ thống MUST cố gắng finalize để vớt final words còn pending, persist utterance cuối nếu có thể, và đánh dấu meeting là bị gián đoạn.
+#### Scenario: Do not store audio or noncanonical transcript payloads durably
+- **WHEN** the system persists meeting transcript data from queued utterance work
+- **THEN** the system MUST NOT store audio
+- **AND** the system MUST NOT store raw word payloads
+- **AND** the system MUST NOT store partial transcript data
+- **AND** the system MUST NOT store a flat transcript field at the `meeting_utterance` record level
 
-#### Scenario: Finalize sạch một phiên meeting
-- **WHEN** client phát `meeting:finalize` cho một phiên meeting đang hoạt động
-- **THEN** hệ thống finalize provider-side stream
-- **AND** hệ thống flush mọi final transcript còn pending
-- **AND** hệ thống persist utterance cuối nếu đủ dữ liệu
-- **AND** hệ thống đánh dấu meeting ở trạng thái hoàn tất sạch
+### Requirement: Terminal session handling flushes final transcript and sets the correct terminal state
+The system SHALL end a meeting transcription session by attempting to flush the
+final provider transcript before cleanup. After terminal transcript handling is
+finished, the system MUST mark the meeting with the appropriate terminal state
+without waiting for background utterance persistence or note-drain work to
+fully complete.
 
-#### Scenario: Socket disconnect trong lúc meeting đang hoạt động
-- **WHEN** socket disconnect trong khi một phiên meeting transcription còn hoạt động
-- **THEN** hệ thống MUST cố gắng finalize provider stream trước khi cleanup
-- **AND** hệ thống MUST persist utterance cuối nếu còn dữ liệu final hợp lệ
-- **AND** hệ thống MUST đánh dấu meeting là bị gián đoạn thay vì hoàn tất sạch
+#### Scenario: Finalize a meeting without waiting for background note drain
+- **WHEN** a client emits `meeting:finalize` for an active meeting session
+- **THEN** the system finalizes the provider-side stream
+- **AND** the system flushes any remaining final transcript output
+- **AND** the system enqueues any remaining closed utterance and terminal note-flush work
+- **AND** the system marks the meeting as `completed` without waiting for background note work to finish
 
-#### Scenario: Phát tín hiệu lỗi khi phiên thất bại
-- **WHEN** phiên meeting transcription thất bại do input không hợp lệ, lỗi provider, hoặc lỗi xử lý nội bộ
-- **THEN** hệ thống MUST phát tín hiệu lỗi realtime cho frontend
-- **AND** hệ thống MUST đánh dấu meeting với trạng thái lỗi phù hợp
+#### Scenario: Disconnect transitions the meeting to interrupted while background work continues
+- **WHEN** a socket disconnects while a meeting session is still active
+- **THEN** the system MUST attempt to finalize the provider stream before cleanup
+- **AND** the system MUST enqueue any remaining closed utterance and terminal note-flush work
+- **AND** the system MUST mark the meeting as `interrupted` without waiting for background note work to finish
+
+#### Scenario: Emit a failure signal when the session cannot continue
+- **WHEN** the meeting transcription session fails because of invalid input, provider failure, or internal processing failure
+- **THEN** the system MUST emit a realtime error signal for the meeting
+- **AND** the system MUST mark the meeting with the appropriate failed terminal state
