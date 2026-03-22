@@ -2,6 +2,8 @@
 
 from functools import lru_cache
 
+from app.common.event_socket import MeetingEvents
+from app.common.meeting_note_socket import build_meeting_note_created_payload
 from app.common.repo import (
     get_audio_file_repo,
     get_conversation_repo,
@@ -9,6 +11,9 @@ from app.common.repo import (
     get_image_repo,
     get_interview_conversation_repo,
     get_interview_utterance_repo,
+    get_meeting_note_chunk_repo,
+    get_meeting_repo,
+    get_meeting_utterance_repo,
     get_member_repo,
     get_message_repo,
     get_org_repo,
@@ -18,6 +23,9 @@ from app.common.repo import (
     get_user_repo,
     get_voice_repo,
 )
+from app.config.settings import get_settings
+from app.domain.models.meeting_note_chunk import MeetingNoteChunk
+from app.domain.schemas.meeting import MeetingNoteState
 from app.infrastructure.cloudinary.client import CloudinaryClient
 from app.infrastructure.deepgram.client import DeepgramLiveClient
 from app.infrastructure.google_sheets.client import GoogleSheetClient
@@ -35,8 +43,14 @@ from app.services.auth.auth_service import AuthService
 from app.services.image.image_service import ImageService
 from app.services.image.image_generation_service import ImageGenerationService
 from app.services.interview.answer_service import InterviewAnswerService
+from app.services.meeting.meeting_service import MeetingService
+from app.services.meeting.note_generation_service import MeetingNoteGenerationService
+from app.services.meeting.note_processing_service import MeetingNoteProcessingService
+from app.services.meeting.note_state_store import RedisMeetingNoteStateStore
+from app.services.meeting.session_manager import MeetingSessionManager
 from app.services.organization.organization_service import OrganizationService
 from app.services.sheet_crawler.crawler_service import SheetCrawlerService
+from app.socket_gateway.worker_gateway import worker_gateway
 from app.services.stt.context_store import RedisInterviewContextStore
 from app.services.stt.interview_session_manager import InterviewSessionManager
 from app.services.stt.session_manager import STTSessionManager
@@ -55,6 +69,12 @@ def get_redis_queue() -> RedisQueue:
     """
     client = RedisClient.get_client()
     return RedisQueue(client)
+
+
+@lru_cache
+def get_meeting_note_queue() -> RedisQueue:
+    """Get singleton RedisQueue instance for meeting note tasks."""
+    return get_redis_queue()
 
 
 @lru_cache
@@ -225,6 +245,70 @@ def get_deepgram_live_client() -> DeepgramLiveClient:
     provider connection lifecycle.
     """
     return DeepgramLiveClient()
+
+
+def get_meeting_deepgram_live_client() -> DeepgramLiveClient:
+    """Get a Deepgram client wrapper pinned to the meeting runtime contract."""
+    return DeepgramLiveClient.for_meeting()
+
+
+@lru_cache
+def get_meeting_note_state_store() -> RedisMeetingNoteStateStore:
+    """Get singleton Redis-backed meeting note state helper."""
+    client = RedisClient.get_client()
+    return RedisMeetingNoteStateStore(client)
+
+
+@lru_cache
+def get_meeting_note_generation_service() -> MeetingNoteGenerationService:
+    """Get singleton AI meeting note generation service."""
+    return MeetingNoteGenerationService()
+
+
+async def _emit_meeting_note_created_chunk(
+    chunk: MeetingNoteChunk,
+    state: MeetingNoteState,
+) -> None:
+    """Emit one created note chunk only to the meeting creator."""
+    await worker_gateway.emit_to_user(
+        user_id=state.created_by_user_id,
+        event=MeetingEvents.NOTE_CREATED,
+        data=build_meeting_note_created_payload(chunk=chunk),
+        organization_id=state.organization_id,
+    )
+
+
+@lru_cache
+def get_meeting_note_processing_service() -> MeetingNoteProcessingService:
+    """Get singleton worker-side meeting note processing service."""
+    return MeetingNoteProcessingService(
+        note_state_store=get_meeting_note_state_store(),
+        utterance_repo=get_meeting_utterance_repo(),
+        note_chunk_repo=get_meeting_note_chunk_repo(),
+        note_generation_service=get_meeting_note_generation_service(),
+        note_chunk_created_callback=_emit_meeting_note_created_chunk,
+    )
+
+
+@lru_cache
+def get_meeting_session_manager() -> MeetingSessionManager:
+    """Get singleton meeting session manager instance."""
+    settings = get_settings()
+    return MeetingSessionManager(
+        deepgram_client_factory=get_meeting_deepgram_live_client,
+        meeting_repo=get_meeting_repo(),
+        meeting_note_queue=get_meeting_note_queue(),
+        meeting_note_queue_name=settings.MEETING_NOTE_QUEUE_NAME,
+    )
+
+
+@lru_cache
+def get_meeting_service() -> MeetingService:
+    """Get singleton meeting transcription service instance."""
+    return MeetingService(
+        session_manager=get_meeting_session_manager(),
+        member_repo=get_member_repo(),
+    )
 
 
 @lru_cache

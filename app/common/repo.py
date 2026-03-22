@@ -9,6 +9,9 @@ from app.repo.image_generation_job_repo import ImageGenerationJobRepository
 from app.repo.image_repo import ImageRepository
 from app.repo.interview_conversation_repo import InterviewConversationRepository
 from app.repo.interview_utterance_repo import InterviewUtteranceRepository
+from app.repo.meeting_note_chunk_repo import MeetingNoteChunkRepository
+from app.repo.meeting_repo import MeetingRepository
+from app.repo.meeting_utterance_repo import MeetingUtteranceRepository
 from app.repo.message_repo import MessageRepository
 from app.repo.organization_member_repo import OrganizationMemberRepository
 from app.repo.organization_repo import OrganizationRepository
@@ -159,3 +162,24 @@ def get_interview_utterance_repo() -> InterviewUtteranceRepository:
     """Get singleton interview utterance repository instance."""
     db = MongoDB.get_db()
     return InterviewUtteranceRepository(db)
+
+
+@lru_cache
+def get_meeting_repo() -> MeetingRepository:
+    """Get singleton meeting repository instance."""
+    db = MongoDB.get_db()
+    return MeetingRepository(db)
+
+
+@lru_cache
+def get_meeting_utterance_repo() -> MeetingUtteranceRepository:
+    """Get singleton meeting utterance repository instance."""
+    db = MongoDB.get_db()
+    return MeetingUtteranceRepository(db)
+
+
+@lru_cache
+def get_meeting_note_chunk_repo() -> MeetingNoteChunkRepository:
+    """Get singleton meeting note chunk repository instance."""
+    db = MongoDB.get_db()
+    return MeetingNoteChunkRepository(db)

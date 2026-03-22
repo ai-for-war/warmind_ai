@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     # Sheet Crawler
     SHEET_SYNC_QUEUE_NAME: str = "sheet_sync_tasks"
     IMAGE_GENERATION_QUEUE_NAME: str = "image_generation_tasks"
+    MEETING_NOTE_QUEUE_NAME: str = "meeting_note_tasks"
     IMAGE_GENERATION_MAX_CONCURRENCY: int = 4
 
     # OpenAI
@@ -70,6 +71,20 @@ class Settings(BaseSettings):
     INTERVIEW_STT_UTTERANCE_END_MS: int = 1000
     INTERVIEW_STT_KEEPALIVE_INTERVAL_SECONDS: int = 5
     INTERVIEW_TURN_CLOSE_GRACE_MS: int = 300
+
+    # Meeting STT
+    MEETING_STT_ENCODING: str = "linear16"
+    MEETING_STT_SAMPLE_RATE: int = 16000
+    MEETING_STT_CHANNELS: int = 1
+    MEETING_STT_MULTICHANNEL: bool = False
+    MEETING_STT_INTERIM_RESULTS: bool = True
+    MEETING_STT_VAD_EVENTS: bool = True
+    MEETING_STT_ENDPOINTING_MS: int = 400
+    MEETING_STT_UTTERANCE_END_MS: int = 1000
+    MEETING_STT_DIARIZE: bool = True
+    MEETING_STT_SMART_FORMAT: bool = True
+    MEETING_STT_PUNCTUATE: bool = True
+    MEETING_STT_KEEPALIVE_INTERVAL_SECONDS: int = 5
 
     # Cloudinary
     CLOUDINARY_CLOUD_NAME: str

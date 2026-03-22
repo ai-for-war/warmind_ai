@@ -178,6 +178,54 @@ class MongoDB:
         )
         logger.info("Created index: idx_interview_utterances_conversation_turn_closed")
 
+        # Indexes for meetings collection
+        await cls.db.meetings.create_index(
+            [("organization_id", ASCENDING), ("started_at", DESCENDING)],
+            name="idx_meetings_organization_started_desc",
+            background=True,
+        )
+        logger.info("Created index: idx_meetings_organization_started_desc")
+
+        await cls.db.meetings.create_index(
+            [
+                ("created_by", ASCENDING),
+                ("organization_id", ASCENDING),
+                ("started_at", DESCENDING),
+            ],
+            name="idx_meetings_creator_org_started_desc",
+            background=True,
+        )
+        logger.info("Created index: idx_meetings_creator_org_started_desc")
+
+        await cls.db.meetings.create_index(
+            [("status", ASCENDING), ("started_at", DESCENDING)],
+            name="idx_meetings_status_started_desc",
+            background=True,
+        )
+        logger.info("Created index: idx_meetings_status_started_desc")
+
+        # Unique sequence index for idempotent meeting utterance persistence
+        await cls.db.meeting_utterances.create_index(
+            [("meeting_id", ASCENDING), ("sequence", ASCENDING)],
+            name="idx_meeting_utterances_meeting_sequence_unique",
+            unique=True,
+            background=True,
+        )
+        logger.info("Created index: idx_meeting_utterances_meeting_sequence_unique")
+
+        # Unique range index for idempotent meeting note chunk persistence
+        await cls.db.meeting_note_chunks.create_index(
+            [
+                ("meeting_id", ASCENDING),
+                ("from_sequence", ASCENDING),
+                ("to_sequence", ASCENDING),
+            ],
+            name="idx_meeting_note_chunks_meeting_range_unique",
+            unique=True,
+            background=True,
+        )
+        logger.info("Created index: idx_meeting_note_chunks_meeting_range_unique")
+
         # Indexes for image_generation_jobs collection
         await cls.db.image_generation_jobs.create_index(
             [
