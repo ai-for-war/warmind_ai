@@ -11,14 +11,21 @@ from typing import Any
 from pydantic import ValidationError
 
 from app.config.settings import get_settings
-from app.domain.schemas.meeting import MeetingNoteTask, parse_meeting_note_task
+from app.domain.schemas.meeting import (
+    MeetingNoteTask,
+    MeetingNoteTerminalTask,
+    parse_meeting_note_task,
+)
 from app.infrastructure.database.mongodb import MongoDB
 from app.infrastructure.redis.client import RedisClient
 from app.infrastructure.redis.redis_queue import RedisQueue
 from app.repo.meeting_note_chunk_repo import MeetingNoteChunkRepository
 from app.repo.meeting_utterance_repo import MeetingUtteranceRepository
 from app.services.meeting.note_generation_service import MeetingNoteGenerationService
-from app.services.meeting.note_processing_service import MeetingNoteProcessingService
+from app.services.meeting.note_processing_service import (
+    MeetingNoteProcessingResult,
+    MeetingNoteProcessingService,
+)
 from app.services.meeting.note_state_store import RedisMeetingNoteStateStore
 
 logger = logging.getLogger(__name__)
@@ -54,14 +61,43 @@ class MeetingNoteWorker:
             )
         return self._processor
 
-    async def process_task(self, task: MeetingNoteTask) -> None:
+    async def process_task(self, task: MeetingNoteTask) -> MeetingNoteProcessingResult:
         """Process one validated meeting note task payload."""
-        created_chunks = await self.processor.process_task(task)
+        result = await self.processor.process_task(task)
+        if result.summary_deferred:
+            logger.info(
+                "Deferred meeting note task kind=%s meeting_id=%s because the "
+                "summary lock is busy",
+                task.kind,
+                task.meeting_id,
+            )
+            return result
+
         logger.info(
             "Processed meeting note task kind=%s meeting_id=%s created_chunks=%d",
             task.kind,
             task.meeting_id,
-            len(created_chunks),
+            len(result.created_chunks),
+        )
+        return result
+
+    async def handle_deferred_task(self, task: MeetingNoteTask) -> None:
+        """Requeue one task when summary work was deferred due to lock contention."""
+        requeued_task = task.model_copy(update={"queued_at": None})
+        enqueued = await self.queue.enqueue(
+            queue_name=self.settings.MEETING_NOTE_QUEUE_NAME,
+            data=requeued_task.model_dump(mode="json", exclude_none=True),
+        )
+        if not enqueued:
+            raise RuntimeError(
+                "Failed to requeue meeting note task after summary lock contention"
+            )
+
+        logger.info(
+            "Re-queued meeting note task kind=%s meeting_id=%s after summary "
+            "lock contention",
+            task.kind,
+            task.meeting_id,
         )
 
     async def handle_failed_task(
@@ -115,7 +151,9 @@ class MeetingNoteWorker:
             return True
 
         try:
-            await self.process_task(task)
+            result = await self.process_task(task)
+            if result.summary_deferred and isinstance(task, MeetingNoteTerminalTask):
+                await self.handle_deferred_task(task)
         except Exception as exc:  # noqa: BLE001
             logger.exception(
                 "Failed processing meeting note task kind=%s meeting_id=%s",

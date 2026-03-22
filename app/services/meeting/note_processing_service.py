@@ -48,6 +48,14 @@ class MeetingNoteBatch:
         return self.sequences[-1]
 
 
+@dataclass(slots=True, frozen=True)
+class MeetingNoteProcessingResult:
+    """Outcome of processing one queued meeting note task."""
+
+    created_chunks: tuple[MeetingNoteChunk, ...] = ()
+    summary_deferred: bool = False
+
+
 class MeetingNoteProcessingService:
     """Persist queued utterances and generate structured incremental notes."""
 
@@ -71,7 +79,7 @@ class MeetingNoteProcessingService:
     async def process_task(
         self,
         task: MeetingNoteTask,
-    ) -> list[MeetingNoteChunk]:
+    ) -> MeetingNoteProcessingResult:
         """Process one queued meeting note task end to end."""
         if isinstance(task, MeetingNoteUtteranceClosedTask):
             await self._persist_and_stage_utterance(task)
@@ -197,21 +205,23 @@ class MeetingNoteProcessingService:
         self,
         *,
         meeting_id: str,
-    ) -> list[MeetingNoteChunk]:
+    ) -> MeetingNoteProcessingResult:
         token = await self.note_state_store.acquire_summary_lock(meeting_id=meeting_id)
         if token is None:
             logger.debug(
                 "Meeting note summary lock already held for meeting %s",
                 meeting_id,
             )
-            return []
+            return MeetingNoteProcessingResult(summary_deferred=True)
 
         created_chunks: list[MeetingNoteChunk] = []
         try:
             while True:
                 batch = await self.select_next_batch(meeting_id=meeting_id)
                 if batch is None:
-                    return created_chunks
+                    return MeetingNoteProcessingResult(
+                        created_chunks=tuple(created_chunks)
+                    )
 
                 generated = await self.note_generation_service.generate_notes(
                     utterances=batch.utterances
