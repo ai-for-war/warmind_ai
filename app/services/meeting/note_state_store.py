@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from uuid import uuid4
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 from redis.asyncio import Redis
 
 from app.domain.models.meeting import MeetingStatus
@@ -54,7 +54,9 @@ class RedisMeetingNoteStateStore:
         created_by_user_id: str,
         utterance_id: str,
         sequence: int,
-        messages: Sequence[MeetingUtteranceMessageRecord | dict[str, object]],
+        messages: Sequence[
+            MeetingUtteranceMessageRecord | BaseModel | Mapping[str, object]
+        ],
         created_at: datetime,
     ) -> MeetingPendingUtterancePayload:
         """Store one closed canonical utterance in Redis hot note state."""
@@ -333,7 +335,9 @@ class RedisMeetingNoteStateStore:
 
     @staticmethod
     def flatten_messages(
-        messages: Sequence[MeetingUtteranceMessageRecord | dict[str, object]],
+        messages: Sequence[
+            MeetingUtteranceMessageRecord | BaseModel | Mapping[str, object]
+        ],
     ) -> str:
         """Collapse canonical speaker messages into prompt-ready transcript text."""
         normalized_messages = RedisMeetingNoteStateStore._normalize_messages(messages)
@@ -344,13 +348,19 @@ class RedisMeetingNoteStateStore:
 
     @staticmethod
     def _normalize_messages(
-        messages: Sequence[MeetingUtteranceMessageRecord | dict[str, object]],
+        messages: Sequence[
+            MeetingUtteranceMessageRecord | BaseModel | Mapping[str, object]
+        ],
     ) -> list[MeetingUtteranceMessageRecord]:
         return [
             (
                 message
                 if isinstance(message, MeetingUtteranceMessageRecord)
-                else MeetingUtteranceMessageRecord.model_validate(message)
+                else MeetingUtteranceMessageRecord.model_validate(
+                    message.model_dump(mode="python")
+                    if isinstance(message, BaseModel)
+                    else message
+                )
             )
             for message in messages
         ]

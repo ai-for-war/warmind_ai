@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from uuid import uuid4
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from pydantic import BaseModel
 from pymongo import ASCENDING, ReturnDocument
 
 from app.domain.models.meeting_utterance import (
@@ -26,7 +27,7 @@ class MeetingUtteranceRepository:
         *,
         meeting_id: str,
         sequence: int,
-        messages: Sequence[MeetingUtteranceMessage | dict[str, object]],
+        messages: Sequence[MeetingUtteranceMessage | BaseModel | Mapping[str, object]],
         utterance_id: str | None = None,
         created_at: datetime | None = None,
     ) -> MeetingUtterance:
@@ -84,11 +85,15 @@ class MeetingUtteranceRepository:
 
     @staticmethod
     def _normalize_messages(
-        messages: Sequence[MeetingUtteranceMessage | dict[str, object]],
+        messages: Sequence[MeetingUtteranceMessage | BaseModel | Mapping[str, object]],
     ) -> list[MeetingUtteranceMessage]:
         return [
             message
             if isinstance(message, MeetingUtteranceMessage)
-            else MeetingUtteranceMessage.model_validate(message)
+            else MeetingUtteranceMessage.model_validate(
+                message.model_dump(mode="python")
+                if isinstance(message, BaseModel)
+                else message
+            )
             for message in messages
         ]
