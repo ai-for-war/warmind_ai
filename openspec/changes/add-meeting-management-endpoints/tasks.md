@@ -14,9 +14,9 @@
 
 ## 3. HTTP API And Service Wiring
 
-- [ ] 3.1 Wire the new meeting management service and supporting repositories into the shared service factory/container
-- [ ] 3.2 Add the `/meetings` API router with `GET /meetings`, `PATCH /meetings/{meeting_id}`, `GET /meetings/{meeting_id}/utterances`, and `GET /meetings/{meeting_id}/note-chunks`
-- [ ] 3.3 Register the meeting router in the v1 API aggregate router and ensure request handling uses the authenticated user plus `x-organization-id`
+- [x] 3.1 Wire the new meeting management service and supporting repositories into the shared service factory/container
+- [x] 3.2 Add the `/meetings` API router with `GET /meetings`, `PATCH /meetings/{meeting_id}`, `GET /meetings/{meeting_id}/utterances`, and `GET /meetings/{meeting_id}/note-chunks`
+- [x] 3.3 Register the meeting router in the v1 API aggregate router and ensure request handling uses the authenticated user plus `x-organization-id`
 
 ## 4. Verification
 
