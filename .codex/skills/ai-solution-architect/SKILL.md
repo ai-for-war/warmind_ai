@@ -46,12 +46,64 @@ Ask clarifying questions if anything is missing or ambiguous.
 - Simple / informational query → answer directly using your expertise + Context7 MCP (if library-specific).
 - Complex / large / production-critical query (architecture design, scalability, new integration, multi-agent coordination, deployment strategy, etc.) → proceed to Step 3.
 
-**Step 3: Research Phase (only when needed)**
-Spawn **one dedicated Research Sub-Agent** and instruct it to:
-- Use the `deep-research` skill with the exact clarified requirements as query.
-- Focus on latest best practices, production case studies, benchmarks.
-- If any library/framework is involved → automatically invoke Context7 MCP (`resolve-library-id` + `query-docs`) for version-specific usage, breaking changes, code examples.
-- Additionally allow the sub-agent to use web search tool for real-world reports, GitHub issues, benchmarks.
+**Step 3: Research Phase (only when needed)**  
+Spawn **three specialized Research Sub-Agents in parallel**, each with a distinct responsibility:
+### 1. Best-Practices Research Agent
+Objective:
+- Identify **latest best practices (2026)**, design patterns, and recommended architectures.
+Instructions:
+- Use web search with clarified requirements.
+- Prioritize:
+  - Official docs
+  - Architecture blogs (Big Tech, well-known engineering teams)
+  - Conference talks / RFCs
+- Extract:
+  - Proven patterns
+  - Trade-offs
+  - Anti-patterns
+### 2. Benchmark & Performance Research Agent
+Objective:
+- Gather **performance data, benchmarks, and scalability insights**.
+Instructions:
+- Use web search focused on:
+  - Load tests
+  - Benchmarks (latency, throughput, cost)
+  - Real-world performance comparisons
+- Sources:
+  - GitHub issues / discussions
+  - Engineering blogs with metrics
+  - Industry reports
+- Extract:
+  - Quantitative metrics
+  - Bottlenecks
+  - Scaling limits
+### 3. Tooling & Implementation Research Agent
+Objective:
+- Analyze **libraries, frameworks, and implementation details**.
+Instructions:
+- Detect all mentioned tools/libraries/frameworks/SDKs.
+#### When SDK / Library Integration is required:
+- Combine **Web Search + Context7 MCP**:
+Step 1: Web Search  
+- Query latest documentation, release notes, migration guides, and real-world usage.
+- Focus on:
+  - Official docs (latest version)
+  - GitHub README / issues
+  - Recent blog posts or tutorials (2025–2026)
+Step 2: Context7 MCP  
+- Invoke:
+  - `resolve-library-id`
+  - `query-docs`
+- Retrieve:
+  - Version-specific API usage
+  - Breaking changes
+  - Code examples
+  - Performance considerations
+Step 3: Synthesis  
+- Merge Web + Context7 findings:
+  - Validate outdated vs latest changes
+  - Highlight mismatches between tutorials and current version
+  - Provide **production-safe integration approach**
 
 **Step 4: Synthesis & Architecture Design**  
 Merge research results with your expertise.  
@@ -68,9 +120,16 @@ After presenting the solution, always ask:
 
 
 ### Tool & Research Policy
-- Research → always via `deep-research` skill (never single-pass web search yourself).
-- Library-specific usage → Context7 MCP (mandatory for LangChain, LangGraph, FastAPI, vector stores, etc.).
-- Never speculate; every claim must be grounded in research or stated as assumption.
+- All research must combine **Web Search + Context7 MCP when applicable**.
+- Library/framework usage → **Context7 MCP is mandatory** (especially for FastAPI, Celery, Redis, Kafka, SQLAlchemy, etc.).
+- Web search is required to:
+  - Validate latest updates (2025–2026)
+  - Retrieve real-world usage, benchmarks, and edge cases
+  - Cross-check outdated tutorials or conflicting sources
+- Never rely on a single source → always cross-verify between:
+  - Official documentation
+  - GitHub (issues, discussions, repos)
+  - Engineering blogs / industry reports
 
 ## Response Guidelines
 When responding:
