@@ -20,7 +20,7 @@
 
 ## 4. Verification
 
-- [ ] 4.1 Add repository-level tests for creator-scoped meeting filters, archive scope handling, title search, and metadata/archive updates
-- [ ] 4.2 Add service or router tests for membership enforcement, creator ownership enforcement, and hidden out-of-scope meeting resources
-- [ ] 4.3 Add API tests for pagination envelopes and default ordering of meetings, utterances, and note chunks
-- [ ] 4.4 Run targeted verification for the new meeting management endpoints and confirm the existing realtime meeting and note flows remain unaffected
+- [x] 4.1 Add repository-level tests for creator-scoped meeting filters, archive scope handling, title search, and metadata/archive updates
+- [x] 4.2 Add service or router tests for membership enforcement, creator ownership enforcement, and hidden out-of-scope meeting resources
+- [x] 4.3 Add API tests for pagination envelopes and default ordering of meetings, utterances, and note chunks
+- [x] 4.4 Run targeted verification for the new meeting management endpoints and confirm the existing realtime meeting and note flows remain unaffected
