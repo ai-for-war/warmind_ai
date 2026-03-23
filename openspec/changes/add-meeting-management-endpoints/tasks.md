@@ -7,10 +7,10 @@
 
 ## 2. Meeting Management Service
 
-- [ ] 2.1 Add a dedicated `MeetingManagementService` that validates active organization membership from `x-organization-id`
-- [ ] 2.2 Implement creator-scoped meeting listing with archive scope, lifecycle status, started-at range, title search, and default `started_at desc` ordering
-- [ ] 2.3 Implement owned meeting update logic for `title`, `source`, and `archived`, including rejection of empty PATCH requests
-- [ ] 2.4 Implement paginated owned-meeting reads for utterances ordered by `sequence asc` and note chunks ordered by `from_sequence asc`
+- [x] 2.1 Add a dedicated `MeetingManagementService` that validates active organization membership from `x-organization-id`
+- [x] 2.2 Implement creator-scoped meeting listing with archive scope, lifecycle status, started-at range, title search, and default `started_at desc` ordering
+- [x] 2.3 Implement owned meeting update logic for `title`, `source`, and `archived`, including rejection of empty PATCH requests
+- [x] 2.4 Implement paginated owned-meeting reads for utterances ordered by `sequence asc` and note chunks ordered by `from_sequence asc`
 
 ## 3. HTTP API And Service Wiring
 

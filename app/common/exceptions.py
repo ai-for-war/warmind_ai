@@ -77,6 +77,20 @@ class PermissionDeniedError(AppException):
     status_code = 403
 
 
+class MeetingNotFoundError(AppException):
+    """Raised when a meeting is missing or outside the caller's scope."""
+
+    default_message = "Meeting not found"
+    status_code = 404
+
+
+class InvalidMeetingUpdateError(AppException):
+    """Raised when a meeting PATCH request does not mutate any fields."""
+
+    default_message = "At least one of title, source, or archived must be provided"
+    status_code = 400
+
+
 class ImageNotFoundError(AppException):
     """Raised when image is not found or already deleted."""
 
