@@ -670,13 +670,16 @@ sequence 1..7 đã đủ
 -> watermark vẫn advance qua 7 utterances đó
 ```
 
-## 14. Những gì frontend không có từ backend ở thời điểm hiện tại
+## 14. Những gì frontend vẫn chưa có từ backend ở thời điểm hiện tại
 
-Hiện tại backend chưa cung cấp:
+Backend hiện đã có HTTP API để đọc meeting history đã persist. Tài liệu riêng cho
+nhóm endpoint đó nằm ở:
 
-- REST API để list meetings
-- REST API để lấy lại transcript của một meeting
-- REST API để lấy lại note chunks của một meeting
+- `doc/feature/meeting/meeting_management_frontend_guide.md`
+
+Guide realtime này chỉ mô tả live socket flow. Trong realtime capability hiện tại,
+frontend vẫn chưa có:
+
 - merged note snapshot do server tạo sẵn
 - explicit event kiểu `meeting:note:processing_completed`
 - participant identity mapping cho `speaker_1`, `speaker_2`
@@ -686,8 +689,7 @@ Hiện tại backend chưa cung cấp:
 Hệ quả thực tế:
 
 - nếu frontend reload giữa meeting, state live cũ không được replay từ server
-- nếu frontend muốn hiển thị history sau reload, hiện chưa có API source chính
-  thức trong runtime này để lấy lại transcript hoặc notes
+- nếu frontend muốn hiển thị history sau reload, cần gọi HTTP meeting management API
 - terminal event không phải tín hiệu "đã chắc chắn xong note"
 
 ## 15. Các assumption FE nên giữ nguyên
