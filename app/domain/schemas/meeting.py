@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Annotated, Generic, Literal, TypeVar
+from typing import Annotated, Literal
 
 from pydantic import (
     BaseModel,
@@ -15,14 +15,11 @@ from pydantic import (
     model_validator,
 )
 
-from app.domain.models.meeting import MeetingArchiveScope, MeetingStatus
+from app.domain.models.meeting import MeetingStatus
 
 PHASE1_MEETING_ENCODING = "linear16"
 PHASE1_MEETING_SAMPLE_RATE = 16000
 PHASE1_MEETING_CHANNELS = 1
-DEFAULT_MEETING_PAGE_LIMIT = 20
-MAX_MEETING_PAGE_LIMIT = 100
-TMeetingItem = TypeVar("TMeetingItem")
 
 
 class MeetingSchemaBase(BaseModel):
@@ -57,14 +54,6 @@ def _normalize_non_empty_text_list(
     return normalized
 
 
-def _normalize_optional_text(value: str | None) -> str | None:
-    """Collapse blank optional strings to null for stable transport."""
-    if value is None:
-        return None
-    normalized = value.strip()
-    return normalized or None
-
-
 class MeetingRecord(MeetingSchemaBase):
     """Schema representing one durable meeting session."""
 
@@ -79,32 +68,6 @@ class MeetingRecord(MeetingSchemaBase):
     started_at: datetime
     ended_at: datetime | None = None
     error_message: str | None = None
-    archived_at: datetime | None = None
-    archived_by: str | None = None
-
-    @field_validator("title", "error_message", "archived_by", mode="before")
-    @classmethod
-    def normalize_optional_text(cls, value: str | None) -> str | None:
-        """Collapse blank optional fields to null."""
-        return _normalize_optional_text(value)
-
-    @field_validator("language", mode="before")
-    @classmethod
-    def normalize_language(cls, value: str | None) -> str | None:
-        """Normalize persisted language values for stable transport."""
-        if value is None:
-            return None
-        normalized = value.strip().lower()
-        return normalized or None
-
-    @field_validator("source", mode="before")
-    @classmethod
-    def normalize_source(cls, value: str | None) -> str:
-        """Normalize persisted source values while preserving the default."""
-        if value is None:
-            return "google_meet"
-        normalized = value.strip().lower()
-        return normalized or "google_meet"
 
 
 class MeetingUtteranceMessageRecord(MeetingSchemaBase):
@@ -186,165 +149,6 @@ class MeetingNoteChunkRecord(MeetingSchemaBase):
                 "meeting note chunk must include at least one note item"
             )
         return self
-
-
-class MeetingSummaryRecord(MeetingSchemaBase):
-    """Summary schema returned by meeting management APIs."""
-
-    id: str = Field(..., min_length=1)
-    title: str | None = None
-    source: str = Field(default="google_meet", min_length=1)
-    status: MeetingStatus = MeetingStatus.STREAMING
-    started_at: datetime
-    ended_at: datetime | None = None
-    archived_at: datetime | None = None
-    archived_by: str | None = None
-
-    @field_validator("title", "archived_by", mode="before")
-    @classmethod
-    def normalize_optional_text(cls, value: str | None) -> str | None:
-        """Collapse blank optional fields to null."""
-        return _normalize_optional_text(value)
-
-    @field_validator("source", mode="before")
-    @classmethod
-    def normalize_source(cls, value: str | None) -> str:
-        """Normalize source values while preserving the default."""
-        if value is None:
-            return "google_meet"
-        normalized = value.strip().lower()
-        return normalized or "google_meet"
-
-
-class MeetingPaginationParams(MeetingSchemaBase):
-    """Shared pagination parameters for meeting management endpoints."""
-
-    skip: int = Field(default=0, ge=0)
-    limit: int = Field(
-        default=DEFAULT_MEETING_PAGE_LIMIT,
-        ge=1,
-        le=MAX_MEETING_PAGE_LIMIT,
-    )
-
-
-class MeetingListQuery(MeetingPaginationParams):
-    """Query schema for creator-scoped meeting listing."""
-
-    scope: MeetingArchiveScope = MeetingArchiveScope.ACTIVE
-    status: MeetingStatus | None = None
-    started_at_from: datetime | None = None
-    started_at_to: datetime | None = None
-    q: str | None = None
-
-    @field_validator("q", mode="before")
-    @classmethod
-    def normalize_query(cls, value: str | None) -> str | None:
-        """Treat blank title-search input as absent."""
-        return _normalize_optional_text(value)
-
-    @model_validator(mode="after")
-    def validate_started_at_range(self) -> "MeetingListQuery":
-        """Require a coherent started-at range when both bounds are present."""
-        if (
-            self.started_at_from is not None
-            and self.started_at_to is not None
-            and self.started_at_from > self.started_at_to
-        ):
-            raise ValueError(
-                "started_at_from must be less than or equal to started_at_to"
-            )
-        return self
-
-
-class MeetingPaginationEnvelope(MeetingSchemaBase, Generic[TMeetingItem]):
-    """Shared pagination envelope for meeting management list responses."""
-
-    items: list[TMeetingItem]
-    total: int = Field(..., ge=0)
-    skip: int = Field(..., ge=0)
-    limit: int = Field(..., ge=1)
-    has_more: bool | None = None
-
-    @model_validator(mode="after")
-    def populate_has_more(self) -> "MeetingPaginationEnvelope[TMeetingItem]":
-        """Infer whether another page exists when omitted by the caller."""
-        if len(self.items) > self.limit:
-            raise ValueError("items length must not exceed limit")
-        if self.has_more is None:
-            self.has_more = self.skip + len(self.items) < self.total
-        return self
-
-
-class MeetingListResponse(MeetingPaginationEnvelope[MeetingSummaryRecord]):
-    """Paginated meeting-list response."""
-
-
-class MeetingUtteranceListResponse(
-    MeetingPaginationEnvelope[MeetingUtteranceRecord]
-):
-    """Paginated meeting utterance response."""
-
-
-class MeetingNoteChunkListResponse(
-    MeetingPaginationEnvelope[MeetingNoteChunkRecord]
-):
-    """Paginated meeting note chunk response."""
-
-
-class MeetingUpdateRequest(MeetingSchemaBase):
-    """PATCH request schema for meeting metadata and archive updates."""
-
-    title: str | None = None
-    source: str | None = None
-    archived: bool | None = None
-
-    @field_validator("title", mode="before")
-    @classmethod
-    def normalize_title(cls, value: str | None) -> str | None:
-        """Require non-blank replacement titles when provided."""
-        if value is None:
-            return None
-        normalized = value.strip()
-        if not normalized:
-            raise ValueError("title must not be blank")
-        return normalized
-
-    @field_validator("source", mode="before")
-    @classmethod
-    def normalize_source(cls, value: str | None) -> str | None:
-        """Require non-blank replacement source values when provided."""
-        if value is None:
-            return None
-        normalized = value.strip().lower()
-        if not normalized:
-            raise ValueError("source must not be blank")
-        return normalized
-
-    @model_validator(mode="after")
-    def validate_mutation_fields(self) -> "MeetingUpdateRequest":
-        """Require at least one non-null mutable field in a PATCH request."""
-        mutable_fields = {"title", "source", "archived"}
-        provided_fields = mutable_fields & self.model_fields_set
-        if not provided_fields:
-            raise ValueError(
-                "At least one of title, source, or archived must be provided"
-            )
-
-        null_fields = [
-            field_name
-            for field_name in provided_fields
-            if getattr(self, field_name) is None
-        ]
-        if null_fields:
-            formatted = ", ".join(sorted(null_fields))
-            raise ValueError(f"{formatted} must not be null")
-        return self
-
-
-class MeetingUpdateResponse(MeetingSchemaBase):
-    """PATCH response schema for one updated meeting."""
-
-    meeting: MeetingSummaryRecord
 
 
 class MeetingNoteCreatedPayload(MeetingNoteChunkRecord):

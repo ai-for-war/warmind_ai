@@ -95,31 +95,6 @@ class MeetingNoteChunkRepository:
         documents = [document async for document in cursor]
         return [MeetingNoteChunk(**document) for document in documents]
 
-    async def list_by_meeting_paginated(
-        self,
-        *,
-        meeting_id: str,
-        skip: int = 0,
-        limit: int = 20,
-    ) -> list[MeetingNoteChunk]:
-        """Return one paginated slice of note chunks for one meeting."""
-        cursor = (
-            self.collection.find({"meeting_id": meeting_id})
-            .sort([("from_sequence", ASCENDING), ("to_sequence", ASCENDING)])
-            .skip(skip)
-            .limit(limit)
-        )
-        documents = [document async for document in cursor]
-        return [MeetingNoteChunk(**document) for document in documents]
-
-    async def count_by_meeting(
-        self,
-        *,
-        meeting_id: str,
-    ) -> int:
-        """Count persisted note chunks for one meeting."""
-        return await self.collection.count_documents({"meeting_id": meeting_id})
-
     @staticmethod
     def _normalize_action_items(
         action_items: Sequence[MeetingNoteActionItem | dict[str, object]] | None,
