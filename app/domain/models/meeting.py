@@ -18,6 +18,14 @@ class MeetingStatus(str, Enum):
     FAILED = "failed"
 
 
+class MeetingArchiveScope(str, Enum):
+    """Archive-scope filters for meeting management APIs."""
+
+    ACTIVE = "active"
+    ARCHIVED = "archived"
+    ALL = "all"
+
+
 class Meeting(BaseModel):
     """Durable meeting transcript session record."""
 
@@ -38,8 +46,15 @@ class Meeting(BaseModel):
     started_at: datetime
     ended_at: datetime | None = None
     error_message: str | None = None
+    archived_at: datetime | None = None
+    archived_by: str | None = None
 
-    @field_validator("title", "error_message", mode="before")
+    @property
+    def is_archived(self) -> bool:
+        """Return whether archive metadata currently marks this meeting hidden."""
+        return self.archived_at is not None
+
+    @field_validator("title", "error_message", "archived_by", mode="before")
     @classmethod
     def normalize_optional_text(cls, value: str | None) -> str | None:
         """Collapse blank optional strings to null for stable persistence."""

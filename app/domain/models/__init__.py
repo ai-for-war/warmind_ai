@@ -25,6 +25,7 @@ from app.domain.models.interview_utterance import (
 )
 from app.domain.models.meeting import (
     Meeting,
+    MeetingArchiveScope,
     MeetingStatus,
 )
 from app.domain.models.meeting_note_chunk import (
@@ -71,6 +72,7 @@ __all__ = [
     "InterviewUtteranceStatus",
     "DURABLE_INTERVIEW_UTTERANCE_STATUSES",
     "Meeting",
+    "MeetingArchiveScope",
     "MeetingStatus",
     "MeetingNoteActionItem",
     "MeetingNoteChunk",

@@ -83,6 +83,31 @@ class MeetingUtteranceRepository:
         documents = [document async for document in cursor]
         return [MeetingUtterance(**document) for document in documents]
 
+    async def list_by_meeting_paginated(
+        self,
+        *,
+        meeting_id: str,
+        skip: int = 0,
+        limit: int = 20,
+    ) -> list[MeetingUtterance]:
+        """Return one paginated slice of meeting utterances in sequence order."""
+        cursor = (
+            self.collection.find({"meeting_id": meeting_id})
+            .sort([("sequence", ASCENDING)])
+            .skip(skip)
+            .limit(limit)
+        )
+        documents = [document async for document in cursor]
+        return [MeetingUtterance(**document) for document in documents]
+
+    async def count_by_meeting(
+        self,
+        *,
+        meeting_id: str,
+    ) -> int:
+        """Count persisted utterances for one meeting."""
+        return await self.collection.count_documents({"meeting_id": meeting_id})
+
     @staticmethod
     def _normalize_messages(
         messages: Sequence[MeetingUtteranceMessage | BaseModel | Mapping[str, object]],
