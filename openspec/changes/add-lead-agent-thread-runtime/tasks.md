@@ -1,9 +1,9 @@
 ## 1. Lead Agent Runtime Foundations
 
-- [ ] 1.1 Create the `lead_agent` module structure under `app/agents/implementations/`
-- [ ] 1.2 Define `LeadAgentState` by extending `AgentState` with `user_id` and optional `organization_id`
-- [ ] 1.3 Add empty `tools.py` and `middleware.py` modules that export the V1 runtime extension seams
-- [ ] 1.4 Implement the lead-agent factory with `langchain.agents.create_agent`, `tools=[]`, `middleware=[]`, and the custom state schema
+- [x] 1.1 Create the `lead_agent` module structure under `app/agents/implementations/`
+- [x] 1.2 Define `LeadAgentState` by extending `AgentState` with `user_id` and optional `organization_id`
+- [x] 1.3 Add empty `tools.py` and `middleware.py` modules that export the V1 runtime extension seams
+- [x] 1.4 Implement the lead-agent factory with `langchain.agents.create_agent`, `tools=[]`, `middleware=[]`, and the custom state schema
 
 ## 2. MongoDB Checkpointer Infrastructure
 

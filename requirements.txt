@@ -28,7 +28,7 @@ redis
 
 # Image Upload
 cloudinary
-python-magic-bin
+python-magic
 
 # LangChain
 langchain-core
