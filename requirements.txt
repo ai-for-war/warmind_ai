@@ -36,6 +36,7 @@ langchain-community
 langchain-openai
 langchain
 langgraph
+langgraph-checkpoint-mongodb
 deepagents
 
 # MCP Integration

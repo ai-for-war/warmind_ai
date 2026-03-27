@@ -7,10 +7,10 @@
 
 ## 2. MongoDB Checkpointer Infrastructure
 
-- [ ] 2.1 Add LangGraph MongoDB checkpointer infrastructure under `app/infrastructure/langgraph/`
-- [ ] 2.2 Initialize and expose a shared MongoDB-backed checkpointer that reuses the existing MongoDB connection settings
-- [ ] 2.3 Wire checkpointer startup and shutdown into the FastAPI app lifecycle
-- [ ] 2.4 Ensure the lead-agent runtime is compiled or created with the MongoDB checkpointer as its durable state backend
+- [x] 2.1 Add LangGraph MongoDB checkpointer infrastructure under `app/infrastructure/langgraph/`
+- [x] 2.2 Initialize and expose a shared MongoDB-backed checkpointer that reuses the existing MongoDB connection settings
+- [x] 2.3 Wire checkpointer startup and shutdown into the FastAPI app lifecycle
+- [x] 2.4 Ensure the lead-agent runtime is compiled or created with the MongoDB checkpointer as its durable state backend
 
 ## 3. Lead Agent Service And Thread Lifecycle
 

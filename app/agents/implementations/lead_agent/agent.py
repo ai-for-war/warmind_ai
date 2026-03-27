@@ -6,6 +6,7 @@ from langgraph.graph.state import CompiledStateGraph
 from app.agents.implementations.lead_agent.middleware import LEAD_AGENT_MIDDLEWARE
 from app.agents.implementations.lead_agent.state import LeadAgentState
 from app.agents.implementations.lead_agent.tools import LEAD_AGENT_TOOLS
+from app.infrastructure.langgraph.checkpointer import get_langgraph_checkpointer
 from app.infrastructure.llm.factory import get_chat_openai
 
 
@@ -18,4 +19,5 @@ def create_lead_agent() -> CompiledStateGraph:
         tools=LEAD_AGENT_TOOLS,
         middleware=LEAD_AGENT_MIDDLEWARE,
         state_schema=LeadAgentState,
+        checkpointer=get_langgraph_checkpointer(),
     )
