@@ -14,10 +14,10 @@
 
 ## 3. Lead Agent Service And Thread Lifecycle
 
-- [ ] 3.1 Add a dedicated `LeadAgentService` under `app/services/ai/`
-- [ ] 3.2 Implement `create_thread` to generate a new `thread_id` and seed thread state with caller scope
-- [ ] 3.3 Implement `run_thread` to validate thread ownership from checkpointed state and invoke the lead agent with new user input
-- [ ] 3.4 Return the final assistant response from the lead-agent run path without using application-managed `conversation` or `message` persistence
+- [x] 3.1 Add a dedicated `LeadAgentService` under `app/services/ai/`
+- [x] 3.2 Implement `create_thread` to generate a new `thread_id` and seed thread state with caller scope
+- [x] 3.3 Implement `run_thread` to validate thread ownership from checkpointed state and invoke the lead agent with new user input
+- [x] 3.4 Return the final assistant response from the lead-agent run path without using application-managed `conversation` or `message` persistence
 
 ## 4. API Schemas, Routing, And Dependency Wiring
 
