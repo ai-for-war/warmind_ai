@@ -42,11 +42,12 @@ class LeadAgentService:
             "organization_id": organization_id,
         }
 
-        # Fresh threads need an explicit origin node when seeding state.
+        # LangChain create_agent graphs bootstrap from __start__, not __input__.
+        # Seeding through __start__ persists custom state channels like user scope.
         await self.agent.aupdate_state(
             config,
             values=initial_state,
-            as_node="__input__",
+            as_node="__start__",
         )
         return thread_id
 

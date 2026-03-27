@@ -7,12 +7,12 @@ from app.agents.implementations.lead_agent.middleware import LEAD_AGENT_MIDDLEWA
 from app.agents.implementations.lead_agent.state import LeadAgentState
 from app.agents.implementations.lead_agent.tools import LEAD_AGENT_TOOLS
 from app.infrastructure.langgraph.checkpointer import get_langgraph_checkpointer
-from app.infrastructure.llm.factory import get_chat_openai
+from app.infrastructure.llm.factory import get_chat_azure_openai_legacy
 
 
 def create_lead_agent() -> CompiledStateGraph:
     """Create the V1 lead-agent runtime with explicit extension seams."""
-    llm = get_chat_openai()
+    llm = get_chat_azure_openai_legacy()
 
     return create_agent(
         model=llm,
