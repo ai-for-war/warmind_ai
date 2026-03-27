@@ -21,15 +21,15 @@
 
 ## 4. API Schemas, Routing, And Dependency Wiring
 
-- [ ] 4.1 Add request and response schemas for lead-agent thread creation and thread run submission
-- [ ] 4.2 Add the `/lead-agent` API router with `POST /lead-agent/threads` and `POST /lead-agent/threads/{thread_id}/runs`
-- [ ] 4.3 Reuse the existing authenticated user and organization-context dependencies for lead-agent requests
-- [ ] 4.4 Register the lead-agent service in `app/common/service.py` and include the new router in `app/api/v1/router.py`
+- [x] 4.1 Add request and response schemas for lead-agent thread creation and thread run submission
+- [x] 4.2 Add the `/lead-agent` API router with `POST /lead-agent/threads` and `POST /lead-agent/threads/{thread_id}/runs`
+- [x] 4.3 Reuse the existing authenticated user and organization-context dependencies for lead-agent requests
+- [x] 4.4 Register the lead-agent service in `app/common/service.py` and include the new router in `app/api/v1/router.py`
 
 ## 5. Verification And Hardening
 
-- [ ] 5.1 Add tests for creating a lead-agent thread and returning a usable `thread_id`
-- [ ] 5.2 Add tests that verify a run on an existing `thread_id` reuses checkpointed thread context
-- [ ] 5.3 Add tests that reject malformed, unknown, or unauthorized thread access
-- [ ] 5.4 Add tests that confirm the lead-agent path does not require application-managed `conversation` or `message` records
-- [ ] 5.5 Run targeted verification for the new lead-agent endpoints and confirm the legacy conversation-orchestrator chat path remains unaffected
+- [x] 5.1 Add tests for creating a lead-agent thread and returning a usable `thread_id`
+- [x] 5.2 Add tests that verify a run on an existing `thread_id` reuses checkpointed thread context
+- [x] 5.3 Add tests that reject malformed, unknown, or unauthorized thread access
+- [x] 5.4 Add tests that confirm the lead-agent path does not require application-managed `conversation` or `message` records
+- [x] 5.5 Run targeted verification for the new lead-agent endpoints and confirm the legacy conversation-orchestrator chat path remains unaffected

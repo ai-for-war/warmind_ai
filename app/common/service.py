@@ -36,6 +36,7 @@ from app.infrastructure.redis.redis_queue import RedisQueue
 from app.services.ai.chat_service import ChatService
 from app.services.ai.conversation_service import ConversationService
 from app.services.ai.data_query_service import DataQueryService
+from app.services.ai.lead_agent_service import LeadAgentService
 from app.services.ai.pipeline_validator import PipelineValidator
 from app.services.analytics.analytics_service import AnalyticsService
 from app.services.analytics.cache_manager import AnalyticsCacheManager
@@ -194,6 +195,12 @@ def get_chat_service() -> ChatService:
     conversation_service = get_conversation_service()
     data_query_service = get_data_query_service()
     return ChatService(conversation_service, data_query_service)
+
+
+@lru_cache
+def get_lead_agent_service() -> LeadAgentService:
+    """Get singleton LeadAgentService instance."""
+    return LeadAgentService()
 
 
 @lru_cache
