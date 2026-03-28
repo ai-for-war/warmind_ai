@@ -58,6 +58,7 @@ class ConversationService:
         user_id: str,
         title: Optional[str] = None,
         organization_id: Optional[str] = None,
+        thread_id: Optional[str] = None,
     ) -> Conversation:
         """Create a new conversation with auto title generation.
 
@@ -66,6 +67,7 @@ class ConversationService:
         Args:
             user_id: ID of the user creating the conversation
             title: Optional title for the conversation
+            thread_id: Optional runtime thread mapping for lead-agent projections
 
         Returns:
             Created Conversation instance
@@ -76,6 +78,7 @@ class ConversationService:
             user_id=user_id,
             title=title,
             organization_id=organization_id,
+            thread_id=thread_id,
         )
 
     async def add_message(
@@ -86,6 +89,7 @@ class ConversationService:
         organization_id: Optional[str] = None,
         attachments: Optional[list[Attachment]] = None,
         metadata: Optional[MessageMetadata] = None,
+        thread_id: Optional[str] = None,
         is_complete: bool = True,
     ) -> Message:
         """Add a message to a conversation and update conversation stats.
@@ -99,6 +103,7 @@ class ConversationService:
             content: Message content text
             attachments: Optional list of attachments
             metadata: Optional AI metadata
+            thread_id: Optional runtime thread mapping for lead-agent projections
             is_complete: Whether the message is complete (False for streaming)
 
         Returns:
@@ -113,6 +118,7 @@ class ConversationService:
             content=content,
             attachments=attachments,
             metadata=metadata,
+            thread_id=thread_id,
             is_complete=is_complete,
         )
 
@@ -315,11 +321,13 @@ class ConversationService:
         self,
         conversation_id: str,
         organization_id: Optional[str] = None,
+        has_thread_id: Optional[bool] = None,
     ) -> Optional[Conversation]:
         """Get a conversation by ID.
 
         Args:
             conversation_id: ID of the conversation
+            has_thread_id: Optional runtime filter based on thread mapping presence
 
         Returns:
             Conversation instance if found, None otherwise
@@ -327,12 +335,45 @@ class ConversationService:
         return await self.conversation_repo.get_by_id(
             conversation_id,
             organization_id=organization_id,
+            has_thread_id=has_thread_id,
         )
+
+    @staticmethod
+    def matches_runtime_class(
+        conversation: Optional[Conversation],
+        has_thread_id: Optional[bool] = None,
+    ) -> bool:
+        """Return True when a conversation matches the expected runtime class."""
+        if conversation is None:
+            return False
+
+        if has_thread_id is None:
+            return True
+
+        return (conversation.thread_id is not None) is has_thread_id
+
+    async def get_user_conversation(
+        self,
+        conversation_id: str,
+        user_id: str,
+        organization_id: Optional[str] = None,
+        has_thread_id: Optional[bool] = None,
+    ) -> Optional[Conversation]:
+        """Get a conversation only when it belongs to the expected user/runtime."""
+        conversation = await self.get_conversation(
+            conversation_id,
+            organization_id=organization_id,
+            has_thread_id=has_thread_id,
+        )
+        if conversation is None or conversation.user_id != user_id:
+            return None
+        return conversation
 
     async def get_user_conversations(
         self,
         user_id: str,
         organization_id: Optional[str] = None,
+        has_thread_id: Optional[bool] = None,
         skip: int = 0,
         limit: int = 20,
     ) -> list[Conversation]:
@@ -340,6 +381,7 @@ class ConversationService:
 
         Args:
             user_id: ID of the user
+            has_thread_id: Optional runtime filter based on thread mapping presence
             skip: Number of records to skip (for pagination)
             limit: Maximum number of records to return
 
@@ -349,6 +391,7 @@ class ConversationService:
         return await self.conversation_repo.get_by_user(
             user_id=user_id,
             organization_id=organization_id,
+            has_thread_id=has_thread_id,
             skip=skip,
             limit=limit,
         )
@@ -357,6 +400,7 @@ class ConversationService:
         self,
         user_id: str,
         organization_id: Optional[str] = None,
+        has_thread_id: Optional[bool] = None,
         status: Optional[ConversationStatus] = None,
         search: Optional[str] = None,
         skip: int = 0,
@@ -366,6 +410,7 @@ class ConversationService:
 
         Args:
             user_id: ID of the user
+            has_thread_id: Optional runtime filter based on thread mapping presence
             status: Optional status filter
             search: Optional title search query
             skip: Number of records to skip
@@ -379,6 +424,7 @@ class ConversationService:
         return await self.conversation_repo.search_by_user(
             user_id=user_id,
             organization_id=organization_id,
+            has_thread_id=has_thread_id,
             status=status,
             search=search,
             skip=skip,

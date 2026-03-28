@@ -7,9 +7,9 @@
 
 ## 2. Shared Conversation Persistence Helpers
 
-- [ ] 2.1 Extend `ConversationService.create_conversation(...)` so lead-agent can create conversation projections with a stored `thread_id`
-- [ ] 2.2 Extend `ConversationService.add_message(...)` so lead-agent can persist user and assistant messages with `thread_id` while still reusing conversation stats updates and first-message title generation
-- [ ] 2.3 Add any shared helper logic needed to validate whether a loaded conversation belongs to the expected runtime class before list/history endpoints return data
+- [x] 2.1 Extend `ConversationService.create_conversation(...)` so lead-agent can create conversation projections with a stored `thread_id`
+- [x] 2.2 Extend `ConversationService.add_message(...)` so lead-agent can persist user and assistant messages with `thread_id` while still reusing conversation stats updates and first-message title generation
+- [x] 2.3 Add any shared helper logic needed to validate whether a loaded conversation belongs to the expected runtime class before list/history endpoints return data
 
 ## 3. Lead Agent Service Refactor
 
