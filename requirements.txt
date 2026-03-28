@@ -28,7 +28,7 @@ redis
 
 # Image Upload
 cloudinary
-python-magic-bin
+python-magic
 
 # LangChain
 langchain-core
@@ -36,6 +36,7 @@ langchain-community
 langchain-openai
 langchain
 langgraph
+langgraph-checkpoint-mongodb
 deepagents
 
 # MCP Integration

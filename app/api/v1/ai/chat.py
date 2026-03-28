@@ -63,17 +63,13 @@ async def send_message(
 
     # Validate conversation exists if conversation_id is provided
     if request.conversation_id is not None:
-        conversation = await chat_service.conversation_service.get_conversation(
-            request.conversation_id,
+        conversation = await chat_service.conversation_service.get_user_conversation(
+            conversation_id=request.conversation_id,
+            user_id=user_id,
             organization_id=org_context.organization_id,
+            has_thread_id=False,
         )
         if conversation is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Conversation not found",
-            )
-        # Verify user owns the conversation
-        if conversation.user_id != user_id:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Conversation not found",
@@ -148,6 +144,7 @@ async def list_conversations(
                 last_message_at=conv.last_message_at,
                 created_at=conv.created_at,
                 updated_at=conv.updated_at,
+                thread_id=conv.thread_id,
             )
             for conv in result.items
         ],
@@ -185,11 +182,13 @@ async def get_conversation_messages(
     Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6
     """
     # Verify conversation exists and user owns it
-    conversation = await chat_service.conversation_service.get_conversation(
-        conversation_id,
+    conversation = await chat_service.conversation_service.get_user_conversation(
+        conversation_id=conversation_id,
+        user_id=current_user.id,
         organization_id=org_context.organization_id,
+        has_thread_id=False,
     )
-    if conversation is None or conversation.user_id != current_user.id:
+    if conversation is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Conversation not found",
@@ -211,6 +210,7 @@ async def get_conversation_messages(
                 metadata=msg.metadata,
                 is_complete=msg.is_complete,
                 created_at=msg.created_at,
+                thread_id=msg.thread_id,
             )
             for msg in messages
         ],

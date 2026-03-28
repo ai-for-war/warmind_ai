@@ -13,6 +13,7 @@ class ConversationCreate(BaseModel):
 
     user_id: str
     title: Optional[str] = None
+    thread_id: Optional[str] = None
 
 
 class ConversationUpdate(BaseModel):
@@ -22,6 +23,7 @@ class ConversationUpdate(BaseModel):
     status: Optional[ConversationStatus] = None
     message_count: Optional[int] = None
     last_message_at: Optional[datetime] = None
+    thread_id: Optional[str] = None
 
     class Config:
         use_enum_values = True

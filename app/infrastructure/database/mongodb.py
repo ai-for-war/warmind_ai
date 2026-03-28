@@ -57,6 +57,8 @@ class MongoDB:
           user_id
         - conversations: (user_id, organization_id, deleted_at, updated_at DESC)
           for user listing in organization scope
+        - conversations: (user_id, organization_id, deleted_at, thread_id, updated_at DESC)
+          for runtime-aware conversation listing
         - sheet_connections: (user_id, organization_id), (sync_enabled, organization_id)
           for organization-scoped queries
         - messages: (conversation_id, deleted_at, created_at) for message retrieval
@@ -122,6 +124,19 @@ class MongoDB:
             background=True,
         )
         logger.info("Created index: idx_conversations_user_org_deleted_updated")
+
+        await cls.db.conversations.create_index(
+            [
+                ("user_id", ASCENDING),
+                ("organization_id", ASCENDING),
+                ("deleted_at", ASCENDING),
+                ("thread_id", ASCENDING),
+                ("updated_at", DESCENDING),
+            ],
+            name="idx_conversations_user_org_deleted_thread_updated",
+            background=True,
+        )
+        logger.info("Created index: idx_conversations_user_org_deleted_thread_updated")
 
         # Index for interview conversations collection
         # Supports: stable lookup by conversation_id during interview session flows

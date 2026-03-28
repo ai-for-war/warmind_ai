@@ -15,6 +15,7 @@ class MessageCreate(BaseModel):
     """Schema for creating a new message."""
 
     conversation_id: str
+    thread_id: Optional[str] = None
     role: MessageRole
     content: str
     attachments: Optional[list[Attachment]] = None
@@ -31,3 +32,4 @@ class MessageUpdate(BaseModel):
     content: Optional[str] = None
     is_complete: Optional[bool] = None
     metadata: Optional[MessageMetadata] = None
+    thread_id: Optional[str] = None
