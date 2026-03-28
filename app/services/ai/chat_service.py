@@ -71,9 +71,12 @@ class ChatService:
         """
         # Create new conversation if not provided
         if conversation_id is None:
-            conversation = await self.conversation_service.create_conversation(
-                user_id=user_id,
-                organization_id=organization_id,
+            conversation = (
+                await self.conversation_service.create_conversation_from_initial_message(
+                    user_id=user_id,
+                    content=content,
+                    organization_id=organization_id,
+                )
             )
             conversation_id = conversation.id
 

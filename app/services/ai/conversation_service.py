@@ -6,7 +6,9 @@ Provides business logic for conversation management including:
 - LangChain compatibility for AI integration
 """
 
-from typing import Optional
+import logging
+from collections.abc import Callable
+from typing import Any, Optional
 
 from langchain_core.messages import (
     AIMessage,
@@ -15,6 +17,7 @@ from langchain_core.messages import (
     SystemMessage,
     ToolMessage,
 )
+from pydantic import BaseModel, Field
 
 from app.domain.models.conversation import Conversation, ConversationStatus
 from app.domain.models.message import (
@@ -23,8 +26,21 @@ from app.domain.models.message import (
     MessageMetadata,
     MessageRole,
 )
+from app.infrastructure.llm.factory import get_chat_azure_openai_legacy
 from app.repo.conversation_repo import ConversationRepository, SearchResult
 from app.repo.message_repo import MessageRepository
+
+logger = logging.getLogger(__name__)
+
+
+class GeneratedConversationTitle(BaseModel):
+    """Structured output schema for initial conversation titles."""
+
+    title: str = Field(
+        description=(
+            "A concise conversation title in the same language as the user message"
+        )
+    )
 
 
 class ConversationService:
@@ -38,11 +54,24 @@ class ConversationService:
 
     DEFAULT_TITLE = "New Conversation"
     MAX_TITLE_LENGTH = 50
+    MAX_TITLE_SOURCE_LENGTH = 2000
+    TITLE_GENERATION_PROMPT = (
+        "You generate titles for brand new chat conversations.\n"
+        "Return one concise, specific title that reflects the user's first message.\n"
+        "Rules:\n"
+        "- Use the same language as the user.\n"
+        "- Prefer 3 to 8 words.\n"
+        "- Do not use quotation marks.\n"
+        "- Do not add emojis.\n"
+        "- Do not end with punctuation.\n"
+        "- Avoid generic titles like 'New chat' or 'Question'."
+    )
 
     def __init__(
         self,
         conversation_repo: ConversationRepository,
         message_repo: MessageRepository,
+        llm_factory: Callable[[], Any] | None = None,
     ):
         """Initialize ConversationService with repositories.
 
@@ -52,6 +81,8 @@ class ConversationService:
         """
         self.conversation_repo = conversation_repo
         self.message_repo = message_repo
+        self._llm_factory = llm_factory or self._default_title_llm_factory
+        self._structured_title_llm: Any | None = None
 
     async def create_conversation(
         self,
@@ -60,9 +91,7 @@ class ConversationService:
         organization_id: Optional[str] = None,
         thread_id: Optional[str] = None,
     ) -> Conversation:
-        """Create a new conversation with auto title generation.
-
-        If no title is provided, a default title is assigned.
+        """Create a new conversation record.
 
         Args:
             user_id: ID of the user creating the conversation
@@ -81,6 +110,51 @@ class ConversationService:
             thread_id=thread_id,
         )
 
+    async def create_conversation_from_initial_message(
+        self,
+        user_id: str,
+        content: str,
+        organization_id: Optional[str] = None,
+        thread_id: Optional[str] = None,
+    ) -> Conversation:
+        """Create a conversation and derive its initial title from first message."""
+        title = await self.generate_initial_title(content)
+        return await self.create_conversation(
+            user_id=user_id,
+            title=title,
+            organization_id=organization_id,
+            thread_id=thread_id,
+        )
+
+    async def generate_initial_title(self, content: str) -> str:
+        """Generate a title for the very first message in a conversation."""
+        normalized_content = content.strip()
+        if not normalized_content:
+            return self.DEFAULT_TITLE
+
+        try:
+            result = await self._get_structured_title_llm().ainvoke(
+                [
+                    SystemMessage(content=self.TITLE_GENERATION_PROMPT),
+                    HumanMessage(
+                        content=normalized_content[: self.MAX_TITLE_SOURCE_LENGTH]
+                    ),
+                ]
+            )
+            if isinstance(result, GeneratedConversationTitle):
+                raw_title = result.title
+            elif isinstance(result, dict):
+                raw_title = str(result.get("title", ""))
+            else:
+                raw_title = str(getattr(result, "title", result))
+            normalized_title = self._normalize_generated_title(raw_title)
+            if normalized_title:
+                return normalized_title
+        except Exception:
+            logger.exception("Failed to generate initial conversation title")
+
+        return self._generate_title_from_content(normalized_content)
+
     async def add_message(
         self,
         conversation_id: str,
@@ -93,9 +167,6 @@ class ConversationService:
         is_complete: bool = True,
     ) -> Message:
         """Add a message to a conversation and update conversation stats.
-
-        Also handles auto title generation for the first user message
-        if the conversation has the default title.
 
         Args:
             conversation_id: ID of the conversation
@@ -129,50 +200,7 @@ class ConversationService:
             organization_id=organization_id,
         )
 
-        # Auto-generate title from first user message if conversation has default title
-        if role == MessageRole.USER:
-            await self._maybe_update_title_from_message(
-                conversation_id,
-                content,
-                organization_id=organization_id,
-            )
-
         return message
-
-    async def _maybe_update_title_from_message(
-        self,
-        conversation_id: str,
-        content: str,
-        organization_id: Optional[str] = None,
-    ) -> None:
-        """Update conversation title from message content if it has default title.
-
-        Only updates if:
-        - Conversation exists and is not deleted
-        - Conversation has the default title
-        - This is the first user message (message_count == 1)
-
-        Args:
-            conversation_id: ID of the conversation
-            content: Message content to derive title from
-
-        Requirements: 4.2
-        """
-        conversation = await self.conversation_repo.get_by_id(
-            conversation_id,
-            organization_id=organization_id,
-        )
-        if conversation is None:
-            return
-
-        # Only update title if it's the default and this is the first message
-        if conversation.title == self.DEFAULT_TITLE and conversation.message_count == 1:
-            new_title = self._generate_title_from_content(content)
-            await self.conversation_repo.update(
-                conversation_id=conversation_id,
-                title=new_title,
-                organization_id=organization_id,
-            )
 
     def _generate_title_from_content(self, content: str) -> str:
         """Generate a title from message content.
@@ -195,6 +223,39 @@ class ConversationService:
             if not title:  # If no space found, just truncate
                 title = content[: self.MAX_TITLE_LENGTH]
         return title if title else self.DEFAULT_TITLE
+
+    def _normalize_generated_title(self, title: str) -> str:
+        """Normalize LLM-generated title before persisting it."""
+        normalized = " ".join(title.strip().split())
+        normalized = normalized.strip("\"'")
+        normalized = normalized.rstrip(".!?;:,")
+
+        if not normalized:
+            return ""
+
+        if len(normalized) > self.MAX_TITLE_LENGTH:
+            normalized = normalized[: self.MAX_TITLE_LENGTH].rsplit(" ", 1)[0]
+            if not normalized:
+                normalized = title[: self.MAX_TITLE_LENGTH].strip()
+
+        return normalized
+
+    def _get_structured_title_llm(self) -> Any:
+        """Return cached structured-output LLM for title generation."""
+        if self._structured_title_llm is None:
+            self._structured_title_llm = self._llm_factory().with_structured_output(
+                GeneratedConversationTitle
+            )
+        return self._structured_title_llm
+
+    @staticmethod
+    def _default_title_llm_factory() -> Any:
+        """Create a small non-streaming model for title generation."""
+        return get_chat_azure_openai_legacy(
+            temperature=0.2,
+            streaming=False,
+            max_tokens=32,
+        )
 
     async def get_messages(
         self,
