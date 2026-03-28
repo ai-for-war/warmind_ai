@@ -76,6 +76,7 @@ def _message(
 def _conversation_service() -> SimpleNamespace:
     return SimpleNamespace(
         create_conversation=AsyncMock(),
+        create_conversation_from_initial_message=AsyncMock(),
         add_message=AsyncMock(),
         get_user_conversation=AsyncMock(),
         get_message=AsyncMock(),
@@ -151,7 +152,7 @@ async def test_send_message_creates_conversation_projection_and_thread() -> None
     conversation_service = _conversation_service()
     service = LeadAgentService(conversation_service=conversation_service)
     service._create_thread = AsyncMock(return_value=THREAD_ID)
-    conversation_service.create_conversation.return_value = _conversation(
+    conversation_service.create_conversation_from_initial_message.return_value = _conversation(
         thread_id=THREAD_ID
     )
     conversation_service.add_message.return_value = _message(
@@ -171,8 +172,9 @@ async def test_send_message_creates_conversation_projection_and_thread() -> None
         user_id="user-1",
         organization_id="org-1",
     )
-    conversation_service.create_conversation.assert_awaited_once_with(
+    conversation_service.create_conversation_from_initial_message.assert_awaited_once_with(
         user_id="user-1",
+        content="hello there",
         organization_id="org-1",
         thread_id=THREAD_ID,
     )
@@ -213,7 +215,7 @@ async def test_send_message_reuses_stored_thread_for_follow_up_turns() -> None:
     )
 
     assert (user_message_id, conversation_id) == ("msg-follow-up", "conv-1")
-    conversation_service.create_conversation.assert_not_called()
+    conversation_service.create_conversation_from_initial_message.assert_not_called()
     conversation_service.get_user_conversation.assert_awaited_once_with(
         conversation_id="conv-1",
         user_id="user-1",

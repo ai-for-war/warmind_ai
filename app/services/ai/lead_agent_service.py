@@ -84,6 +84,7 @@ class LeadAgentService:
         normalized_content = self._normalize_content(content)
         conversation, thread_id = await self._get_or_create_conversation_projection(
             user_id=user_id,
+            initial_message_content=normalized_content,
             conversation_id=conversation_id,
             organization_id=organization_id,
         )
@@ -219,6 +220,7 @@ class LeadAgentService:
     async def _get_or_create_conversation_projection(
         self,
         user_id: str,
+        initial_message_content: str,
         conversation_id: Optional[str],
         organization_id: Optional[str],
     ) -> tuple[Conversation, str]:
@@ -228,10 +230,13 @@ class LeadAgentService:
                 user_id=user_id,
                 organization_id=organization_id,
             )
-            conversation = await self.conversation_service.create_conversation(
-                user_id=user_id,
-                organization_id=organization_id,
-                thread_id=thread_id,
+            conversation = (
+                await self.conversation_service.create_conversation_from_initial_message(
+                    user_id=user_id,
+                    content=initial_message_content,
+                    organization_id=organization_id,
+                    thread_id=thread_id,
+                )
             )
             return conversation, thread_id
 
