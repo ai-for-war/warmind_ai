@@ -20,10 +20,10 @@
 
 ## 4. HTTP API And Legacy Chat Isolation
 
-- [ ] 4.1 Replace the lead-agent router contract with `POST /lead-agent/messages`, `GET /lead-agent/conversations`, and `GET /lead-agent/conversations/{conversation_id}/messages`, using `BackgroundTasks` and the existing authenticated user plus organization-context dependencies
-- [ ] 4.2 Update legacy chat service/router list behavior so `/chat/conversations` excludes records mapped to a lead-agent `thread_id`
-- [ ] 4.3 Update legacy chat history behavior so `/chat/conversations/{conversation_id}/messages` does not return lead-agent conversations and instead treats them as out-of-scope resources
-- [ ] 4.4 Update shared service wiring and router registration as needed so the refactored lead-agent flow coexists cleanly with the legacy chat runtime
+- [x] 4.1 Replace the lead-agent router contract with `POST /lead-agent/messages`, `GET /lead-agent/conversations`, and `GET /lead-agent/conversations/{conversation_id}/messages`, using `BackgroundTasks` and the existing authenticated user plus organization-context dependencies
+- [x] 4.2 Update legacy chat service/router list behavior so `/chat/conversations` excludes records mapped to a lead-agent `thread_id`
+- [x] 4.3 Update legacy chat history behavior so `/chat/conversations/{conversation_id}/messages` does not return lead-agent conversations and instead treats them as out-of-scope resources
+- [x] 4.4 Update shared service wiring and router registration as needed so the refactored lead-agent flow coexists cleanly with the legacy chat runtime
 
 ## 5. Verification
 

@@ -115,6 +115,7 @@ class ChatService:
         return await self.conversation_service.search_user_conversations(
             user_id=user_id,
             organization_id=organization_id,
+            has_thread_id=False,
             status=status,
             search=search,
             skip=skip,
