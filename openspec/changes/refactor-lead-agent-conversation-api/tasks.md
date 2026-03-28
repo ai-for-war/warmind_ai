@@ -27,9 +27,9 @@
 
 ## 5. Verification
 
-- [ ] 5.1 Add tests that verify the first lead-agent send creates both a new conversation projection and a new checkpoint-backed `thread_id`, then returns `conversation_id` and `user_message_id`
-- [ ] 5.2 Add tests that verify a follow-up lead-agent send reuses the stored `thread_id`, preserves caller scope, and rejects unknown, unauthorized, or non-lead-agent `conversation_id` values
-- [ ] 5.3 Add tests that verify lead-agent list/history endpoints return only `thread_id`-backed conversations and persisted messages in chronological order
-- [ ] 5.4 Add tests that verify legacy `/chat/conversations` and `/chat/conversations/{conversation_id}/messages` exclude lead-agent projection records after the new discriminator logic is introduced
-- [ ] 5.5 Add targeted tests or service-level verification for the async lead-agent socket lifecycle, including started, token, completed, and failed event behavior plus final assistant message persistence
-- [ ] 5.6 Run targeted verification to confirm the refactored lead-agent flow works end-to-end and the legacy conversation-orchestrator chat path remains unaffected
+- [x] 5.1 Add tests that verify the first lead-agent send creates both a new conversation projection and a new checkpoint-backed `thread_id`, then returns `conversation_id` and `user_message_id`
+- [x] 5.2 Add tests that verify a follow-up lead-agent send reuses the stored `thread_id`, preserves caller scope, and rejects unknown, unauthorized, or non-lead-agent `conversation_id` values
+- [x] 5.3 Add tests that verify lead-agent list/history endpoints return only `thread_id`-backed conversations and persisted messages in chronological order
+- [x] 5.4 Add tests that verify legacy `/chat/conversations` and `/chat/conversations/{conversation_id}/messages` exclude lead-agent projection records after the new discriminator logic is introduced
+- [x] 5.5 Add targeted tests or service-level verification for the async lead-agent socket lifecycle, including started, token, completed, and failed event behavior plus final assistant message persistence
+- [x] 5.6 Run targeted verification to confirm the refactored lead-agent flow works end-to-end and the legacy conversation-orchestrator chat path remains unaffected
