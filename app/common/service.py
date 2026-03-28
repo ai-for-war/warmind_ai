@@ -200,7 +200,7 @@ def get_chat_service() -> ChatService:
 @lru_cache
 def get_lead_agent_service() -> LeadAgentService:
     """Get singleton LeadAgentService instance."""
-    return LeadAgentService()
+    return LeadAgentService(conversation_service=get_conversation_service())
 
 
 @lru_cache

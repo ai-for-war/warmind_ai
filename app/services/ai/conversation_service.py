@@ -218,6 +218,10 @@ class ConversationService:
             limit=limit,
         )
 
+    async def get_message(self, message_id: str) -> Optional[Message]:
+        """Get a single persisted message by ID."""
+        return await self.message_repo.get_by_id(message_id)
+
     async def get_langchain_messages(
         self,
         conversation_id: str,

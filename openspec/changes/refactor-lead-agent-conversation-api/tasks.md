@@ -13,10 +13,10 @@
 
 ## 3. Lead Agent Service Refactor
 
-- [ ] 3.1 Refactor `LeadAgentService` so `send_message(...)` creates or validates the conversation projection, creates or reuses the mapped `thread_id`, persists the user message, and returns `user_message_id` plus `conversation_id`
-- [ ] 3.2 Implement background `LeadAgentService.process_agent_response(...)` that validates caller scope, streams the lead-agent runtime with `astream_events`, emits the existing `chat:message:*` socket events, and persists the final assistant message with `thread_id`
-- [ ] 3.3 Replace the old public thread-run flow with internal runtime helpers that continue to use checkpointed LangGraph state as the source of truth for multi-turn execution
-- [ ] 3.4 Add lead-agent conversation list and message history reads in `LeadAgentService` that return only conversations mapped to a lead-agent `thread_id`
+- [x] 3.1 Refactor `LeadAgentService` so `send_message(...)` creates or validates the conversation projection, creates or reuses the mapped `thread_id`, persists the user message, and returns `user_message_id` plus `conversation_id`
+- [x] 3.2 Implement background `LeadAgentService.process_agent_response(...)` that validates caller scope, streams the lead-agent runtime with `astream_events`, emits the existing `chat:message:*` socket events, and persists the final assistant message with `thread_id`
+- [x] 3.3 Replace the old public thread-run flow with internal runtime helpers that continue to use checkpointed LangGraph state as the source of truth for multi-turn execution
+- [x] 3.4 Add lead-agent conversation list and message history reads in `LeadAgentService` that return only conversations mapped to a lead-agent `thread_id`
 
 ## 4. HTTP API And Legacy Chat Isolation
 

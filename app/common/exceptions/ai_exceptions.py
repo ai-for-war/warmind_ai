@@ -17,6 +17,13 @@ class LeadAgentThreadNotFoundError(AppException):
     status_code = 404
 
 
+class LeadAgentConversationNotFoundError(AppException):
+    """Raised when a lead-agent conversation is missing or outside caller scope."""
+
+    default_message = "Lead-agent conversation not found"
+    status_code = 404
+
+
 class LeadAgentRunError(AppException):
     """Raised when a lead-agent run does not yield a usable response."""
 
