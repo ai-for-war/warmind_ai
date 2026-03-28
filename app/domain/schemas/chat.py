@@ -90,6 +90,7 @@ class ConversationResponse(BaseModel):
     last_message_at: Optional[datetime]
     created_at: datetime
     updated_at: datetime
+    thread_id: Optional[str] = None
 
 
 class ConversationListResponse(BaseModel):
@@ -111,6 +112,7 @@ class MessageResponse(BaseModel):
     metadata: Optional[MessageMetadata]
     is_complete: bool
     created_at: datetime
+    thread_id: Optional[str] = None
 
 
 class MessageListResponse(BaseModel):

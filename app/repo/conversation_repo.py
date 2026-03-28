@@ -36,17 +36,28 @@ class ConversationRepository:
         """
         self.collection = db.conversations
 
+    @staticmethod
+    def _thread_id_filter(has_thread_id: Optional[bool]) -> dict:
+        """Build a query fragment for runtime-aware conversation filtering."""
+        if has_thread_id is True:
+            return {"thread_id": {"$exists": True, "$ne": None}}
+        if has_thread_id is False:
+            return {"thread_id": None}
+        return {}
+
     async def create(
         self,
         user_id: str,
         title: Optional[str] = None,
         organization_id: Optional[str] = None,
+        thread_id: Optional[str] = None,
     ) -> Conversation:
         """Create a new conversation in database.
 
         Args:
             user_id: ID of the user creating the conversation
             title: Optional title for the conversation (defaults to "New Conversation")
+            thread_id: Optional runtime thread mapping for lead-agent projections
 
         Returns:
             Created Conversation instance
@@ -61,6 +72,7 @@ class ConversationRepository:
             "status": ConversationStatus.ACTIVE.value,
             "message_count": 0,
             "last_message_at": None,
+            "thread_id": thread_id,
             "created_at": now,
             "updated_at": now,
             "deleted_at": None,
@@ -75,11 +87,13 @@ class ConversationRepository:
         self,
         conversation_id: str,
         organization_id: Optional[str] = None,
+        has_thread_id: Optional[bool] = None,
     ) -> Optional[Conversation]:
         """Get a conversation by ID, excluding soft-deleted records.
 
         Args:
             conversation_id: Conversation ID to search for
+            has_thread_id: Optional runtime filter based on thread mapping presence
 
         Returns:
             Conversation instance if found and not deleted, None otherwise
@@ -97,6 +111,7 @@ class ConversationRepository:
         }
         if organization_id is not None:
             query["organization_id"] = organization_id
+        query.update(self._thread_id_filter(has_thread_id))
 
         doc = await self.collection.find_one(query)
 
@@ -110,6 +125,7 @@ class ConversationRepository:
         self,
         user_id: str,
         organization_id: Optional[str] = None,
+        has_thread_id: Optional[bool] = None,
         skip: int = 0,
         limit: int = 20,
     ) -> list[Conversation]:
@@ -119,6 +135,7 @@ class ConversationRepository:
 
         Args:
             user_id: User ID to search for
+            has_thread_id: Optional runtime filter based on thread mapping presence
             skip: Number of records to skip (for pagination)
             limit: Maximum number of records to return
 
@@ -133,6 +150,7 @@ class ConversationRepository:
         }
         if organization_id is not None:
             query["organization_id"] = organization_id
+        query.update(self._thread_id_filter(has_thread_id))
 
         cursor = (
             self.collection.find(query).sort("updated_at", -1).skip(skip).limit(limit)
@@ -149,6 +167,7 @@ class ConversationRepository:
         self,
         user_id: str,
         organization_id: Optional[str] = None,
+        has_thread_id: Optional[bool] = None,
         status: Optional[ConversationStatus] = None,
         search: Optional[str] = None,
         skip: int = 0,
@@ -158,6 +177,7 @@ class ConversationRepository:
 
         Args:
             user_id: User ID to search for
+            has_thread_id: Optional runtime filter based on thread mapping presence
             status: Optional status filter (active/archived)
             search: Optional title search (case-insensitive partial match)
             skip: Number of records to skip
@@ -175,6 +195,7 @@ class ConversationRepository:
         }
         if organization_id is not None:
             query["organization_id"] = organization_id
+        query.update(self._thread_id_filter(has_thread_id))
 
         if status is not None:
             query["status"] = status.value
@@ -205,6 +226,7 @@ class ConversationRepository:
         status: Optional[ConversationStatus] = None,
         message_count: Optional[int] = None,
         last_message_at: Optional[datetime] = None,
+        thread_id: Optional[str] = None,
         organization_id: Optional[str] = None,
     ) -> Optional[Conversation]:
         """Update a conversation's fields.
@@ -218,6 +240,7 @@ class ConversationRepository:
             status: New status (optional)
             message_count: New message count (optional)
             last_message_at: New last message timestamp (optional)
+            thread_id: New runtime thread mapping (optional)
 
         Returns:
             Updated Conversation instance if found and not deleted, None otherwise
@@ -239,6 +262,8 @@ class ConversationRepository:
             update_data["message_count"] = message_count
         if last_message_at is not None:
             update_data["last_message_at"] = last_message_at
+        if thread_id is not None:
+            update_data["thread_id"] = thread_id
 
         query: dict = {"_id": object_id, "deleted_at": None}
         if organization_id is not None:

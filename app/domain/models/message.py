@@ -68,6 +68,7 @@ class Message(BaseModel):
 
     id: str = Field(alias="_id")
     conversation_id: str
+    thread_id: Optional[str] = None
     role: MessageRole
     content: str
     attachments: list[Attachment] = Field(default_factory=list)

@@ -1,9 +1,9 @@
 ## 1. Persistence Models, Schemas, And Indexes
 
-- [ ] 1.1 Extend durable `conversation` and `message` models with optional `thread_id` so lead-agent turns can be projected into application-managed history records without breaking legacy chat data
-- [ ] 1.2 Update lead-agent and chat request/response schemas to support the new `POST /lead-agent/messages`, `GET /lead-agent/conversations`, and `GET /lead-agent/conversations/{conversation_id}/messages` contract, including any FE-facing `thread_id` fields that should be returned
-- [ ] 1.3 Extend conversation and message repository create/read/query methods to persist `thread_id` and support runtime-aware conversation filtering such as `has_thread_id=True|False`
-- [ ] 1.4 Add or update MongoDB indexes needed for runtime-aware conversation list queries while preserving the existing `conversation_id + created_at` access path for message history
+- [x] 1.1 Extend durable `conversation` and `message` models with optional `thread_id` so lead-agent turns can be projected into application-managed history records without breaking legacy chat data
+- [x] 1.2 Update lead-agent and chat request/response schemas to support the new `POST /lead-agent/messages`, `GET /lead-agent/conversations`, and `GET /lead-agent/conversations/{conversation_id}/messages` contract, including any FE-facing `thread_id` fields that should be returned
+- [x] 1.3 Extend conversation and message repository create/read/query methods to persist `thread_id` and support runtime-aware conversation filtering such as `has_thread_id=True|False`
+- [x] 1.4 Add or update MongoDB indexes needed for runtime-aware conversation list queries while preserving the existing `conversation_id + created_at` access path for message history
 
 ## 2. Shared Conversation Persistence Helpers
 

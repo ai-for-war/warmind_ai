@@ -36,6 +36,7 @@ class MessageRepository:
         content: str,
         attachments: Optional[list[Attachment]] = None,
         metadata: Optional[MessageMetadata] = None,
+        thread_id: Optional[str] = None,
         is_complete: bool = True,
     ) -> Message:
         """Create a new message in database.
@@ -46,6 +47,7 @@ class MessageRepository:
             content: Message content text
             attachments: Optional list of attachments (images, files)
             metadata: Optional AI metadata (model, tokens, latency, tool_calls)
+            thread_id: Optional runtime thread mapping for lead-agent projections
             is_complete: Whether the message is complete (False for streaming)
 
         Returns:
@@ -67,6 +69,7 @@ class MessageRepository:
 
         message_data = {
             "conversation_id": conversation_id,
+            "thread_id": thread_id,
             "role": role.value if isinstance(role, MessageRole) else role,
             "content": content,
             "attachments": attachments_data,
@@ -152,6 +155,7 @@ class MessageRepository:
         message_id: str,
         content: Optional[str] = None,
         metadata: Optional[MessageMetadata] = None,
+        thread_id: Optional[str] = None,
         is_complete: Optional[bool] = None,
     ) -> Optional[Message]:
         """Update a message's fields.
@@ -163,6 +167,7 @@ class MessageRepository:
             message_id: Message ID to update
             content: New content (optional, for streaming updates)
             metadata: New metadata (optional)
+            thread_id: New runtime thread mapping (optional)
             is_complete: New completion status (optional, for streaming)
 
         Returns:
@@ -181,6 +186,8 @@ class MessageRepository:
             update_data["content"] = content
         if metadata is not None:
             update_data["metadata"] = metadata.model_dump(exclude_none=True)
+        if thread_id is not None:
+            update_data["thread_id"] = thread_id
         if is_complete is not None:
             update_data["is_complete"] = is_complete
 
