@@ -11,7 +11,7 @@ from app.infrastructure.llm.factory import get_chat_azure_openai_legacy
 
 
 def create_lead_agent() -> CompiledStateGraph:
-    """Create the V1 lead-agent runtime with explicit extension seams."""
+    """Create the shared skill-aware lead-agent runtime."""
     llm = get_chat_azure_openai_legacy()
 
     return create_agent(

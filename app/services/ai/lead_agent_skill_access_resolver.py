@@ -5,6 +5,7 @@ from collections.abc import Sequence
 
 from pydantic import BaseModel, Field
 
+from app.domain.models.lead_agent_skill import LeadAgentSkill
 from app.repo.lead_agent_skill_repo import LeadAgentSkillRepository
 from app.repo.lead_agent_skill_access_repo import LeadAgentSkillAccessRepository
 
@@ -50,6 +51,23 @@ class LeadAgentSkillAccessResolver:
 
         return ResolvedLeadAgentSkillAccess(
             enabled_skill_ids=[],
+        )
+
+    async def resolve_enabled_skill_for_caller(
+        self,
+        *,
+        user_id: str,
+        organization_id: str,
+        skill_id: str,
+    ) -> LeadAgentSkill | None:
+        """Resolve one enabled skill definition for the current caller scope."""
+        normalized_skill_id = skill_id.strip()
+        if not normalized_skill_id:
+            return None
+        return await self.skill_repository.get_accessible_by_skill_id(
+            normalized_skill_id,
+            user_id=user_id,
+            organization_id=organization_id,
         )
 
     async def _filter_known_skill_ids(

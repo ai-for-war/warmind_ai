@@ -6,9 +6,9 @@
 
 ## 2. Lead-Agent Runtime State And Internal Skill Tooling
 
-- [ ] 2.1 Extend `LeadAgentState` with skill-aware fields such as `enabled_skill_ids`, `active_skill_id`, `loaded_skills`, `allowed_tool_names`, and `active_skill_version`
-- [ ] 2.2 Implement the internal `load_skill` tool so it validates skill access, updates runtime state, and returns only a concise acknowledgement instead of full skill content
-- [ ] 2.3 Update the lead-agent factory to register the internal skill-support tool surface while preserving the shared singleton compiled runtime model
+- [x] 2.1 Extend `LeadAgentState` with skill-aware fields such as `enabled_skill_ids`, `active_skill_id`, `loaded_skills`, `allowed_tool_names`, and `active_skill_version`
+- [x] 2.2 Implement the internal `load_skill` tool so it validates skill access, updates runtime state, and returns only a concise acknowledgement instead of full skill content
+- [x] 2.3 Update the lead-agent factory to register the internal skill-support tool surface while preserving the shared singleton compiled runtime model
 
 ## 3. Middleware And Dynamic Tool Exposure
 

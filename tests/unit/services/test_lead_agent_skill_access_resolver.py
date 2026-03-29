@@ -67,7 +67,22 @@ def _registry(known_skill_ids: set[str]) -> SimpleNamespace:
             skills.append(_skill(skill_id))
         return skills
 
-    return SimpleNamespace(list_accessible=AsyncMock(side_effect=_list_accessible))
+    async def _get_accessible_by_skill_id(
+        skill_id: str,
+        *,
+        user_id: str,
+        organization_id: str,
+    ) -> LeadAgentSkill | None:
+        del user_id, organization_id
+        normalized_skill_id = skill_id.strip()
+        if normalized_skill_id not in known_skill_ids:
+            return None
+        return _skill(normalized_skill_id)
+
+    return SimpleNamespace(
+        list_accessible=AsyncMock(side_effect=_list_accessible),
+        get_accessible_by_skill_id=AsyncMock(side_effect=_get_accessible_by_skill_id),
+    )
 
 
 @pytest.mark.asyncio
@@ -138,3 +153,54 @@ async def test_resolver_returns_no_access_when_records_are_missing() -> None:
     )
 
     assert resolved.enabled_skill_ids == []
+
+
+@pytest.mark.asyncio
+async def test_resolver_returns_enabled_skill_definition_for_caller() -> None:
+    repository = _repo()
+    registry = _registry({"web-research"})
+    repository.get_by_scope.return_value = _record(
+        organization_id="org-1",
+        enabled_skill_ids=["web-research"],
+    )
+    resolver = LeadAgentSkillAccessResolver(
+        repository=repository,
+        skill_repository=registry,
+    )
+
+    resolved_skill = await resolver.resolve_enabled_skill_for_caller(
+        user_id="user-1",
+        organization_id="org-1",
+        skill_id=" web-research ",
+    )
+
+    assert resolved_skill is not None
+    assert resolved_skill.skill_id == "web-research"
+    registry.get_accessible_by_skill_id.assert_awaited_once_with(
+        "web-research",
+        user_id="user-1",
+        organization_id="org-1",
+    )
+
+
+@pytest.mark.asyncio
+async def test_resolver_rejects_disabled_skill_definition_lookup() -> None:
+    repository = _repo()
+    registry = _registry({"web-research"})
+    repository.get_by_scope.return_value = _record(
+        organization_id="org-1",
+        enabled_skill_ids=["web-research"],
+    )
+    resolver = LeadAgentSkillAccessResolver(
+        repository=repository,
+        skill_repository=registry,
+    )
+
+    resolved_skill = await resolver.resolve_enabled_skill_for_caller(
+        user_id="user-1",
+        organization_id="org-1",
+        skill_id="finance-ops",
+    )
+
+    assert resolved_skill is None
+    registry.get_accessible_by_skill_id.assert_not_awaited()
