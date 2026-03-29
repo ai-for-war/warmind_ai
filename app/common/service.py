@@ -42,6 +42,7 @@ from app.services.ai.lead_agent_service import LeadAgentService
 from app.services.ai.lead_agent_skill_access_resolver import (
     LeadAgentSkillAccessResolver,
 )
+from app.services.ai.lead_agent_skill_service import LeadAgentSkillService
 from app.services.ai.pipeline_validator import PipelineValidator
 from app.services.analytics.analytics_service import AnalyticsService
 from app.services.analytics.cache_manager import AnalyticsCacheManager
@@ -208,6 +209,15 @@ def get_lead_agent_skill_access_resolver() -> LeadAgentSkillAccessResolver:
     return LeadAgentSkillAccessResolver(
         repository=get_lead_agent_skill_access_repo(),
         skill_repository=get_lead_agent_skill_repo(),
+    )
+
+
+@lru_cache
+def get_lead_agent_skill_service() -> LeadAgentSkillService:
+    """Get singleton lead-agent skill management service instance."""
+    return LeadAgentSkillService(
+        skill_repository=get_lead_agent_skill_repo(),
+        access_repository=get_lead_agent_skill_access_repo(),
     )
 
 

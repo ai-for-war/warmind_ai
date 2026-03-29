@@ -65,6 +65,17 @@ class LeadAgentSkillAccessResolver:
         if not normalized_skill_id:
             return None
 
+        record = await self.repository.get_by_scope(
+            user_id=user_id,
+            organization_id=organization_id,
+        )
+        if record is None:
+            return None
+
+        enabled_skill_ids = self._normalize_skill_ids(record.enabled_skill_ids)
+        if normalized_skill_id not in enabled_skill_ids:
+            return None
+
         return await self.skill_repository.get_accessible_by_skill_id(
             normalized_skill_id,
             user_id=user_id,

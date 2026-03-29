@@ -162,4 +162,4 @@ def _get_lead_agent_skill_access_resolver() -> LeadAgentSkillAccessResolver:
     return get_lead_agent_skill_access_resolver()
 
 
-LEAD_AGENT_TOOLS: list[BaseTool] = [load_skill]
+LEAD_AGENT_INTERNAL_TOOLS: list[BaseTool] = [load_skill]

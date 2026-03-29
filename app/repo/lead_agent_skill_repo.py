@@ -1,6 +1,7 @@
 """Repository for persisted user-created lead-agent skills."""
 
 from collections.abc import Sequence
+from datetime import datetime, timezone
 from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -37,6 +38,27 @@ class LeadAgentSkillRepository:
                 organization_id=organization_id,
                 skill_ids=[skill_id],
             )
+        )
+        if doc is None:
+            return None
+
+        doc["_id"] = str(doc["_id"])
+        return LeadAgentSkill(**doc)
+
+    async def get_by_creator_and_skill_id(
+        self,
+        *,
+        user_id: str,
+        organization_id: str,
+        skill_id: str,
+    ) -> LeadAgentSkill | None:
+        """Return one owned skill definition for the current caller."""
+        doc = await self.collection.find_one(
+            {
+                "created_by": user_id,
+                "organization_id": organization_id,
+                "skill_id": skill_id,
+            }
         )
         if doc is None:
             return None
@@ -91,6 +113,114 @@ class LeadAgentSkillRepository:
 
         return LeadAgentSkillListResult(items=items, total=total)
 
+    async def create(
+        self,
+        *,
+        skill_id: str,
+        name: str,
+        description: str,
+        activation_prompt: str,
+        allowed_tool_names: Sequence[str],
+        version: str,
+        created_by: str,
+        organization_id: str,
+    ) -> LeadAgentSkill:
+        """Create one owned skill definition."""
+        now = datetime.now(timezone.utc)
+        doc = {
+            "skill_id": skill_id,
+            "name": name,
+            "description": description,
+            "activation_prompt": activation_prompt,
+            "allowed_tool_names": self._normalize_skill_ids(allowed_tool_names),
+            "version": version,
+            "created_by": created_by,
+            "organization_id": organization_id,
+            "created_at": now,
+            "updated_at": now,
+        }
+        result = await self.collection.insert_one(doc)
+        doc["_id"] = str(result.inserted_id)
+        return LeadAgentSkill(**doc)
+
+    async def update_by_creator_and_skill_id(
+        self,
+        *,
+        user_id: str,
+        organization_id: str,
+        skill_id: str,
+        name: str | None = None,
+        description: str | None = None,
+        activation_prompt: str | None = None,
+        allowed_tool_names: Sequence[str] | None = None,
+        version: str | None = None,
+    ) -> LeadAgentSkill | None:
+        """Update one owned skill definition."""
+        update_data: dict[str, Any] = {"updated_at": datetime.now(timezone.utc)}
+        if name is not None:
+            update_data["name"] = name
+        if description is not None:
+            update_data["description"] = description
+        if activation_prompt is not None:
+            update_data["activation_prompt"] = activation_prompt
+        if allowed_tool_names is not None:
+            update_data["allowed_tool_names"] = self._normalize_skill_ids(
+                allowed_tool_names
+            )
+        if version is not None:
+            update_data["version"] = version
+
+        doc = await self.collection.find_one_and_update(
+            {
+                "created_by": user_id,
+                "organization_id": organization_id,
+                "skill_id": skill_id,
+            },
+            {"$set": update_data},
+            return_document=True,
+        )
+        if doc is None:
+            return None
+
+        doc["_id"] = str(doc["_id"])
+        return LeadAgentSkill(**doc)
+
+    async def delete_by_creator_and_skill_id(
+        self,
+        *,
+        user_id: str,
+        organization_id: str,
+        skill_id: str,
+    ) -> bool:
+        """Delete one owned skill definition."""
+        result = await self.collection.delete_one(
+            {
+                "created_by": user_id,
+                "organization_id": organization_id,
+                "skill_id": skill_id,
+            }
+        )
+        return result.deleted_count > 0
+
+    async def exists_by_creator_and_skill_id(
+        self,
+        *,
+        user_id: str,
+        organization_id: str,
+        skill_id: str,
+    ) -> bool:
+        """Return True when the caller already owns the given skill ID."""
+        return (
+            await self.collection.count_documents(
+                {
+                    "created_by": user_id,
+                    "organization_id": organization_id,
+                    "skill_id": skill_id,
+                },
+                limit=1,
+            )
+        ) > 0
+
     @staticmethod
     def _access_query(
         *,
@@ -100,6 +230,7 @@ class LeadAgentSkillRepository:
     ) -> dict[str, Any]:
         """Build a query for skills visible to the current caller."""
         query: dict[str, Any] = {
+            "created_by": user_id,
             "organization_id": organization_id,
         }
 

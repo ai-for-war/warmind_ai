@@ -176,6 +176,10 @@ async def test_resolver_returns_enabled_skill_definition_for_caller() -> None:
 
     assert resolved_skill is not None
     assert resolved_skill.skill_id == "web-research"
+    repository.get_by_scope.assert_awaited_once_with(
+        user_id="user-1",
+        organization_id="org-1",
+    )
     registry.get_accessible_by_skill_id.assert_awaited_once_with(
         "web-research",
         user_id="user-1",
@@ -204,4 +208,8 @@ async def test_resolver_rejects_disabled_skill_definition_lookup() -> None:
 
     assert resolved_skill is None
     registry.get_accessible_by_skill_id.assert_not_awaited()
-    registry.list_accessible.assert_awaited_once()
+    repository.get_by_scope.assert_awaited_once_with(
+        user_id="user-1",
+        organization_id="org-1",
+    )
+    registry.list_accessible.assert_not_awaited()

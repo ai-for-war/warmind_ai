@@ -2,27 +2,179 @@
 
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, status
 
 from app.api.deps import (
     OrganizationContext,
     get_current_active_user,
     get_current_organization_context,
 )
-from app.common.service import get_lead_agent_service
+from app.common.service import get_lead_agent_service, get_lead_agent_skill_service
 from app.domain.models.conversation import ConversationStatus
 from app.domain.models.user import User
 from app.domain.schemas.lead_agent import (
+    LeadAgentCreateSkillRequest,
     LeadAgentConversationListResponse,
     LeadAgentConversationResponse,
     LeadAgentMessageListResponse,
     LeadAgentMessageResponse,
     LeadAgentSendMessageRequest,
     LeadAgentSendMessageResponse,
+    LeadAgentSkillEnablementResponse,
+    LeadAgentSkillListResponse,
+    LeadAgentSkillResponse,
+    LeadAgentToolListResponse,
+    LeadAgentUpdateSkillRequest,
 )
 from app.services.ai.lead_agent_service import LeadAgentService
+from app.services.ai.lead_agent_skill_service import LeadAgentSkillService
 
 router = APIRouter(prefix="/lead-agent", tags=["lead-agent"])
+
+
+@router.get("/tools", response_model=LeadAgentToolListResponse)
+async def list_tools(
+    _: User = Depends(get_current_active_user),
+    __: OrganizationContext = Depends(get_current_organization_context),
+    lead_agent_skill_service: LeadAgentSkillService = Depends(
+        get_lead_agent_skill_service
+    ),
+) -> LeadAgentToolListResponse:
+    """List the currently available user-selectable lead-agent tools."""
+    return await lead_agent_skill_service.list_tools()
+
+
+@router.get("/skills", response_model=LeadAgentSkillListResponse)
+async def list_skills(
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
+    current_user: User = Depends(get_current_active_user),
+    org_context: OrganizationContext = Depends(get_current_organization_context),
+    lead_agent_skill_service: LeadAgentSkillService = Depends(
+        get_lead_agent_skill_service
+    ),
+) -> LeadAgentSkillListResponse:
+    """List the caller's lead-agent skills in the current organization."""
+    return await lead_agent_skill_service.list_skills(
+        user_id=current_user.id,
+        organization_id=org_context.organization_id,
+        skip=skip,
+        limit=limit,
+    )
+
+
+@router.post(
+    "/skills",
+    response_model=LeadAgentSkillResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_skill(
+    request: LeadAgentCreateSkillRequest,
+    current_user: User = Depends(get_current_active_user),
+    org_context: OrganizationContext = Depends(get_current_organization_context),
+    lead_agent_skill_service: LeadAgentSkillService = Depends(
+        get_lead_agent_skill_service
+    ),
+) -> LeadAgentSkillResponse:
+    """Create one caller-owned lead-agent skill."""
+    return await lead_agent_skill_service.create_skill(
+        user_id=current_user.id,
+        organization_id=org_context.organization_id,
+        request=request,
+    )
+
+
+@router.get("/skills/{skill_id}", response_model=LeadAgentSkillResponse)
+async def get_skill(
+    skill_id: str,
+    current_user: User = Depends(get_current_active_user),
+    org_context: OrganizationContext = Depends(get_current_organization_context),
+    lead_agent_skill_service: LeadAgentSkillService = Depends(
+        get_lead_agent_skill_service
+    ),
+) -> LeadAgentSkillResponse:
+    """Get one caller-owned lead-agent skill."""
+    return await lead_agent_skill_service.get_skill(
+        user_id=current_user.id,
+        organization_id=org_context.organization_id,
+        skill_id=skill_id,
+    )
+
+
+@router.patch("/skills/{skill_id}", response_model=LeadAgentSkillResponse)
+async def update_skill(
+    skill_id: str,
+    request: LeadAgentUpdateSkillRequest,
+    current_user: User = Depends(get_current_active_user),
+    org_context: OrganizationContext = Depends(get_current_organization_context),
+    lead_agent_skill_service: LeadAgentSkillService = Depends(
+        get_lead_agent_skill_service
+    ),
+) -> LeadAgentSkillResponse:
+    """Update one caller-owned lead-agent skill."""
+    return await lead_agent_skill_service.update_skill(
+        user_id=current_user.id,
+        organization_id=org_context.organization_id,
+        skill_id=skill_id,
+        request=request,
+    )
+
+
+@router.delete("/skills/{skill_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_skill(
+    skill_id: str,
+    current_user: User = Depends(get_current_active_user),
+    org_context: OrganizationContext = Depends(get_current_organization_context),
+    lead_agent_skill_service: LeadAgentSkillService = Depends(
+        get_lead_agent_skill_service
+    ),
+) -> None:
+    """Delete one caller-owned lead-agent skill."""
+    await lead_agent_skill_service.delete_skill(
+        user_id=current_user.id,
+        organization_id=org_context.organization_id,
+        skill_id=skill_id,
+    )
+
+
+@router.put(
+    "/skills/{skill_id}/enabled",
+    response_model=LeadAgentSkillEnablementResponse,
+)
+async def enable_skill(
+    skill_id: str,
+    current_user: User = Depends(get_current_active_user),
+    org_context: OrganizationContext = Depends(get_current_organization_context),
+    lead_agent_skill_service: LeadAgentSkillService = Depends(
+        get_lead_agent_skill_service
+    ),
+) -> LeadAgentSkillEnablementResponse:
+    """Enable one caller-owned lead-agent skill for the current organization."""
+    return await lead_agent_skill_service.enable_skill(
+        user_id=current_user.id,
+        organization_id=org_context.organization_id,
+        skill_id=skill_id,
+    )
+
+
+@router.delete(
+    "/skills/{skill_id}/enabled",
+    response_model=LeadAgentSkillEnablementResponse,
+)
+async def disable_skill(
+    skill_id: str,
+    current_user: User = Depends(get_current_active_user),
+    org_context: OrganizationContext = Depends(get_current_organization_context),
+    lead_agent_skill_service: LeadAgentSkillService = Depends(
+        get_lead_agent_skill_service
+    ),
+) -> LeadAgentSkillEnablementResponse:
+    """Disable one caller-owned lead-agent skill for the current organization."""
+    return await lead_agent_skill_service.disable_skill(
+        user_id=current_user.id,
+        organization_id=org_context.organization_id,
+        skill_id=skill_id,
+    )
 
 
 @router.post("/messages", response_model=LeadAgentSendMessageResponse)

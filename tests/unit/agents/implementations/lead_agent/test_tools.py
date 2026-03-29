@@ -8,7 +8,7 @@ import pytest
 from langchain_core.messages import ToolMessage
 
 from app.agents.implementations.lead_agent.tools import (
-    LEAD_AGENT_TOOLS,
+    LEAD_AGENT_INTERNAL_TOOLS,
     _load_skill_command,
 )
 from app.domain.models.lead_agent_skill import LeadAgentSkill
@@ -118,4 +118,4 @@ async def test_load_skill_command_rejects_disabled_skill_without_repo_lookup() -
 
 
 def test_lead_agent_tools_register_internal_load_skill_tool() -> None:
-    assert [tool.name for tool in LEAD_AGENT_TOOLS] == ["load_skill"]
+    assert [tool.name for tool in LEAD_AGENT_INTERNAL_TOOLS] == ["load_skill"]
