@@ -20,6 +20,9 @@ from app.domain.models.conversation import Conversation, ConversationStatus
 from app.domain.models.message import Message, MessageMetadata, MessageRole, ToolCall
 from app.repo.conversation_repo import SearchResult
 from app.services.ai.conversation_service import ConversationService
+from app.services.ai.lead_agent_skill_access_resolver import (
+    LeadAgentSkillAccessResolver,
+)
 from app.socket_gateway import gateway
 
 logger = logging.getLogger(__name__)
@@ -28,9 +31,14 @@ logger = logging.getLogger(__name__)
 class LeadAgentService:
     """Manage lead-agent conversations backed by LangGraph checkpoints."""
 
-    def __init__(self, conversation_service: ConversationService) -> None:
+    def __init__(
+        self,
+        conversation_service: ConversationService,
+        skill_access_resolver: LeadAgentSkillAccessResolver | None = None,
+    ) -> None:
         """Initialize the service with shared persistence helpers."""
         self.conversation_service = conversation_service
+        self.skill_access_resolver = skill_access_resolver
         self._agent: CompiledStateGraph | None = None
 
     @property

@@ -1,8 +1,8 @@
 ## 1. Skill Catalog And Access Infrastructure
 
-- [ ] 1.1 Add lead-agent skill types, registry abstractions, and trusted local skill manifests with separate discovery summaries and activation instructions
-- [ ] 1.2 Add additive persistence and repository helpers for per-user lead-agent skill access records keyed by `user_id` and optional `organization_id`
-- [ ] 1.3 Implement a `LeadAgentSkillAccessResolver` and register any required service wiring or feature-flag configuration for skill-aware execution
+- [x] 1.1 Add lead-agent skill types, registry abstractions, and trusted local skill manifests with separate discovery summaries and activation instructions
+- [x] 1.2 Add additive persistence and repository helpers for per-user lead-agent skill access records keyed by `user_id` and optional `organization_id`
+- [x] 1.3 Implement a `LeadAgentSkillAccessResolver` and register any required service wiring or feature-flag configuration for skill-aware execution
 
 ## 2. Lead-Agent Runtime State And Internal Skill Tooling
 

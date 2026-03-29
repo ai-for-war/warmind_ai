@@ -9,6 +9,8 @@ from app.repo.image_generation_job_repo import ImageGenerationJobRepository
 from app.repo.image_repo import ImageRepository
 from app.repo.interview_conversation_repo import InterviewConversationRepository
 from app.repo.interview_utterance_repo import InterviewUtteranceRepository
+from app.repo.lead_agent_skill_repo import LeadAgentSkillRepository
+from app.repo.lead_agent_skill_access_repo import LeadAgentSkillAccessRepository
 from app.repo.meeting_note_chunk_repo import MeetingNoteChunkRepository
 from app.repo.meeting_repo import MeetingRepository
 from app.repo.meeting_utterance_repo import MeetingUtteranceRepository
@@ -97,6 +99,20 @@ def get_conversation_repo() -> ConversationRepository:
     """
     db = MongoDB.get_db()
     return ConversationRepository(db)
+
+
+@lru_cache
+def get_lead_agent_skill_repo() -> LeadAgentSkillRepository:
+    """Get singleton lead-agent skill repository instance."""
+    db = MongoDB.get_db()
+    return LeadAgentSkillRepository(db)
+
+
+@lru_cache
+def get_lead_agent_skill_access_repo() -> LeadAgentSkillAccessRepository:
+    """Get singleton lead-agent skill access repository instance."""
+    db = MongoDB.get_db()
+    return LeadAgentSkillAccessRepository(db)
 
 
 @lru_cache
