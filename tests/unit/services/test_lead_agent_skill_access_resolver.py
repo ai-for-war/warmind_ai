@@ -204,3 +204,4 @@ async def test_resolver_rejects_disabled_skill_definition_lookup() -> None:
 
     assert resolved_skill is None
     registry.get_accessible_by_skill_id.assert_not_awaited()
+    registry.list_accessible.assert_awaited_once()

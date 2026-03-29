@@ -12,9 +12,9 @@
 
 ## 3. Middleware And Dynamic Tool Exposure
 
-- [ ] 3.1 Implement middleware that injects lightweight summaries for enabled skills into the model context before initial reasoning
-- [ ] 3.2 Extend middleware behavior so an active skill re-injects its full activation instructions on subsequent model calls without bloating thread message history
-- [ ] 3.3 Implement dynamic tool-selection middleware that exposes only the base or skill-allowed tool subset for each model call and re-evaluates when skill state changes
+- [x] 3.1 Implement middleware that injects lightweight summaries for enabled skills into the model context before initial reasoning
+- [x] 3.2 Extend middleware behavior so an active skill re-injects its full activation instructions on subsequent model calls without bloating thread message history
+- [x] 3.3 Implement dynamic tool-selection middleware that exposes only the base or skill-allowed tool subset for each model call and re-evaluates when skill state changes
 
 ## 4. Lead-Agent Service, Metadata, And Runtime Integration
 

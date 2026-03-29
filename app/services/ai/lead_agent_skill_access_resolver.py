@@ -64,11 +64,44 @@ class LeadAgentSkillAccessResolver:
         normalized_skill_id = skill_id.strip()
         if not normalized_skill_id:
             return None
+
         return await self.skill_repository.get_accessible_by_skill_id(
             normalized_skill_id,
             user_id=user_id,
             organization_id=organization_id,
         )
+
+    async def resolve_skill_definitions(
+        self,
+        *,
+        user_id: str,
+        organization_id: str,
+        skill_ids: Sequence[str],
+    ) -> list[LeadAgentSkill]:
+        """Resolve ordered skill definitions for one caller-scoped skill list."""
+        normalized_skill_ids = self._normalize_skill_ids(skill_ids)
+        if not normalized_skill_ids:
+            return []
+
+        skills = await self.skill_repository.list_accessible(
+            user_id=user_id,
+            organization_id=organization_id,
+            skill_ids=normalized_skill_ids,
+        )
+        skills_by_id = {skill.skill_id: skill for skill in skills}
+        ordered_skills: list[LeadAgentSkill] = []
+
+        for skill_id in normalized_skill_ids:
+            skill = skills_by_id.get(skill_id)
+            if skill is None:
+                logger.warning(
+                    "Ignoring unknown lead-agent skill id during definition resolution: %s",
+                    skill_id,
+                )
+                continue
+            ordered_skills.append(skill)
+
+        return ordered_skills
 
     async def _filter_known_skill_ids(
         self,
@@ -87,8 +120,7 @@ class LeadAgentSkillAccessResolver:
         filtered_skill_ids: list[str] = []
         seen: set[str] = set()
 
-        for skill_id in skill_ids:
-            normalized_skill_id = skill_id.strip()
+        for normalized_skill_id in self._normalize_skill_ids(skill_ids):
             if not normalized_skill_id or normalized_skill_id in seen:
                 continue
             if normalized_skill_id not in known_skill_ids:
@@ -101,3 +133,18 @@ class LeadAgentSkillAccessResolver:
             filtered_skill_ids.append(normalized_skill_id)
 
         return filtered_skill_ids
+
+    @staticmethod
+    def _normalize_skill_ids(skill_ids: Sequence[str]) -> list[str]:
+        """Normalize ordered skill IDs while removing blanks and duplicates."""
+        normalized_skill_ids: list[str] = []
+        seen: set[str] = set()
+
+        for skill_id in skill_ids:
+            normalized_skill_id = skill_id.strip()
+            if not normalized_skill_id or normalized_skill_id in seen:
+                continue
+            seen.add(normalized_skill_id)
+            normalized_skill_ids.append(normalized_skill_id)
+
+        return normalized_skill_ids
