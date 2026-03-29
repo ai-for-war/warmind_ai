@@ -12,7 +12,9 @@ from app.infrastructure.llm.factory import get_chat_azure_openai_legacy
 
 def create_lead_agent() -> CompiledStateGraph:
     """Create the shared skill-aware lead-agent runtime."""
-    llm = get_chat_azure_openai_legacy()
+    llm = get_chat_azure_openai_legacy(
+        max_tokens=16384,
+    )
 
     return create_agent(
         model=llm,
