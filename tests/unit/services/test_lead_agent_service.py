@@ -85,6 +85,19 @@ def _conversation_service() -> SimpleNamespace:
     )
 
 
+def _skill_access_resolver(
+    *,
+    enabled_skill_ids: list[str] | None = None,
+) -> SimpleNamespace:
+    return SimpleNamespace(
+        resolve_for_caller=AsyncMock(
+            return_value=SimpleNamespace(
+                enabled_skill_ids=enabled_skill_ids or [],
+            )
+        )
+    )
+
+
 class _FakeStreamingAgent:
     def __init__(self) -> None:
         self.state = {
@@ -92,6 +105,7 @@ class _FakeStreamingAgent:
             "user_id": "user-1",
             "organization_id": "org-1",
         }
+        self.stream_payloads: list[dict[str, object]] = []
 
     async def aget_state(self, _config: dict[str, dict[str, str]]):
         return SimpleNamespace(values=dict(self.state))
@@ -104,12 +118,18 @@ class _FakeStreamingAgent:
         version: str | None = None,
     ):
         del config, version
+        self.stream_payloads.append(dict(payload))
         self.state.update(
             {
                 "messages": payload["messages"]
                 + [{"role": "assistant", "content": "Final answer"}],
                 "user_id": payload["user_id"],
                 "organization_id": payload["organization_id"],
+                "enabled_skill_ids": payload.get("enabled_skill_ids", []),
+                "active_skill_id": payload.get("active_skill_id"),
+                "allowed_tool_names": payload.get("allowed_tool_names", []),
+                "active_skill_version": payload.get("active_skill_version"),
+                "loaded_skills": payload.get("loaded_skills", []),
             }
         )
         yield {
@@ -145,6 +165,30 @@ class _FakeFailingAgent(_FakeStreamingAgent):
         if False:
             yield {}
         raise RuntimeError("runtime exploded")
+
+
+class _FakeSkillStreamingAgent(_FakeStreamingAgent):
+    async def astream_events(
+        self,
+        payload: dict[str, object],
+        *,
+        config: dict[str, dict[str, str]] | None = None,
+        version: str | None = None,
+    ):
+        async for event in super().astream_events(
+            payload,
+            config=config,
+            version=version,
+        ):
+            yield event
+
+        self.state.update(
+            {
+                "active_skill_id": "web-research",
+                "active_skill_version": "2.1.0",
+                "loaded_skills": ["web-research"],
+            }
+        )
 
 
 @pytest.mark.asyncio
@@ -268,7 +312,12 @@ async def test_send_message_rejects_unknown_unauthorized_or_non_lead_agent_conve
 async def test_process_agent_response_emits_socket_lifecycle_and_persists_assistant_message(
 ) -> None:
     conversation_service = _conversation_service()
-    service = LeadAgentService(conversation_service=conversation_service)
+    service = LeadAgentService(
+        conversation_service=conversation_service,
+        skill_access_resolver=_skill_access_resolver(
+            enabled_skill_ids=["web-research"]
+        ),
+    )
     service._agent = _FakeStreamingAgent()
 
     conversation_service.get_user_conversation.return_value = _conversation(
@@ -326,6 +375,67 @@ async def test_process_agent_response_emits_socket_lifecycle_and_persists_assist
     assert metadata.tool_calls is not None
     assert metadata.tool_calls[0].name == "search_docs"
     assert metadata.tool_calls[0].arguments == {"query": "recap"}
+    assert service._agent.stream_payloads[0]["enabled_skill_ids"] == ["web-research"]
+
+
+@pytest.mark.asyncio
+async def test_process_agent_response_persists_skill_metadata_additively() -> None:
+    conversation_service = _conversation_service()
+    service = LeadAgentService(
+        conversation_service=conversation_service,
+        skill_access_resolver=_skill_access_resolver(
+            enabled_skill_ids=["web-research"]
+        ),
+    )
+    service._agent = _FakeSkillStreamingAgent()
+
+    conversation_service.get_user_conversation.return_value = _conversation(
+        thread_id=THREAD_ID
+    )
+    conversation_service.get_message.return_value = _message(
+        message_id="msg-user",
+        role=MessageRole.USER,
+        content="Need research",
+        thread_id=THREAD_ID,
+    )
+
+    async def _persist_assistant(**kwargs):
+        return _message(
+            message_id="msg-assistant",
+            role=MessageRole.ASSISTANT,
+            content=kwargs["content"],
+            conversation_id=kwargs["conversation_id"],
+            thread_id=kwargs["thread_id"],
+            metadata=kwargs["metadata"],
+        )
+
+    conversation_service.add_message.side_effect = _persist_assistant
+    emit_to_user = AsyncMock()
+    monkeypatch_target = lead_agent_service_module.gateway
+    original_emit = monkeypatch_target.emit_to_user
+    monkeypatch_target.emit_to_user = emit_to_user
+
+    try:
+        await service.process_agent_response(
+            user_id="user-1",
+            conversation_id="conv-1",
+            user_message_id="msg-user",
+            organization_id="org-1",
+        )
+    finally:
+        monkeypatch_target.emit_to_user = original_emit
+
+    assistant_call = conversation_service.add_message.await_args
+    metadata = assistant_call.kwargs["metadata"]
+    assert metadata is not None
+    assert metadata.skill_id == "web-research"
+    assert metadata.skill_version == "2.1.0"
+    assert metadata.loaded_skills == ["web-research"]
+    assert metadata.tool_calls is not None
+    completed_payload = emit_to_user.await_args_list[-1].kwargs["data"]["metadata"]
+    assert completed_payload["skill_id"] == "web-research"
+    assert completed_payload["skill_version"] == "2.1.0"
+    assert completed_payload["loaded_skills"] == ["web-research"]
 
 
 @pytest.mark.asyncio

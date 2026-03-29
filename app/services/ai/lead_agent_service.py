@@ -22,6 +22,7 @@ from app.repo.conversation_repo import SearchResult
 from app.services.ai.conversation_service import ConversationService
 from app.services.ai.lead_agent_skill_access_resolver import (
     LeadAgentSkillAccessResolver,
+    ResolvedLeadAgentSkillAccess,
 )
 from app.socket_gateway import gateway
 
@@ -140,12 +141,16 @@ class LeadAgentService:
                 content=user_message.content,
                 organization_id=organization_id,
             )
-            response_content = await self._get_thread_response_for_caller(
+            final_state = await self._get_thread_state_for_caller(
                 thread_id=thread_id,
                 user_id=user_id,
                 organization_id=organization_id,
             )
-            assistant_metadata = self._build_assistant_metadata(tool_calls)
+            response_content = self._extract_final_response(final_state)
+            assistant_metadata = self._build_assistant_metadata(
+                tool_calls=tool_calls,
+                final_state=final_state,
+            )
             assistant_message = await self.conversation_service.add_message(
                 conversation_id=conversation_id,
                 role=MessageRole.ASSISTANT,
@@ -161,6 +166,16 @@ class LeadAgentService:
             )
             if not metadata_payload:
                 metadata_payload = None
+
+            logger.info(
+                "Completed lead-agent turn for conversation %s (thread_id=%s, skill_id=%s, skill_version=%s, loaded_skills=%s, tool_calls=%d)",
+                conversation_id,
+                thread_id,
+                final_state.get("active_skill_id"),
+                final_state.get("active_skill_version"),
+                final_state.get("loaded_skills", []),
+                len(tool_calls),
+            )
 
             await gateway.emit_to_user(
                 user_id=user_id,
@@ -298,6 +313,11 @@ class LeadAgentService:
             "messages": [],
             "user_id": user_id,
             "organization_id": organization_id,
+            "enabled_skill_ids": [],
+            "loaded_skills": [],
+            "allowed_tool_names": [],
+            "active_skill_id": None,
+            "active_skill_version": None,
         }
 
         await self.agent.aupdate_state(
@@ -331,12 +351,14 @@ class LeadAgentService:
         organization_id: Optional[str],
     ) -> dict[str, Any]:
         """Invoke a checkpoint-backed thread with a new user message."""
+        runtime_payload = await self._build_runtime_payload(
+            thread_id=thread_id,
+            user_id=user_id,
+            content=content,
+            organization_id=organization_id,
+        )
         return await self.agent.ainvoke(
-            {
-                "messages": [{"role": "user", "content": content}],
-                "user_id": user_id,
-                "organization_id": organization_id,
-            },
+            runtime_payload,
             config=self._thread_config(thread_id),
         )
 
@@ -350,13 +372,15 @@ class LeadAgentService:
     ) -> list[dict[str, Any]]:
         """Stream the lead-agent runtime and emit chat-compatible socket events."""
         tool_calls: list[dict[str, Any]] = []
+        runtime_payload = await self._build_runtime_payload(
+            thread_id=thread_id,
+            user_id=user_id,
+            content=content,
+            organization_id=organization_id,
+        )
 
         async for event in self.agent.astream_events(
-            {
-                "messages": [{"role": "user", "content": content}],
-                "user_id": user_id,
-                "organization_id": organization_id,
-            },
+            runtime_payload,
             config=self._thread_config(thread_id),
             version="v2",
         ):
@@ -440,20 +464,20 @@ class LeadAgentService:
             raise LeadAgentRunError("Lead-agent user message does not match thread")
         return message
 
-    async def _get_thread_response_for_caller(
+    async def _get_thread_state_for_caller(
         self,
         thread_id: str,
         user_id: str,
         organization_id: Optional[str],
-    ) -> str:
-        """Load the checkpoint state after execution and extract the final reply."""
+    ) -> dict[str, Any]:
+        """Load the checkpoint state after execution for the authenticated caller."""
         state = await self._get_thread_state(thread_id)
         self._validate_thread_scope(
             state,
             user_id=user_id,
             organization_id=organization_id,
         )
-        return self._extract_final_response(state)
+        return state
 
     async def _get_thread_state(self, thread_id: str) -> dict[str, Any]:
         """Load the latest checkpointed state for a thread."""
@@ -523,13 +547,12 @@ class LeadAgentService:
 
     @staticmethod
     def _build_assistant_metadata(
+        *,
         tool_calls: list[dict[str, Any]],
+        final_state: dict[str, Any],
     ) -> Optional[MessageMetadata]:
         """Build persisted assistant metadata from streamed tool activity."""
-        if not tool_calls:
-            return None
-
-        return MessageMetadata(
+        metadata = MessageMetadata(
             tool_calls=[
                 ToolCall(
                     id=tool_call["tool_call_id"],
@@ -538,7 +561,112 @@ class LeadAgentService:
                 )
                 for tool_call in tool_calls
             ]
+            or None,
+            skill_id=LeadAgentService._normalize_optional_string(
+                final_state.get("active_skill_id")
+            ),
+            skill_version=LeadAgentService._normalize_optional_string(
+                final_state.get("active_skill_version")
+            ),
+            loaded_skills=LeadAgentService._normalize_string_list(
+                final_state.get("loaded_skills", [])
+            )
+            or None,
         )
+        if not any(
+            [
+                metadata.tool_calls,
+                metadata.skill_id,
+                metadata.skill_version,
+                metadata.loaded_skills,
+            ]
+        ):
+            return None
+
+        return metadata
+
+    async def _build_runtime_payload(
+        self,
+        *,
+        thread_id: str,
+        user_id: str,
+        content: str,
+        organization_id: Optional[str],
+    ) -> dict[str, Any]:
+        """Build one turn payload with refreshed skill-access state."""
+        current_state = await self._get_thread_state(thread_id)
+        resolved_access = await self._resolve_skill_access_for_turn(
+            user_id=user_id,
+            organization_id=organization_id,
+        )
+        enabled_skill_ids = self._normalize_string_list(resolved_access.enabled_skill_ids)
+        active_skill_id = self._normalize_optional_string(
+            current_state.get("active_skill_id")
+        )
+        if active_skill_id not in enabled_skill_ids:
+            active_skill_id = None
+
+        return {
+            "messages": [{"role": "user", "content": content}],
+            "user_id": user_id,
+            "organization_id": organization_id,
+            "enabled_skill_ids": enabled_skill_ids,
+            "active_skill_id": active_skill_id,
+            "loaded_skills": self._normalize_string_list(
+                current_state.get("loaded_skills", [])
+            ),
+            "allowed_tool_names": (
+                self._normalize_string_list(current_state.get("allowed_tool_names", []))
+                if active_skill_id
+                else []
+            ),
+            "active_skill_version": (
+                self._normalize_optional_string(
+                    current_state.get("active_skill_version")
+                )
+                if active_skill_id
+                else None
+            ),
+        }
+
+    async def _resolve_skill_access_for_turn(
+        self,
+        *,
+        user_id: str,
+        organization_id: Optional[str],
+    ) -> ResolvedLeadAgentSkillAccess:
+        """Resolve enabled skills for one runtime turn."""
+        if self.skill_access_resolver is None or organization_id is None:
+            return ResolvedLeadAgentSkillAccess(enabled_skill_ids=[])
+
+        return await self.skill_access_resolver.resolve_for_caller(
+            user_id=user_id,
+            organization_id=organization_id,
+        )
+
+    @staticmethod
+    def _normalize_string_list(values: Any) -> list[str]:
+        """Normalize one ordered list of strings while dropping blanks."""
+        if not isinstance(values, list):
+            return []
+
+        normalized_values: list[str] = []
+        seen: set[str] = set()
+        for value in values:
+            normalized_value = str(value).strip()
+            if not normalized_value or normalized_value in seen:
+                continue
+            seen.add(normalized_value)
+            normalized_values.append(normalized_value)
+        return normalized_values
+
+    @staticmethod
+    def _normalize_optional_string(value: Any) -> str | None:
+        """Normalize one optional string value."""
+        if value is None:
+            return None
+        normalized_value = str(value).strip()
+        return normalized_value or None
 
     def _extract_final_response(self, result: dict[str, Any]) -> str:
         """Extract the final assistant response from an agent run result."""

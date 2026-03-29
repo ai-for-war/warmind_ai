@@ -61,6 +61,9 @@ class MessageMetadata(BaseModel):
     finish_reason: Optional[str] = None
     tool_calls: Optional[list[ToolCall]] = None
     tool_call_id: Optional[str] = None
+    skill_id: Optional[str] = None
+    skill_version: Optional[str] = None
+    loaded_skills: Optional[list[str]] = None
 
 
 class Message(BaseModel):

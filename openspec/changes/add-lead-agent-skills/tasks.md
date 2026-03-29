@@ -18,9 +18,9 @@
 
 ## 4. Lead-Agent Service, Metadata, And Runtime Integration
 
-- [ ] 4.1 Update `LeadAgentService` to resolve enabled skills on every turn and inject the resolved skill access state before invoking or streaming the runtime
-- [ ] 4.2 Extend assistant message metadata models and persistence so skill execution details such as `skill_id`, `skill_version`, and `loaded_skills` can be stored additively
-- [ ] 4.3 Update lead-agent response processing to capture skill-aware telemetry and metadata while preserving the existing conversation-centric API and socket event contract
+- [x] 4.1 Update `LeadAgentService` to resolve enabled skills on every turn and inject the resolved skill access state before invoking or streaming the runtime
+- [x] 4.2 Extend assistant message metadata models and persistence so skill execution details such as `skill_id`, `skill_version`, and `loaded_skills` can be stored additively
+- [x] 4.3 Update lead-agent response processing to capture skill-aware telemetry and metadata while preserving the existing conversation-centric API and socket event contract
 
 ## 5. Verification And Rollout Hardening
 
