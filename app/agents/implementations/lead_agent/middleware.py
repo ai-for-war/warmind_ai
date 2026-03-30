@@ -125,7 +125,7 @@ def _render_enabled_skill_summaries(skills: Sequence[Any]) -> str:
     <Skill_system>
     You have access to skills that provide optimized workflows for specific tasks. Each skill contains best practices, frameworks, and references to additional resources.
     **Progressive Loading Pattern:**
-    1. When a user query matches a skill's summary, immediately call `load_skill` with the exact `skill_id`to load the skill.
+    1. When the user's query relates to a skill summary, immediately call the `load_skill` function with the correct `skill_id` to load that skill.
     2. Follow the skill's instructions precisely
     <Available Skills>
     {skills_list}
