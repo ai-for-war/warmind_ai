@@ -55,6 +55,9 @@ class MongoDB:
         - organizations: slug (unique), is_active
         - organization_members: (user_id, organization_id) unique, organization_id,
           user_id
+        - lead_agent_skills: (created_by, organization_id, skill_id) unique
+        - lead_agent_skills: (created_by, organization_id, updated_at DESC)
+        - lead_agent_skill_access: (user_id, organization_id) unique
         - conversations: (user_id, organization_id, deleted_at, updated_at DESC)
           for user listing in organization scope
         - conversations: (user_id, organization_id, deleted_at, thread_id, updated_at DESC)
@@ -109,6 +112,46 @@ class MongoDB:
             background=True,
         )
         logger.info("Created index: idx_org_members_user_id")
+
+        # Indexes for persisted lead-agent skills collection
+        existing_skill_indexes = await cls.db.lead_agent_skills.index_information()
+        if "idx_lead_agent_skills_skill_id_unique" in existing_skill_indexes:
+            await cls.db.lead_agent_skills.drop_index(
+                "idx_lead_agent_skills_skill_id_unique"
+            )
+            logger.info("Dropped legacy index: idx_lead_agent_skills_skill_id_unique")
+
+        await cls.db.lead_agent_skills.create_index(
+            [
+                ("created_by", ASCENDING),
+                ("organization_id", ASCENDING),
+                ("skill_id", ASCENDING),
+            ],
+            name="idx_lead_agent_skills_creator_org_skill_unique",
+            unique=True,
+            background=True,
+        )
+        logger.info("Created index: idx_lead_agent_skills_creator_org_skill_unique")
+
+        await cls.db.lead_agent_skills.create_index(
+            [
+                ("created_by", ASCENDING),
+                ("organization_id", ASCENDING),
+                ("updated_at", DESCENDING),
+            ],
+            name="idx_lead_agent_skills_creator_org_updated",
+            background=True,
+        )
+        logger.info("Created index: idx_lead_agent_skills_creator_org_updated")
+
+        # Index for lead-agent skill access collection
+        await cls.db.lead_agent_skill_access.create_index(
+            [("user_id", ASCENDING), ("organization_id", ASCENDING)],
+            name="idx_lead_agent_skill_access_user_org_unique",
+            unique=True,
+            background=True,
+        )
+        logger.info("Created index: idx_lead_agent_skill_access_user_org_unique")
 
         # Index for conversations collection
         # Supports: get_by_user() with pagination ordered by updated_at DESC

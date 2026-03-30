@@ -1,4 +1,4 @@
-"""Schemas for lead-agent thread and conversation API payloads."""
+"""Schemas for lead-agent conversation, skill, and tool API payloads."""
 
 from datetime import datetime
 from typing import Optional
@@ -50,6 +50,73 @@ class LeadAgentSendMessageResponse(LeadAgentSchema):
 
     user_message_id: str
     conversation_id: str
+
+
+class LeadAgentToolResponse(LeadAgentSchema):
+    """Response schema for one user-selectable lead-agent tool."""
+
+    tool_name: str
+    display_name: str
+    description: str
+    category: str
+
+
+class LeadAgentToolListResponse(LeadAgentSchema):
+    """Response schema for the lead-agent selectable tool catalog."""
+
+    items: list[LeadAgentToolResponse]
+
+
+class LeadAgentCreateSkillRequest(LeadAgentSchema):
+    """Schema for creating one lead-agent skill."""
+
+    name: str = Field(..., min_length=1, max_length=200)
+    description: str = Field(..., min_length=1, max_length=2000)
+    activation_prompt: str = Field(..., min_length=1, max_length=20000)
+    allowed_tool_names: list[str] = Field(default_factory=list)
+
+
+class LeadAgentUpdateSkillRequest(LeadAgentSchema):
+    """Schema for updating one lead-agent skill."""
+
+    name: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    description: Optional[str] = Field(default=None, min_length=1, max_length=2000)
+    activation_prompt: Optional[str] = Field(
+        default=None,
+        min_length=1,
+        max_length=20000,
+    )
+    allowed_tool_names: Optional[list[str]] = None
+
+
+class LeadAgentSkillResponse(LeadAgentSchema):
+    """Response schema for one lead-agent skill."""
+
+    skill_id: str
+    name: str
+    description: str
+    activation_prompt: str
+    allowed_tool_names: list[str]
+    version: str
+    is_enabled: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class LeadAgentSkillListResponse(LeadAgentSchema):
+    """Response schema for a paginated lead-agent skill list."""
+
+    items: list[LeadAgentSkillResponse]
+    total: int
+    skip: int
+    limit: int
+
+
+class LeadAgentSkillEnablementResponse(LeadAgentSchema):
+    """Response schema for one skill enablement toggle result."""
+
+    skill_id: str
+    is_enabled: bool
 
 
 class LeadAgentConversationResponse(LeadAgentSchema):

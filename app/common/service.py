@@ -11,6 +11,8 @@ from app.common.repo import (
     get_image_repo,
     get_interview_conversation_repo,
     get_interview_utterance_repo,
+    get_lead_agent_skill_repo,
+    get_lead_agent_skill_access_repo,
     get_meeting_note_chunk_repo,
     get_meeting_repo,
     get_meeting_utterance_repo,
@@ -37,6 +39,10 @@ from app.services.ai.chat_service import ChatService
 from app.services.ai.conversation_service import ConversationService
 from app.services.ai.data_query_service import DataQueryService
 from app.services.ai.lead_agent_service import LeadAgentService
+from app.services.ai.lead_agent_skill_access_resolver import (
+    LeadAgentSkillAccessResolver,
+)
+from app.services.ai.lead_agent_skill_service import LeadAgentSkillService
 from app.services.ai.pipeline_validator import PipelineValidator
 from app.services.analytics.analytics_service import AnalyticsService
 from app.services.analytics.cache_manager import AnalyticsCacheManager
@@ -54,14 +60,14 @@ from app.services.meeting.note_state_store import RedisMeetingNoteStateStore
 from app.services.meeting.session_manager import MeetingSessionManager
 from app.services.organization.organization_service import OrganizationService
 from app.services.sheet_crawler.crawler_service import SheetCrawlerService
-from app.socket_gateway.worker_gateway import worker_gateway
 from app.services.stt.context_store import RedisInterviewContextStore
 from app.services.stt.interview_session_manager import InterviewSessionManager
 from app.services.stt.session_manager import STTSessionManager
 from app.services.stt.stt_service import STTService
-from app.services.user.user_service import UserService
 from app.services.tts.tts_service import TTSService
+from app.services.user.user_service import UserService
 from app.services.voice.voice_service import VoiceService
+from app.socket_gateway.worker_gateway import worker_gateway
 
 
 @lru_cache
@@ -198,9 +204,30 @@ def get_chat_service() -> ChatService:
 
 
 @lru_cache
+def get_lead_agent_skill_access_resolver() -> LeadAgentSkillAccessResolver:
+    """Get singleton lead-agent skill access resolver instance."""
+    return LeadAgentSkillAccessResolver(
+        repository=get_lead_agent_skill_access_repo(),
+        skill_repository=get_lead_agent_skill_repo(),
+    )
+
+
+@lru_cache
+def get_lead_agent_skill_service() -> LeadAgentSkillService:
+    """Get singleton lead-agent skill management service instance."""
+    return LeadAgentSkillService(
+        skill_repository=get_lead_agent_skill_repo(),
+        access_repository=get_lead_agent_skill_access_repo(),
+    )
+
+
+@lru_cache
 def get_lead_agent_service() -> LeadAgentService:
     """Get singleton LeadAgentService instance."""
-    return LeadAgentService(conversation_service=get_conversation_service())
+    return LeadAgentService(
+        conversation_service=get_conversation_service(),
+        skill_access_resolver=get_lead_agent_skill_access_resolver(),
+    )
 
 
 @lru_cache

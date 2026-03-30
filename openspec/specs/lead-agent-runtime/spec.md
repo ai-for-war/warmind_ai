@@ -27,16 +27,23 @@ invoked using a LangGraph `thread_id`.
 ### Requirement: Lead-agent state extends AgentState
 The lead-agent runtime SHALL define its state schema by extending
 `AgentState`. The custom state SHALL support thread-scoped metadata needed by
-the backend, including `user_id` and optional `organization_id`.
+the backend, including `user_id` and optional `organization_id`, and SHALL
+also support skill-related runtime metadata needed to preserve skill-aware
+execution across turns, including enabled skills, active skill identity,
+loaded skill history, and skill-scoped tool availability.
 
-#### Scenario: Create the lead-agent with a custom state schema
+#### Scenario: Create the lead-agent with a skill-aware state schema
 - **WHEN** the lead-agent runtime is initialized
 - **THEN** the agent is created with a state schema that extends `AgentState`
+- **AND** that state schema can represent both caller scope and skill-related
+  execution metadata
 
 #### Scenario: Runtime metadata is available in thread state
 - **WHEN** the system invokes the lead agent for an authenticated user
 - **THEN** the thread state includes the requesting `user_id`
 - **AND** the thread state includes `organization_id` when one is provided
+- **AND** the thread state can retain skill-related execution metadata across
+  turns for the same thread
 
 ### Requirement: MongoDB checkpointer is the source of truth for thread state
 The lead-agent runtime SHALL persist runtime state through a MongoDB-backed
@@ -108,23 +115,39 @@ without managing checkpoint identifiers directly.
   conversation
 - **THEN** the created message record includes the conversation's `thread_id`
 
-### Requirement: Initial lead-agent runtime starts with no custom tools
-The initial lead-agent runtime SHALL be created with an empty tool registry.
-V1 MUST establish the thread-native runtime contract without requiring custom
-application tools.
+### Requirement: Lead-agent runtime supports skill-aware tool registration
+The lead-agent runtime SHALL register the internal tools required for skill
+discovery and skill-aware execution. The runtime MAY register additional
+domain tools, but it MUST expose only the tool subset allowed by the current
+skill context and caller scope for a given model call.
 
-#### Scenario: Create the lead agent with an empty tool list
-- **WHEN** the system initializes the lead-agent runtime for V1
-- **THEN** the runtime registers no custom application tools
+#### Scenario: Runtime includes internal skill support tools
+- **WHEN** the lead-agent runtime is initialized for skill-aware execution
+- **THEN** it registers the internal tool surface required to discover or load
+  skills during a turn
 
-### Requirement: Initial lead-agent runtime starts with no custom middleware
-The initial lead-agent runtime SHALL be created with no custom middleware.
-V1 MUST preserve a clear extension point for future middleware without making
-middleware a dependency of the first release.
+#### Scenario: Runtime exposes only the allowed tools for a model call
+- **WHEN** the lead-agent runtime prepares a model call inside a thread
+- **THEN** it exposes only the tools permitted by the current skill context and
+  caller scope for that call
 
-#### Scenario: Create the lead agent with no middleware
-- **WHEN** the system initializes the lead-agent runtime for V1
-- **THEN** the runtime registers no custom middleware layers
+### Requirement: Lead-agent runtime supports custom middleware for skill-aware execution
+The lead-agent runtime SHALL use custom middleware layers to support
+skill-aware execution. Middleware MUST be able to inject available skill
+summaries into runtime context and to apply dynamic tool selection before each
+model call.
+
+#### Scenario: Runtime injects discoverable skill context before model reasoning
+- **WHEN** the lead-agent runtime prepares a model call for a caller with
+  enabled skills
+- **THEN** middleware injects the available skill summaries into the runtime
+  context before the model reasons about the turn
+
+#### Scenario: Runtime re-evaluates tool exposure after skill state changes
+- **WHEN** the current thread state changes the active skill or allowed tool
+  set during execution
+- **THEN** middleware applies the updated tool exposure rules before the next
+  model call
 
 ### Requirement: Lead-agent responses stream through the existing chat socket contract
 Lead-agent message processing SHALL stream realtime progress and completion to
