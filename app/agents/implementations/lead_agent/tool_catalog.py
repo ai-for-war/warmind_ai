@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from langchain_core.tools import BaseTool
 
 from app.agents.implementations.lead_agent.tools import LEAD_AGENT_INTERNAL_TOOLS
+from app.infrastructure.mcp.manager import get_mcp_tools_manager
 
 
 @dataclass(frozen=True)
@@ -27,13 +28,51 @@ class _LeadAgentSelectableToolRegistration:
     tool: BaseTool
 
 
-_SELECTABLE_TOOL_REGISTRATIONS: list[_LeadAgentSelectableToolRegistration] = []
+def _get_selectable_tool_registrations() -> list[_LeadAgentSelectableToolRegistration]:
+    """Resolve the currently available selectable lead-agent tools."""
+    registrations: list[_LeadAgentSelectableToolRegistration] = []
+
+    mcp_manager = get_mcp_tools_manager()
+    mcp_tools = {
+        tool.name: tool
+        for tool in mcp_manager.get_tools(tool_names=["search", "fetch_content"])
+    }
+
+    search_tool = mcp_tools.get("search")
+    if search_tool is not None:
+        registrations.append(
+            _LeadAgentSelectableToolRegistration(
+                descriptor=LeadAgentSelectableToolDescriptor(
+                    tool_name="search",
+                    display_name="Web Search",
+                    description="Search the web with DuckDuckGo for current external information.",
+                    category="research",
+                ),
+                tool=search_tool,
+            )
+        )
+
+    fetch_content_tool = mcp_tools.get("fetch_content")
+    if fetch_content_tool is not None:
+        registrations.append(
+            _LeadAgentSelectableToolRegistration(
+                descriptor=LeadAgentSelectableToolDescriptor(
+                    tool_name="fetch_content",
+                    display_name="Fetch Web Content",
+                    description="Fetch and extract content from a specific web page URL.",
+                    category="research",
+                ),
+                tool=fetch_content_tool,
+            )
+        )
+
+    return registrations
 
 
 def get_lead_agent_selectable_tool_catalog() -> list[LeadAgentSelectableToolDescriptor]:
     """Return the selectable tool catalog that is actually available."""
     return [
-        registration.descriptor for registration in _SELECTABLE_TOOL_REGISTRATIONS
+        registration.descriptor for registration in _get_selectable_tool_registrations()
     ]
 
 
@@ -47,5 +86,5 @@ def get_lead_agent_selectable_tool_names() -> set[str]:
 def get_lead_agent_tools() -> list[BaseTool]:
     """Return the full runtime tool surface for lead-agent."""
     return LEAD_AGENT_INTERNAL_TOOLS + [
-        registration.tool for registration in _SELECTABLE_TOOL_REGISTRATIONS
+        registration.tool for registration in _get_selectable_tool_registrations()
     ]

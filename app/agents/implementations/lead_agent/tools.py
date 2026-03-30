@@ -20,7 +20,11 @@ logger = logging.getLogger(__name__)
 
 @tool("load_skill")
 async def load_skill(skill_id: str, runtime: ToolRuntime) -> Command:
-    """Load one enabled lead-agent skill into the active runtime state."""
+    """Load one enabled lead-agent skill into the active runtime state.
+
+    Args:
+        skill_id: The ID of the skill to load..
+    """
     return await _load_skill_command(
         skill_id=skill_id,
         runtime=runtime,

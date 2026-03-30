@@ -14,7 +14,7 @@ from app.services.ai.lead_agent_skill_access_resolver import (
     LeadAgentSkillAccessResolver,
 )
 
-_BASE_SKILL_TOOL_NAMES = {"load_skill"}
+_BASE_SKILL_TOOL_NAMES = {"load_skill", "search", "fetch_content"}
 
 
 class LeadAgentSkillPromptMiddleware(AgentMiddleware[LeadAgentState, None, Any]):
@@ -37,7 +37,9 @@ class LeadAgentSkillPromptMiddleware(AgentMiddleware[LeadAgentState, None, Any])
         state = _as_state_dict(request.state)
         user_id = _normalize_optional_string(state.get("user_id"))
         organization_id = _normalize_optional_string(state.get("organization_id"))
-        enabled_skill_ids = _normalize_unique_strings(state.get("enabled_skill_ids", []))
+        enabled_skill_ids = _normalize_unique_strings(
+            state.get("enabled_skill_ids", [])
+        )
         if not user_id or not organization_id or not enabled_skill_ids:
             return await handler(request)
 
@@ -56,7 +58,11 @@ class LeadAgentSkillPromptMiddleware(AgentMiddleware[LeadAgentState, None, Any])
         active_skill_id = _normalize_optional_string(state.get("active_skill_id"))
         if active_skill_id:
             active_skill = next(
-                (skill for skill in enabled_skills if skill.skill_id == active_skill_id),
+                (
+                    skill
+                    for skill in enabled_skills
+                    if skill.skill_id == active_skill_id
+                ),
                 None,
             )
             if active_skill is not None:
@@ -85,9 +91,13 @@ class LeadAgentToolSelectionMiddleware(AgentMiddleware[LeadAgentState, None, Any
         handler,
     ) -> ModelResponse[Any]:
         state = _as_state_dict(request.state)
-        enabled_skill_ids = _normalize_unique_strings(state.get("enabled_skill_ids", []))
+        enabled_skill_ids = _normalize_unique_strings(
+            state.get("enabled_skill_ids", [])
+        )
         active_skill_id = _normalize_optional_string(state.get("active_skill_id"))
-        allowed_tool_names = _normalize_unique_strings(state.get("allowed_tool_names", []))
+        allowed_tool_names = _normalize_unique_strings(
+            state.get("allowed_tool_names", [])
+        )
 
         visible_tool_names = _visible_tool_names(
             enabled_skill_ids=enabled_skill_ids,
@@ -95,36 +105,46 @@ class LeadAgentToolSelectionMiddleware(AgentMiddleware[LeadAgentState, None, Any
             allowed_tool_names=allowed_tool_names,
         )
         filtered_tools = [
-            tool
-            for tool in request.tools
-            if _tool_name(tool) in visible_tool_names
+            tool for tool in request.tools if _tool_name(tool) in visible_tool_names
         ]
         return await handler(request.override(tools=filtered_tools))
 
 
 def _render_enabled_skill_summaries(skills: Sequence[Any]) -> str:
     """Build the lightweight skill discovery prompt section."""
-    lines = [
-        "You can load one of these internal lead-agent skills when the user's request needs specialized behavior.",
-        "Call `load_skill` with the exact `skill_id` before using a skill.",
-        "Available skills:",
-    ]
+    skills_list = []
     for skill in skills:
-        lines.append(
+        skills_list.append(
             f"- skill_id: {skill.skill_id} | name: {skill.name} | summary: {skill.description}"
         )
-    return "\n".join(lines)
+    if skills_list:
+        skills_list = "\n".join(skills_list)
+    else:
+        skills_list = "No skills available."
+    lines = """
+    <Skill_system>
+    You have access to skills that provide optimized workflows for specific tasks. Each skill contains best practices, frameworks, and references to additional resources.
+    **Progressive Loading Pattern:**
+    1. When a user query matches a skill's summary, immediately call `load_skill` with the exact `skill_id`to load the skill.
+    2. Follow the skill's instructions precisely
+    <Available Skills>
+    {skills_list}
+    </Available Skills>
+    </Skill_system>
+    """
+
+    return lines.format(skills_list=skills_list)
 
 
 def _render_active_skill_prompt(skill: Any) -> str:
     """Build the activated skill prompt section."""
-    return "\n".join(
-        [
-            f"Active skill: {skill.skill_id} (version {skill.version})",
-            "Activated instructions:",
-            skill.activation_prompt.strip(),
-        ]
-    ).strip()
+    return f"""
+    <Active_skill>
+    Active skill: {skill.skill_id} (version {skill.version})
+    Activated instructions:
+    {skill.activation_prompt.strip()}
+    </Active_skill>
+    """
 
 
 def _visible_tool_names(
@@ -134,8 +154,6 @@ def _visible_tool_names(
     allowed_tool_names: Sequence[str],
 ) -> set[str]:
     """Resolve the visible tool names for the current model call."""
-    if not enabled_skill_ids:
-        return set()
     if not active_skill_id:
         return set(_BASE_SKILL_TOOL_NAMES)
     return set(_BASE_SKILL_TOOL_NAMES).union(allowed_tool_names)

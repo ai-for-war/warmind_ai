@@ -12,6 +12,7 @@ def test_create_lead_agent_registers_skill_support_tool_surface(
     fake_model = object()
     fake_checkpointer = object()
     fake_tools = [object()]
+    fake_prompt = "lead-agent-system-prompt"
 
     def _fake_create_agent(**kwargs):
         captured.update(kwargs)
@@ -37,12 +38,18 @@ def test_create_lead_agent_registers_skill_support_tool_surface(
         "get_lead_agent_tools",
         lambda: fake_tools,
     )
+    monkeypatch.setattr(
+        lead_agent_module,
+        "get_lead_agent_system_prompt",
+        lambda: fake_prompt,
+    )
 
     compiled_agent = lead_agent_module.create_lead_agent()
 
     assert compiled_agent == "compiled-agent"
     assert captured["model"] is fake_model
     assert captured["tools"] is fake_tools
+    assert captured["prompt"] == fake_prompt
     assert captured["middleware"] == LEAD_AGENT_MIDDLEWARE
     assert captured["state_schema"] is LeadAgentState
     assert captured["checkpointer"] is fake_checkpointer

@@ -65,6 +65,16 @@ def search_docs(query: str) -> str:
 
 
 @tool
+def search(query: str) -> str:
+    """Search the web."""
+
+
+@tool
+def fetch_content(url: str) -> str:
+    """Fetch web page content."""
+
+
+@tool
 def secret_tool(query: str) -> str:
     """Secret tool."""
 
@@ -165,9 +175,8 @@ async def test_tool_selection_middleware_filters_to_base_or_skill_allowed_surfac
     pre_activation_request = _request(
         state={
             "messages": [],
-            "enabled_skill_ids": ["web-research"],
         },
-        tools=[load_skill, search_docs, secret_tool],
+        tools=[load_skill, search, fetch_content, search_docs, secret_tool],
     )
     await middleware.awrap_model_call(pre_activation_request, _handler)
 
@@ -178,12 +187,18 @@ async def test_tool_selection_middleware_filters_to_base_or_skill_allowed_surfac
             "active_skill_id": "web-research",
             "allowed_tool_names": ["search_docs"],
         },
-        tools=[load_skill, search_docs, secret_tool],
+        tools=[load_skill, search, fetch_content, search_docs, secret_tool],
     )
     await middleware.awrap_model_call(active_skill_request, _handler)
 
-    assert [tool.name for tool in handler_requests[0].tools] == ["load_skill"]
+    assert [tool.name for tool in handler_requests[0].tools] == [
+        "load_skill",
+        "search",
+        "fetch_content",
+    ]
     assert [tool.name for tool in handler_requests[1].tools] == [
         "load_skill",
+        "search",
+        "fetch_content",
         "search_docs",
     ]
