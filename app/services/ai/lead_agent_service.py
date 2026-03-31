@@ -412,6 +412,8 @@ class LeadAgentService:
         ):
             event_kind = event.get("event", "")
 
+            logger.info("Event kind: %s", event_kind)
+
             if event_kind == "on_chat_model_stream":
                 chunk = event.get("data", {}).get("chunk")
                 token = self._message_content_to_text(chunk)
