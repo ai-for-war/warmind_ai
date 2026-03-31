@@ -1,8 +1,8 @@
 ## 1. Lead-Agent Planning Runtime Integration
 
-- [ ] 1.1 Add lead-agent planning prompt constants and `tool_description` text for `TodoListMiddleware` so planning guidance is explicit about complex-task-only usage
-- [ ] 1.2 Update the lead-agent factory to attach LangChain `TodoListMiddleware` alongside the existing skill-aware middleware without replacing the singleton compiled runtime pattern
-- [ ] 1.3 Verify the runtime can access checkpoint-backed `todos` state without introducing a second source of truth in application persistence
+- [x] 1.1 Add lead-agent planning prompt constants and `tool_description` text for `TodoListMiddleware` so planning guidance is explicit about complex-task-only usage
+- [x] 1.2 Update the lead-agent factory to attach LangChain `TodoListMiddleware` alongside the existing skill-aware middleware without replacing the singleton compiled runtime pattern
+- [x] 1.3 Verify the runtime can access checkpoint-backed `todos` state without introducing a second source of truth in application persistence
 
 ## 2. Tool Exposure And Middleware Coordination
 

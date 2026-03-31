@@ -5,16 +5,26 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-from langchain.agents.middleware import ModelRequest, ModelResponse, Runtime
+from langchain.agents.middleware import (
+    ModelRequest,
+    ModelResponse,
+    TodoListMiddleware,
+)
 from langchain_core.messages import AIMessage
 from langchain_core.tools import tool
 
 from app.agents.implementations.lead_agent.middleware import (
+    LEAD_AGENT_MIDDLEWARE,
     LeadAgentSkillPromptMiddleware,
     LeadAgentToolSelectionMiddleware,
 )
+from app.agents.implementations.lead_agent.state import LeadAgentState
 from app.agents.implementations.lead_agent.tools import load_skill
 from app.domain.models.lead_agent_skill import LeadAgentSkill
+from app.prompts.system.lead_agent import (
+    get_lead_agent_todo_system_prompt,
+    get_lead_agent_todo_tool_description,
+)
 
 
 def _now() -> datetime:
@@ -55,7 +65,7 @@ def _request(
         system_prompt=system_prompt,
         tools=tools or [],
         state=state,
-        runtime=Runtime(context=None),
+        runtime=None,
     )
 
 
@@ -118,7 +128,7 @@ async def test_prompt_middleware_injects_lightweight_skill_summaries() -> None:
     updated_request = captured["request"]
     assert updated_request.system_prompt is not None
     assert "Base system prompt." in updated_request.system_prompt
-    assert "Available skills:" in updated_request.system_prompt
+    assert "<Available Skills>" in updated_request.system_prompt
     assert "skill_id: web-research" in updated_request.system_prompt
     assert "Research external sources." in updated_request.system_prompt
     assert "Activated instructions:" not in updated_request.system_prompt
@@ -167,6 +177,7 @@ async def test_prompt_middleware_reinjects_active_skill_instructions() -> None:
 async def test_tool_selection_middleware_filters_to_base_or_skill_allowed_surface() -> None:
     middleware = LeadAgentToolSelectionMiddleware()
     handler_requests: list[ModelRequest[None]] = []
+    todo_tool = LEAD_AGENT_MIDDLEWARE[1].tools[0]
 
     async def _handler(updated_request: ModelRequest[None]) -> ModelResponse[object]:
         handler_requests.append(updated_request)
@@ -176,7 +187,7 @@ async def test_tool_selection_middleware_filters_to_base_or_skill_allowed_surfac
         state={
             "messages": [],
         },
-        tools=[load_skill, search, fetch_content, search_docs, secret_tool],
+        tools=[load_skill, todo_tool, search, fetch_content, search_docs, secret_tool],
     )
     await middleware.awrap_model_call(pre_activation_request, _handler)
 
@@ -187,18 +198,40 @@ async def test_tool_selection_middleware_filters_to_base_or_skill_allowed_surfac
             "active_skill_id": "web-research",
             "allowed_tool_names": ["search_docs"],
         },
-        tools=[load_skill, search, fetch_content, search_docs, secret_tool],
+        tools=[load_skill, todo_tool, search, fetch_content, search_docs, secret_tool],
     )
     await middleware.awrap_model_call(active_skill_request, _handler)
 
     assert [tool.name for tool in handler_requests[0].tools] == [
         "load_skill",
+        "write_todos",
         "search",
         "fetch_content",
     ]
     assert [tool.name for tool in handler_requests[1].tools] == [
         "load_skill",
+        "write_todos",
         "search",
         "fetch_content",
         "search_docs",
     ]
+
+
+def test_lead_agent_runtime_registers_todo_middleware_with_complex_task_guidance() -> None:
+    assert len(LEAD_AGENT_MIDDLEWARE) == 3
+    assert isinstance(LEAD_AGENT_MIDDLEWARE[0], LeadAgentSkillPromptMiddleware)
+    assert isinstance(LEAD_AGENT_MIDDLEWARE[1], TodoListMiddleware)
+    assert isinstance(LEAD_AGENT_MIDDLEWARE[2], LeadAgentToolSelectionMiddleware)
+
+    todo_middleware = LEAD_AGENT_MIDDLEWARE[1]
+    todo_system_prompt = get_lead_agent_todo_system_prompt()
+    todo_tool_description = get_lead_agent_todo_tool_description()
+    assert todo_middleware.system_prompt == todo_system_prompt
+    assert todo_middleware.tool_description == todo_tool_description
+    assert "complex" in todo_system_prompt.lower()
+    assert "simple" in todo_system_prompt.lower()
+    assert "structured task list" in todo_tool_description.lower()
+
+
+def test_lead_agent_state_keeps_todos_in_middleware_backed_runtime_state() -> None:
+    assert "todos" not in LeadAgentState.__annotations__
