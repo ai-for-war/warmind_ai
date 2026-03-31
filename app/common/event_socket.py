@@ -21,6 +21,7 @@ class ChatEvents:
     MESSAGE_TOKEN = "chat:message:token"
     MESSAGE_TOOL_START = "chat:message:tool_start"
     MESSAGE_TOOL_END = "chat:message:tool_end"
+    MESSAGE_PLAN_UPDATED = "chat:message:plan_updated"
     MESSAGE_COMPLETED = "chat:message:completed"
     MESSAGE_FAILED = "chat:message:failed"
 

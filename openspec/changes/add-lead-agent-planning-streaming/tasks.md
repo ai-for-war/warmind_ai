@@ -12,9 +12,9 @@
 
 ## 3. Persisted Plan Streaming
 
-- [ ] 3.1 Extend `LeadAgentService` streaming flow to capture the last persisted todo snapshot before runtime execution begins
-- [ ] 3.2 Detect completed `write_todos` tool calls, reload the latest checkpoint state, diff the persisted `todos` snapshot, and emit a dedicated `chat:message:plan_updated` event only when the persisted snapshot changes
-- [ ] 3.3 Define and wire the new socket event payload shape so it returns the full todo snapshot plus summary counts keyed by `conversation_id`
+- [x] 3.1 Extend `LeadAgentService` streaming flow to capture the last persisted todo snapshot before runtime execution begins
+- [x] 3.2 Detect completed `write_todos` tool calls, reload the latest checkpoint state, diff the persisted `todos` snapshot, and emit a dedicated `chat:message:plan_updated` event only when the persisted snapshot changes
+- [x] 3.3 Define and wire the new socket event payload shape so it returns the full todo snapshot plus summary counts keyed by `conversation_id`
 
 ## 4. Plan History Projection
 

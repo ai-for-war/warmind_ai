@@ -253,13 +253,11 @@ class LeadAgentService:
                 user_id=user_id,
                 organization_id=organization_id,
             )
-            conversation = (
-                await self.conversation_service.create_conversation_from_initial_message(
-                    user_id=user_id,
-                    content=initial_message_content,
-                    organization_id=organization_id,
-                    thread_id=thread_id,
-                )
+            conversation = await self.conversation_service.create_conversation_from_initial_message(
+                user_id=user_id,
+                content=initial_message_content,
+                organization_id=organization_id,
+                thread_id=thread_id,
             )
             return conversation, thread_id
 
@@ -378,6 +376,11 @@ class LeadAgentService:
             content=content,
             organization_id=organization_id,
         )
+        last_todos = await self._get_persisted_todo_snapshot_for_caller(
+            thread_id=thread_id,
+            user_id=user_id,
+            organization_id=organization_id,
+        )
 
         async for event in self.agent.astream_events(
             runtime_payload,
@@ -401,48 +404,70 @@ class LeadAgentService:
                     )
             elif event_kind == "on_tool_start":
                 run_id = str(event.get("run_id", ""))
+                tool_name = str(event.get("name", "unknown"))
                 serializable_input = self._serialize_tool_arguments(
                     event.get("data", {}).get("input", {})
                 )
                 tool_call = {
-                    "tool_name": event.get("name", "unknown"),
+                    "tool_name": tool_name,
                     "tool_call_id": run_id,
                     "arguments": serializable_input,
                     "result": None,
                     "error": None,
                 }
                 tool_calls.append(tool_call)
-                await gateway.emit_to_user(
-                    user_id=user_id,
-                    event=ChatEvents.MESSAGE_TOOL_START,
-                    data={
-                        "conversation_id": conversation_id,
-                        "tool_name": tool_call["tool_name"],
-                        "tool_call_id": run_id,
-                        "arguments": serializable_input,
-                    },
-                    organization_id=organization_id,
-                )
+                if tool_name != "write_todos":
+                    await gateway.emit_to_user(
+                        user_id=user_id,
+                        event=ChatEvents.MESSAGE_TOOL_START,
+                        data={
+                            "conversation_id": conversation_id,
+                            "tool_name": tool_call["tool_name"],
+                            "tool_call_id": run_id,
+                            "arguments": serializable_input,
+                        },
+                        organization_id=organization_id,
+                    )
             elif event_kind == "on_tool_end":
                 run_id = str(event.get("run_id", ""))
                 result = self._tool_output_to_text(
                     event.get("data", {}).get("output", "")
                 )
+                completed_tool_name: str | None = None
                 for tool_call in tool_calls:
                     if tool_call["tool_call_id"] == run_id:
                         tool_call["result"] = result
+                        completed_tool_name = str(tool_call["tool_name"])
                         break
 
-                await gateway.emit_to_user(
-                    user_id=user_id,
-                    event=ChatEvents.MESSAGE_TOOL_END,
-                    data={
-                        "conversation_id": conversation_id,
-                        "tool_call_id": run_id,
-                        "result": result,
-                    },
-                    organization_id=organization_id,
-                )
+                if completed_tool_name != "write_todos":
+                    await gateway.emit_to_user(
+                        user_id=user_id,
+                        event=ChatEvents.MESSAGE_TOOL_END,
+                        data={
+                            "conversation_id": conversation_id,
+                            "tool_call_id": run_id,
+                            "result": result,
+                        },
+                        organization_id=organization_id,
+                    )
+                if completed_tool_name == "write_todos":
+                    current_todos = await self._get_persisted_todo_snapshot_for_caller(
+                        thread_id=thread_id,
+                        user_id=user_id,
+                        organization_id=organization_id,
+                    )
+                    if current_todos != last_todos:
+                        await gateway.emit_to_user(
+                            user_id=user_id,
+                            event=ChatEvents.MESSAGE_PLAN_UPDATED,
+                            data=self._build_plan_update_payload(
+                                conversation_id=conversation_id,
+                                todos=current_todos,
+                            ),
+                            organization_id=organization_id,
+                        )
+                        last_todos = current_todos
 
         return tool_calls
 
@@ -457,7 +482,9 @@ class LeadAgentService:
         if message is None:
             raise LeadAgentRunError("Lead-agent user message not found")
         if message.conversation_id != conversation_id:
-            raise LeadAgentRunError("Lead-agent user message does not match conversation")
+            raise LeadAgentRunError(
+                "Lead-agent user message does not match conversation"
+            )
         if message.role != MessageRole.USER:
             raise LeadAgentRunError("Lead-agent user message is not a user turn")
         if message.thread_id != thread_id:
@@ -478,6 +505,21 @@ class LeadAgentService:
             organization_id=organization_id,
         )
         return state
+
+    async def _get_persisted_todo_snapshot_for_caller(
+        self,
+        *,
+        thread_id: str,
+        user_id: str,
+        organization_id: Optional[str],
+    ) -> list[dict[str, Any]]:
+        """Load the latest persisted todo snapshot for one caller-scoped thread."""
+        state = await self._get_thread_state_for_caller(
+            thread_id=thread_id,
+            user_id=user_id,
+            organization_id=organization_id,
+        )
+        return self._extract_todo_snapshot(state)
 
     async def _get_thread_state(self, thread_id: str) -> dict[str, Any]:
         """Load the latest checkpointed state for a thread."""
@@ -599,7 +641,9 @@ class LeadAgentService:
             user_id=user_id,
             organization_id=organization_id,
         )
-        enabled_skill_ids = self._normalize_string_list(resolved_access.enabled_skill_ids)
+        enabled_skill_ids = self._normalize_string_list(
+            resolved_access.enabled_skill_ids
+        )
         active_skill_id = self._normalize_optional_string(
             current_state.get("active_skill_id")
         )
@@ -667,6 +711,55 @@ class LeadAgentService:
             return None
         normalized_value = str(value).strip()
         return normalized_value or None
+
+    @classmethod
+    def _extract_todo_snapshot(cls, state: dict[str, Any]) -> list[dict[str, Any]]:
+        """Normalize persisted todo state into a stable full-snapshot payload."""
+        todos = state.get("todos", [])
+        if not isinstance(todos, list):
+            return []
+
+        normalized_todos: list[dict[str, Any]] = []
+        for todo in todos:
+            encoded_todo = jsonable_encoder(todo)
+            if not isinstance(encoded_todo, dict):
+                continue
+
+            normalized_todo = {
+                "content": cls._normalize_optional_string(encoded_todo.get("content"))
+                or "",
+                "status": cls._normalize_optional_string(encoded_todo.get("status"))
+                or "pending",
+            }
+            normalized_todos.append(normalized_todo)
+
+        return normalized_todos
+
+    @classmethod
+    def _build_plan_update_payload(
+        cls,
+        *,
+        conversation_id: str,
+        todos: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Build the full-snapshot socket payload for plan updates."""
+        summary = {
+            "total": len(todos),
+            "completed": 0,
+            "in_progress": 0,
+            "pending": 0,
+        }
+        for todo in todos:
+            status = cls._normalize_optional_string(todo.get("status")) or "pending"
+            if status not in summary:
+                continue
+            summary[status] += 1
+
+        return {
+            "conversation_id": conversation_id,
+            "todos": todos,
+            "summary": summary,
+        }
 
     def _extract_final_response(self, result: dict[str, Any]) -> str:
         """Extract the final assistant response from an agent run result."""
