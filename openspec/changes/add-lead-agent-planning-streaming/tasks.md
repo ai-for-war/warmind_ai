@@ -6,9 +6,9 @@
 
 ## 2. Tool Exposure And Middleware Coordination
 
-- [ ] 2.1 Update lead-agent tool-selection rules so `write_todos` is preserved as a trusted coordination tool alongside `load_skill`
-- [ ] 2.2 Add integration coverage for middleware ordering so skill prompt injection, todo guidance, and filtered tool visibility remain active in the same model call
-- [ ] 2.3 Verify simple turns can still complete without mandatory todo creation while complex turns retain access to planning tools
+- [x] 2.1 Update lead-agent tool-selection rules so `write_todos` is preserved as a trusted coordination tool alongside `load_skill`
+- [x] 2.2 Add integration coverage for middleware ordering so skill prompt injection, todo guidance, and filtered tool visibility remain active in the same model call
+- [x] 2.3 Verify simple turns can still complete without mandatory todo creation while complex turns retain access to planning tools
 
 ## 3. Persisted Plan Streaming
 
