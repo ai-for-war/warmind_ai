@@ -37,7 +37,6 @@ langchain-openai==1.1.10
 langchain==1.2.10
 langgraph==1.0.10
 langgraph-checkpoint-mongodb==0.3.1
-deepagents==0.4.7
 
 # MCP Integration
 langchain-mcp-adapters==0.2.1
