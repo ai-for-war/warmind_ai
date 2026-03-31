@@ -18,9 +18,9 @@
 
 ## 4. Plan History Projection
 
-- [ ] 4.1 Add an authenticated conversation-scoped read path for the latest persisted lead-agent plan snapshot backed directly by checkpoint state
-- [ ] 4.2 Add or update API schemas so the plan endpoint returns both populated todo snapshots and a valid empty representation when no plan exists yet
-- [ ] 4.3 Ensure conversation-to-thread validation and caller scoping for plan reads match the existing lead-agent conversation rules
+- [x] 4.1 Add an authenticated conversation-scoped read path for the latest persisted lead-agent plan snapshot backed directly by checkpoint state
+- [x] 4.2 Add or update API schemas so the plan endpoint returns both populated todo snapshots and a valid empty representation when no plan exists yet
+- [x] 4.3 Ensure conversation-to-thread validation and caller scoping for plan reads match the existing lead-agent conversation rules
 
 ## 5. Verification And Regression Coverage
 

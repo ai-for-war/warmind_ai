@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from collections import defaultdict
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from typing import Iterable
 from unittest.mock import AsyncMock
 
@@ -22,6 +23,7 @@ from app.api.v1.ai.chat import router as chat_router
 from app.api.v1.ai.lead_agent import router as lead_agent_router
 from app.common.exceptions import AppException
 from app.common.service import get_chat_service, get_lead_agent_service
+from app.common.exceptions.ai_exceptions import LeadAgentConversationNotFoundError
 from app.domain.models.conversation import Conversation, ConversationStatus
 from app.domain.models.message import Message, MessageRole
 from app.domain.models.user import User, UserRole
@@ -246,7 +248,32 @@ async def test_lead_agent_endpoints_return_thread_backed_conversations_and_order
             conversation_service=conversation_service,
             data_query_service=AsyncMock(),
         ),
-        lead_agent_service=LeadAgentService(conversation_service=conversation_service),
+        lead_agent_service=SimpleNamespace(
+            search_conversations=AsyncMock(
+                return_value=SearchResult(items=[lead_conversation], total=1)
+            ),
+            get_conversation_messages=AsyncMock(
+                return_value=sorted(
+                    conversation_service._messages_by_conversation["conv-lead"],
+                    key=lambda message: message.created_at,
+                )
+            ),
+            get_conversation_plan=AsyncMock(
+                return_value={
+                    "conversation_id": "conv-lead",
+                    "todos": [
+                        {"content": "Inspect request", "status": "completed"},
+                        {"content": "Draft response", "status": "in_progress"},
+                    ],
+                    "summary": {
+                        "total": 2,
+                        "completed": 1,
+                        "in_progress": 1,
+                        "pending": 0,
+                    },
+                }
+            ),
+        ),
     )
 
     async with AsyncClient(
@@ -255,6 +282,7 @@ async def test_lead_agent_endpoints_return_thread_backed_conversations_and_order
     ) as client:
         list_response = await client.get("/lead-agent/conversations")
         history_response = await client.get("/lead-agent/conversations/conv-lead/messages")
+        plan_response = await client.get("/lead-agent/conversations/conv-lead/plan")
 
     assert list_response.status_code == 200
     assert list_response.json() == {
@@ -284,6 +312,20 @@ async def test_lead_agent_endpoints_return_thread_backed_conversations_and_order
         message["thread_id"] == THREAD_ID
         for message in history_response.json()["messages"]
     )
+    assert plan_response.status_code == 200
+    assert plan_response.json() == {
+        "conversation_id": "conv-lead",
+        "todos": [
+            {"content": "Inspect request", "status": "completed"},
+            {"content": "Draft response", "status": "in_progress"},
+        ],
+        "summary": {
+            "total": 2,
+            "completed": 1,
+            "in_progress": 1,
+            "pending": 0,
+        },
+    }
 
 
 @pytest.mark.asyncio
@@ -346,3 +388,56 @@ async def test_chat_endpoints_exclude_lead_agent_projection_records() -> None:
 
     assert lead_history.status_code == 404
     assert lead_history.json() == {"detail": "Conversation not found"}
+
+
+@pytest.mark.asyncio
+async def test_lead_agent_plan_endpoint_returns_empty_snapshot_and_not_found_for_cross_scope() -> None:
+    lead_service = SimpleNamespace(
+        search_conversations=AsyncMock(),
+        get_conversation_messages=AsyncMock(),
+        get_conversation_plan=AsyncMock(
+            side_effect=[
+                {
+                    "conversation_id": "conv-lead",
+                    "todos": [],
+                    "summary": {
+                        "total": 0,
+                        "completed": 0,
+                        "in_progress": 0,
+                        "pending": 0,
+                    },
+                },
+                LeadAgentConversationNotFoundError(),
+            ]
+        ),
+    )
+    app = _build_test_app(
+        chat_service=ChatService(
+            conversation_service=_InMemoryConversationService(conversations=[], messages=[]),
+            data_query_service=AsyncMock(),
+        ),
+        lead_agent_service=lead_service,
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        empty_plan_response = await client.get("/lead-agent/conversations/conv-lead/plan")
+        missing_plan_response = await client.get("/lead-agent/conversations/conv-missing/plan")
+
+    assert empty_plan_response.status_code == 200
+    assert empty_plan_response.json() == {
+        "conversation_id": "conv-lead",
+        "todos": [],
+        "summary": {
+            "total": 0,
+            "completed": 0,
+            "in_progress": 0,
+            "pending": 0,
+        },
+    }
+    assert missing_plan_response.status_code == 404
+    assert missing_plan_response.json() == {
+        "detail": "Lead-agent conversation not found"
+    }

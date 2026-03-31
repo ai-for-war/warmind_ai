@@ -168,3 +168,27 @@ class LeadAgentMessageListResponse(LeadAgentSchema):
 
     conversation_id: str
     messages: list[LeadAgentMessageResponse]
+
+
+class LeadAgentPlanTodoResponse(LeadAgentSchema):
+    """Response schema for one persisted lead-agent todo item."""
+
+    content: str
+    status: str
+
+
+class LeadAgentPlanSummaryResponse(LeadAgentSchema):
+    """Response schema for aggregate plan status counts."""
+
+    total: int
+    completed: int
+    in_progress: int
+    pending: int
+
+
+class LeadAgentPlanResponse(LeadAgentSchema):
+    """Response schema for the latest persisted lead-agent plan snapshot."""
+
+    conversation_id: str
+    todos: list[LeadAgentPlanTodoResponse]
+    summary: LeadAgentPlanSummaryResponse

@@ -240,6 +240,29 @@ class LeadAgentService:
             conversation_id=conversation.id,
         )
 
+    async def get_conversation_plan(
+        self,
+        conversation_id: str,
+        user_id: str,
+        organization_id: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Return the latest persisted todo snapshot for a lead-agent conversation."""
+        _, thread_id = await self._require_lead_agent_conversation(
+            conversation_id=conversation_id,
+            user_id=user_id,
+            organization_id=organization_id,
+            validate_thread_state=True,
+        )
+        todos = await self._get_persisted_todo_snapshot_for_caller(
+            thread_id=thread_id,
+            user_id=user_id,
+            organization_id=organization_id,
+        )
+        return self._build_plan_update_payload(
+            conversation_id=conversation_id,
+            todos=todos,
+        )
+
     async def _get_or_create_conversation_projection(
         self,
         user_id: str,

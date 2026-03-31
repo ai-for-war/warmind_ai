@@ -666,3 +666,76 @@ async def test_process_agent_response_skips_plan_updated_when_persisted_todos_do
 
     emitted_events = [call.kwargs["event"] for call in emit_to_user.await_args_list]
     assert ChatEvents.MESSAGE_PLAN_UPDATED not in emitted_events
+
+
+@pytest.mark.asyncio
+async def test_get_conversation_plan_returns_latest_persisted_snapshot() -> None:
+    conversation_service = _conversation_service()
+    service = LeadAgentService(conversation_service=conversation_service)
+    conversation_service.get_user_conversation.return_value = _conversation(
+        thread_id=THREAD_ID
+    )
+    service._get_thread_state = AsyncMock(
+        return_value={
+            "messages": [],
+            "user_id": "user-1",
+            "organization_id": "org-1",
+            "todos": [
+                {"content": "Inspect request", "status": "completed"},
+                {"content": "Draft response", "status": "in_progress"},
+            ],
+        }
+    )
+
+    plan = await service.get_conversation_plan(
+        conversation_id="conv-1",
+        user_id="user-1",
+        organization_id="org-1",
+    )
+
+    assert plan == {
+        "conversation_id": "conv-1",
+        "todos": [
+            {"content": "Inspect request", "status": "completed"},
+            {"content": "Draft response", "status": "in_progress"},
+        ],
+        "summary": {
+            "total": 2,
+            "completed": 1,
+            "in_progress": 1,
+            "pending": 0,
+        },
+    }
+
+
+@pytest.mark.asyncio
+async def test_get_conversation_plan_returns_valid_empty_snapshot_when_no_todos_exist() -> None:
+    conversation_service = _conversation_service()
+    service = LeadAgentService(conversation_service=conversation_service)
+    conversation_service.get_user_conversation.return_value = _conversation(
+        thread_id=THREAD_ID
+    )
+    service._get_thread_state = AsyncMock(
+        return_value={
+            "messages": [],
+            "user_id": "user-1",
+            "organization_id": "org-1",
+        }
+    )
+
+    plan = await service.get_conversation_plan(
+        conversation_id="conv-1",
+        user_id="user-1",
+        organization_id="org-1",
+    )
+
+    assert plan == {
+        "conversation_id": "conv-1",
+        "todos": [],
+        "summary": {
+            "total": 0,
+            "completed": 0,
+            "in_progress": 0,
+            "pending": 0,
+        },
+    }
