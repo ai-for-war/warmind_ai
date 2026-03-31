@@ -21,6 +21,7 @@ from app.domain.schemas.lead_agent import (
     LeadAgentSendMessageRequest,
     LeadAgentSendMessageResponse,
     LeadAgentSkillEnablementResponse,
+    LeadAgentSkillFilterStatus,
     LeadAgentSkillListResponse,
     LeadAgentSkillResponse,
     LeadAgentToolListResponse,
@@ -48,6 +49,11 @@ async def list_tools(
 async def list_skills(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
+    search: Optional[str] = Query(default=None, max_length=100),
+    skill_filter: LeadAgentSkillFilterStatus = Query(
+        default=LeadAgentSkillFilterStatus.ALL,
+        alias="filter",
+    ),
     current_user: User = Depends(get_current_active_user),
     org_context: OrganizationContext = Depends(get_current_organization_context),
     lead_agent_skill_service: LeadAgentSkillService = Depends(
@@ -58,6 +64,8 @@ async def list_skills(
     return await lead_agent_skill_service.list_skills(
         user_id=current_user.id,
         organization_id=org_context.organization_id,
+        search=search,
+        skill_filter=skill_filter,
         skip=skip,
         limit=limit,
     )

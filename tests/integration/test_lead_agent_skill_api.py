@@ -56,6 +56,9 @@ class _InMemorySkillRepo:
         *,
         user_id: str,
         organization_id: str,
+        search: str | None = None,
+        include_skill_ids: list[str] | None = None,
+        exclude_skill_ids: list[str] | None = None,
         skip: int = 0,
         limit: int = 20,
     ) -> LeadAgentSkillListResult:
@@ -64,6 +67,21 @@ class _InMemorySkillRepo:
             for (created_by, org_id, _skill_id), skill in self.skills.items()
             if created_by == user_id and org_id == organization_id
         ]
+        if search is not None and search.strip():
+            normalized_search = search.strip().lower()
+            items = [
+                skill for skill in items if normalized_search in skill.name.lower()
+            ]
+        if include_skill_ids:
+            include_skill_id_set = {skill_id.strip() for skill_id in include_skill_ids}
+            items = [
+                skill for skill in items if skill.skill_id in include_skill_id_set
+            ]
+        if exclude_skill_ids:
+            exclude_skill_id_set = {skill_id.strip() for skill_id in exclude_skill_ids}
+            items = [
+                skill for skill in items if skill.skill_id not in exclude_skill_id_set
+            ]
         items.sort(key=lambda skill: skill.updated_at, reverse=True)
         return LeadAgentSkillListResult(items=items[skip : skip + limit], total=len(items))
 
@@ -301,3 +319,74 @@ async def test_lead_agent_skill_endpoints_support_crud_and_enablement_flow() -> 
     }
 
     assert delete_response.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_lead_agent_skill_list_supports_search_and_filter_query_params() -> None:
+    service = LeadAgentSkillService(
+        skill_repository=_InMemorySkillRepo(),
+        access_repository=_InMemoryAccessRepo(),
+        tool_catalog_provider=lambda: [
+            LeadAgentSelectableToolDescriptor(
+                tool_name="customer_lookup",
+                display_name="Customer Lookup",
+                description="Look up customer records",
+                category="crm",
+            ),
+        ],
+    )
+    app = _build_test_app(service)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        await client.post(
+            "/lead-agent/skills",
+            json={
+                "name": "Alpha Research",
+                "description": "Search alpha accounts",
+                "activation_prompt": "Use customer_lookup",
+                "allowed_tool_names": ["customer_lookup"],
+            },
+        )
+        await client.post(
+            "/lead-agent/skills",
+            json={
+                "name": "Beta Planner",
+                "description": "Plan beta accounts",
+                "activation_prompt": "Use customer_lookup",
+                "allowed_tool_names": ["customer_lookup"],
+            },
+        )
+        await client.put("/lead-agent/skills/alpha-research/enabled")
+
+        search_response = await client.get("/lead-agent/skills", params={"search": "alpha"})
+        enabled_response = await client.get(
+            "/lead-agent/skills",
+            params={"filter": "enabled"},
+        )
+        disabled_response = await client.get(
+            "/lead-agent/skills",
+            params={"filter": "disabled"},
+        )
+
+    assert search_response.status_code == 200
+    assert search_response.json()["total"] == 1
+    assert [item["skill_id"] for item in search_response.json()["items"]] == [
+        "alpha-research"
+    ]
+
+    assert enabled_response.status_code == 200
+    assert enabled_response.json()["total"] == 1
+    assert [item["skill_id"] for item in enabled_response.json()["items"]] == [
+        "alpha-research"
+    ]
+    assert enabled_response.json()["items"][0]["is_enabled"] is True
+
+    assert disabled_response.status_code == 200
+    assert disabled_response.json()["total"] == 1
+    assert [item["skill_id"] for item in disabled_response.json()["items"]] == [
+        "beta-planner"
+    ]
+    assert disabled_response.json()["items"][0]["is_enabled"] is False

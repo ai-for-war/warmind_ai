@@ -2,6 +2,7 @@
 
 from collections.abc import Sequence
 from datetime import datetime, timezone
+import re
 from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -92,6 +93,9 @@ class LeadAgentSkillRepository:
         *,
         user_id: str,
         organization_id: str,
+        search: str | None = None,
+        include_skill_ids: Sequence[str] | None = None,
+        exclude_skill_ids: Sequence[str] | None = None,
         skip: int = 0,
         limit: int = 20,
     ) -> LeadAgentSkillListResult:
@@ -100,6 +104,21 @@ class LeadAgentSkillRepository:
             "created_by": user_id,
             "organization_id": organization_id,
         }
+        normalized_search = search.strip() if search is not None else ""
+        if normalized_search:
+            query["name"] = {
+                "$regex": re.escape(normalized_search),
+                "$options": "i",
+            }
+
+        normalized_include_skill_ids = self._normalize_skill_ids(include_skill_ids)
+        if normalized_include_skill_ids:
+            query["skill_id"] = {"$in": normalized_include_skill_ids}
+
+        normalized_exclude_skill_ids = self._normalize_skill_ids(exclude_skill_ids)
+        if normalized_exclude_skill_ids:
+            query.setdefault("skill_id", {})
+            query["skill_id"]["$nin"] = normalized_exclude_skill_ids
 
         total = await self.collection.count_documents(query)
         cursor = self.collection.find(query).sort("updated_at", -1).skip(skip).limit(

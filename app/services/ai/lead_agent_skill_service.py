@@ -17,6 +17,7 @@ from app.common.exceptions.ai_exceptions import (
 from app.domain.models.lead_agent_skill import LeadAgentSkill
 from app.domain.schemas.lead_agent import (
     LeadAgentCreateSkillRequest,
+    LeadAgentSkillFilterStatus,
     LeadAgentSkillEnablementResponse,
     LeadAgentSkillListResponse,
     LeadAgentSkillResponse,
@@ -62,27 +63,45 @@ class LeadAgentSkillService:
         *,
         user_id: str,
         organization_id: str,
+        search: str | None = None,
+        skill_filter: LeadAgentSkillFilterStatus = LeadAgentSkillFilterStatus.ALL,
         skip: int = 0,
         limit: int = 20,
     ) -> LeadAgentSkillListResponse:
         """List the caller's skills within the current organization."""
+        enabled_skill_ids = await self._get_enabled_skill_ids(
+            user_id=user_id,
+            organization_id=organization_id,
+        )
+        include_skill_ids: list[str] | None = None
+        exclude_skill_ids: list[str] | None = None
+        if skill_filter == LeadAgentSkillFilterStatus.ENABLED:
+            if not enabled_skill_ids:
+                return LeadAgentSkillListResponse(
+                    items=[],
+                    total=0,
+                    skip=skip,
+                    limit=limit,
+                )
+            include_skill_ids = enabled_skill_ids
+        elif skill_filter == LeadAgentSkillFilterStatus.DISABLED:
+            exclude_skill_ids = enabled_skill_ids
+
         result = await self.skill_repository.list_by_creator(
             user_id=user_id,
             organization_id=organization_id,
+            search=search,
+            include_skill_ids=include_skill_ids,
+            exclude_skill_ids=exclude_skill_ids,
             skip=skip,
             limit=limit,
         )
-        enabled_skill_ids = set(
-            await self._get_enabled_skill_ids(
-                user_id=user_id,
-                organization_id=organization_id,
-            )
-        )
+        enabled_skill_ids_set = set(enabled_skill_ids)
         return LeadAgentSkillListResponse(
             items=[
                 self._to_skill_response(
                     skill,
-                    is_enabled=skill.skill_id in enabled_skill_ids,
+                    is_enabled=skill.skill_id in enabled_skill_ids_set,
                 )
                 for skill in result.items
             ],

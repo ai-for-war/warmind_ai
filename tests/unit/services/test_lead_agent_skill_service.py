@@ -14,6 +14,7 @@ from app.domain.models.lead_agent_skill import LeadAgentSkill
 from app.domain.models.lead_agent_skill_access import LeadAgentSkillAccess
 from app.domain.schemas.lead_agent import (
     LeadAgentCreateSkillRequest,
+    LeadAgentSkillFilterStatus,
     LeadAgentUpdateSkillRequest,
 )
 from app.repo.lead_agent_skill_repo import LeadAgentSkillListResult
@@ -34,6 +35,9 @@ class _InMemorySkillRepo:
         *,
         user_id: str,
         organization_id: str,
+        search: str | None = None,
+        include_skill_ids: list[str] | None = None,
+        exclude_skill_ids: list[str] | None = None,
         skip: int = 0,
         limit: int = 20,
     ) -> LeadAgentSkillListResult:
@@ -42,6 +46,21 @@ class _InMemorySkillRepo:
             for (created_by, org_id, _skill_id), skill in self.skills.items()
             if created_by == user_id and org_id == organization_id
         ]
+        if search is not None and search.strip():
+            normalized_search = search.strip().lower()
+            items = [
+                skill for skill in items if normalized_search in skill.name.lower()
+            ]
+        if include_skill_ids:
+            include_skill_id_set = {skill_id.strip() for skill_id in include_skill_ids}
+            items = [
+                skill for skill in items if skill.skill_id in include_skill_id_set
+            ]
+        if exclude_skill_ids:
+            exclude_skill_id_set = {skill_id.strip() for skill_id in exclude_skill_ids}
+            items = [
+                skill for skill in items if skill.skill_id not in exclude_skill_id_set
+            ]
         items.sort(key=lambda skill: skill.updated_at, reverse=True)
         return LeadAgentSkillListResult(items=items[skip : skip + limit], total=len(items))
 
@@ -338,6 +357,62 @@ async def test_enable_disable_and_delete_prune_access_state() -> None:
     assert listed.items[0].is_enabled is True
     assert disabled.is_enabled is False
     assert access_repo.records[("user-1", "org-1")].enabled_skill_ids == []
+
+
+@pytest.mark.asyncio
+async def test_list_skills_supports_search_and_status_filter() -> None:
+    skill_repo = _InMemorySkillRepo()
+    access_repo = _InMemoryAccessRepo()
+    service = _service(skill_repo=skill_repo, access_repo=access_repo)
+
+    alpha = await service.create_skill(
+        user_id="user-1",
+        organization_id="org-1",
+        request=LeadAgentCreateSkillRequest(
+            name="Alpha Research",
+            description="desc",
+            activation_prompt="prompt",
+            allowed_tool_names=["customer_lookup"],
+        ),
+    )
+    await service.create_skill(
+        user_id="user-1",
+        organization_id="org-1",
+        request=LeadAgentCreateSkillRequest(
+            name="Beta Planner",
+            description="desc",
+            activation_prompt="prompt",
+            allowed_tool_names=["workspace_summary"],
+        ),
+    )
+    await service.enable_skill(
+        user_id="user-1",
+        organization_id="org-1",
+        skill_id=alpha.skill_id,
+    )
+
+    searched = await service.list_skills(
+        user_id="user-1",
+        organization_id="org-1",
+        search="alpha",
+    )
+    enabled_only = await service.list_skills(
+        user_id="user-1",
+        organization_id="org-1",
+        skill_filter=LeadAgentSkillFilterStatus.ENABLED,
+    )
+    disabled_only = await service.list_skills(
+        user_id="user-1",
+        organization_id="org-1",
+        skill_filter=LeadAgentSkillFilterStatus.DISABLED,
+    )
+
+    assert [item.skill_id for item in searched.items] == ["alpha-research"]
+    assert searched.total == 1
+    assert [item.skill_id for item in enabled_only.items] == ["alpha-research"]
+    assert enabled_only.items[0].is_enabled is True
+    assert [item.skill_id for item in disabled_only.items] == ["beta-planner"]
+    assert disabled_only.items[0].is_enabled is False
 
 
 @pytest.mark.asyncio

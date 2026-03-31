@@ -1,6 +1,7 @@
 """Schemas for lead-agent conversation, skill, and tool API payloads."""
 
 from datetime import datetime
+from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -65,6 +66,14 @@ class LeadAgentToolListResponse(LeadAgentSchema):
     """Response schema for the lead-agent selectable tool catalog."""
 
     items: list[LeadAgentToolResponse]
+
+
+class LeadAgentSkillFilterStatus(str, Enum):
+    """Supported status filters for the lead-agent skill list."""
+
+    ALL = "all"
+    ENABLED = "enabled"
+    DISABLED = "disabled"
 
 
 class LeadAgentCreateSkillRequest(LeadAgentSchema):
