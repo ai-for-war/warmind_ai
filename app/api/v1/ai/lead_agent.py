@@ -15,6 +15,7 @@ from app.domain.models.user import User
 from app.domain.schemas.lead_agent import (
     LeadAgentCreateSkillRequest,
     LeadAgentConversationListResponse,
+    LeadAgentPlanResponse,
     LeadAgentConversationResponse,
     LeadAgentMessageListResponse,
     LeadAgentMessageResponse,
@@ -284,3 +285,22 @@ async def get_conversation_messages(
             for message in messages
         ],
     )
+
+
+@router.get(
+    "/conversations/{conversation_id}/plan",
+    response_model=LeadAgentPlanResponse,
+)
+async def get_conversation_plan(
+    conversation_id: str,
+    current_user: User = Depends(get_current_active_user),
+    org_context: OrganizationContext = Depends(get_current_organization_context),
+    lead_agent_service: LeadAgentService = Depends(get_lead_agent_service),
+) -> LeadAgentPlanResponse:
+    """Return the latest persisted plan snapshot for a lead-agent conversation."""
+    plan = await lead_agent_service.get_conversation_plan(
+        conversation_id=conversation_id,
+        user_id=current_user.id,
+        organization_id=org_context.organization_id,
+    )
+    return LeadAgentPlanResponse.model_validate(plan)

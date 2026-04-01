@@ -1,13 +1,22 @@
 from __future__ import annotations
 
 import os
+import sys
 from datetime import datetime, timezone
 from types import SimpleNamespace
+from types import ModuleType
 from unittest.mock import AsyncMock
 
 import pytest
 
 os.environ.setdefault("DEBUG", "false")
+
+checkpointer_module = ModuleType("app.infrastructure.langgraph.checkpointer")
+checkpointer_module.get_langgraph_checkpointer = lambda: object()
+sys.modules.setdefault(
+    "app.infrastructure.langgraph.checkpointer",
+    checkpointer_module,
+)
 
 from app.common.event_socket import ChatEvents
 from app.common.exceptions.ai_exceptions import (
@@ -189,6 +198,63 @@ class _FakeSkillStreamingAgent(_FakeStreamingAgent):
                 "loaded_skills": ["web-research"],
             }
         )
+
+
+class _FakePlanStreamingAgent(_FakeStreamingAgent):
+    def __init__(
+        self,
+        *,
+        initial_todos: list[dict[str, str]] | None = None,
+        persisted_todos_after_write: list[dict[str, str]] | None = None,
+    ) -> None:
+        super().__init__()
+        self.state["todos"] = list(initial_todos or [])
+        self._persisted_todos_after_write = list(
+            persisted_todos_after_write if persisted_todos_after_write is not None else []
+        )
+
+    async def astream_events(
+        self,
+        payload: dict[str, object],
+        *,
+        config: dict[str, dict[str, str]] | None = None,
+        version: str | None = None,
+    ):
+        del config, version
+        self.stream_payloads.append(dict(payload))
+        self.state.update(
+            {
+                "messages": payload["messages"]
+                + [{"role": "assistant", "content": "Planned answer"}],
+                "user_id": payload["user_id"],
+                "organization_id": payload["organization_id"],
+            }
+        )
+        yield {
+            "event": "on_tool_start",
+            "name": "write_todos",
+            "run_id": "tool-plan-1",
+            "data": {
+                "input": {
+                    "todos": [
+                        {
+                            "content": "Optimistic tool input that should not be emitted yet",
+                            "status": "in_progress",
+                        }
+                    ]
+                }
+            },
+        }
+        self.state["todos"] = list(self._persisted_todos_after_write)
+        yield {
+            "event": "on_tool_end",
+            "run_id": "tool-plan-1",
+            "data": {"output": {"status": "ok"}},
+        }
+        yield {
+            "event": "on_chat_model_stream",
+            "data": {"chunk": SimpleNamespace(content="Planned answer")},
+        }
 
 
 @pytest.mark.asyncio
@@ -474,3 +540,202 @@ async def test_process_agent_response_emits_failed_event_when_runtime_breaks() -
     ]
     assert "runtime exploded" in emit_to_user.await_args_list[-1].kwargs["data"]["error"]
     conversation_service.add_message.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_process_agent_response_emits_plan_updated_after_persisted_todo_change() -> None:
+    conversation_service = _conversation_service()
+    service = LeadAgentService(conversation_service=conversation_service)
+    service._agent = _FakePlanStreamingAgent(
+        initial_todos=[],
+        persisted_todos_after_write=[
+            {"content": "Inspect request", "status": "completed"},
+            {"content": "Draft response", "status": "in_progress"},
+        ],
+    )
+    conversation_service.get_user_conversation.return_value = _conversation(
+        thread_id=THREAD_ID
+    )
+    conversation_service.get_message.return_value = _message(
+        message_id="msg-user",
+        role=MessageRole.USER,
+        content="Need a plan",
+        thread_id=THREAD_ID,
+    )
+
+    async def _persist_assistant(**kwargs):
+        return _message(
+            message_id="msg-assistant",
+            role=MessageRole.ASSISTANT,
+            content=kwargs["content"],
+            conversation_id=kwargs["conversation_id"],
+            thread_id=kwargs["thread_id"],
+            metadata=kwargs["metadata"],
+        )
+
+    conversation_service.add_message.side_effect = _persist_assistant
+    emit_to_user = AsyncMock()
+    monkeypatch_target = lead_agent_service_module.gateway
+    original_emit = monkeypatch_target.emit_to_user
+    monkeypatch_target.emit_to_user = emit_to_user
+
+    try:
+        await service.process_agent_response(
+            user_id="user-1",
+            conversation_id="conv-1",
+            user_message_id="msg-user",
+            organization_id="org-1",
+        )
+    finally:
+        monkeypatch_target.emit_to_user = original_emit
+
+    emitted_events = [call.kwargs["event"] for call in emit_to_user.await_args_list]
+    assert emitted_events == [
+        ChatEvents.MESSAGE_STARTED,
+        ChatEvents.MESSAGE_PLAN_UPDATED,
+        ChatEvents.MESSAGE_TOKEN,
+        ChatEvents.MESSAGE_COMPLETED,
+    ]
+    plan_payload = emit_to_user.await_args_list[1].kwargs["data"]
+    assert plan_payload == {
+        "conversation_id": "conv-1",
+        "todos": [
+            {"content": "Inspect request", "status": "completed"},
+            {"content": "Draft response", "status": "in_progress"},
+        ],
+        "summary": {
+            "total": 2,
+            "completed": 1,
+            "in_progress": 1,
+            "pending": 0,
+        },
+    }
+    assert (
+        "Optimistic tool input that should not be emitted yet"
+        not in str(plan_payload["todos"])
+    )
+
+
+@pytest.mark.asyncio
+async def test_process_agent_response_skips_plan_updated_when_persisted_todos_do_not_change() -> None:
+    conversation_service = _conversation_service()
+    service = LeadAgentService(conversation_service=conversation_service)
+    service._agent = _FakePlanStreamingAgent(
+        initial_todos=[
+            {"content": "Inspect request", "status": "in_progress"},
+        ],
+        persisted_todos_after_write=[
+            {"content": "Inspect request", "status": "in_progress"},
+        ],
+    )
+    conversation_service.get_user_conversation.return_value = _conversation(
+        thread_id=THREAD_ID
+    )
+    conversation_service.get_message.return_value = _message(
+        message_id="msg-user",
+        role=MessageRole.USER,
+        content="Need a plan",
+        thread_id=THREAD_ID,
+    )
+
+    async def _persist_assistant(**kwargs):
+        return _message(
+            message_id="msg-assistant",
+            role=MessageRole.ASSISTANT,
+            content=kwargs["content"],
+            conversation_id=kwargs["conversation_id"],
+            thread_id=kwargs["thread_id"],
+            metadata=kwargs["metadata"],
+        )
+
+    conversation_service.add_message.side_effect = _persist_assistant
+    emit_to_user = AsyncMock()
+    monkeypatch_target = lead_agent_service_module.gateway
+    original_emit = monkeypatch_target.emit_to_user
+    monkeypatch_target.emit_to_user = emit_to_user
+
+    try:
+        await service.process_agent_response(
+            user_id="user-1",
+            conversation_id="conv-1",
+            user_message_id="msg-user",
+            organization_id="org-1",
+        )
+    finally:
+        monkeypatch_target.emit_to_user = original_emit
+
+    emitted_events = [call.kwargs["event"] for call in emit_to_user.await_args_list]
+    assert ChatEvents.MESSAGE_PLAN_UPDATED not in emitted_events
+
+
+@pytest.mark.asyncio
+async def test_get_conversation_plan_returns_latest_persisted_snapshot() -> None:
+    conversation_service = _conversation_service()
+    service = LeadAgentService(conversation_service=conversation_service)
+    conversation_service.get_user_conversation.return_value = _conversation(
+        thread_id=THREAD_ID
+    )
+    service._get_thread_state = AsyncMock(
+        return_value={
+            "messages": [],
+            "user_id": "user-1",
+            "organization_id": "org-1",
+            "todos": [
+                {"content": "Inspect request", "status": "completed"},
+                {"content": "Draft response", "status": "in_progress"},
+            ],
+        }
+    )
+
+    plan = await service.get_conversation_plan(
+        conversation_id="conv-1",
+        user_id="user-1",
+        organization_id="org-1",
+    )
+
+    assert plan == {
+        "conversation_id": "conv-1",
+        "todos": [
+            {"content": "Inspect request", "status": "completed"},
+            {"content": "Draft response", "status": "in_progress"},
+        ],
+        "summary": {
+            "total": 2,
+            "completed": 1,
+            "in_progress": 1,
+            "pending": 0,
+        },
+    }
+
+
+@pytest.mark.asyncio
+async def test_get_conversation_plan_returns_valid_empty_snapshot_when_no_todos_exist() -> None:
+    conversation_service = _conversation_service()
+    service = LeadAgentService(conversation_service=conversation_service)
+    conversation_service.get_user_conversation.return_value = _conversation(
+        thread_id=THREAD_ID
+    )
+    service._get_thread_state = AsyncMock(
+        return_value={
+            "messages": [],
+            "user_id": "user-1",
+            "organization_id": "org-1",
+        }
+    )
+
+    plan = await service.get_conversation_plan(
+        conversation_id="conv-1",
+        user_id="user-1",
+        organization_id="org-1",
+    )
+
+    assert plan == {
+        "conversation_id": "conv-1",
+        "todos": [],
+        "summary": {
+            "total": 0,
+            "completed": 0,
+            "in_progress": 0,
+            "pending": 0,
+        },
+    }

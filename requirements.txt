@@ -31,13 +31,12 @@ cloudinary
 python-magic
 
 # LangChain
-langchain-core
-langchain-community
-langchain-openai
-langchain
-langgraph
-langgraph-checkpoint-mongodb
-deepagents
+langchain-core==1.2.16
+langchain-community==0.4.1
+langchain-openai==1.1.10
+langchain==1.2.10
+langgraph==1.0.10
+langgraph-checkpoint-mongodb==0.3.1
 
 # MCP Integration
-langchain-mcp-adapters>=0.1.0
+langchain-mcp-adapters==0.2.1

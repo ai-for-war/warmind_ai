@@ -5,16 +5,25 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from langchain.agents.middleware import AgentMiddleware, ModelRequest, ModelResponse
+from langchain.agents.middleware import (
+    AgentMiddleware,
+    ModelRequest,
+    ModelResponse,
+    TodoListMiddleware,
+)
 from langchain_core.messages import SystemMessage
 from langchain_core.tools import BaseTool
 
 from app.agents.implementations.lead_agent.state import LeadAgentState
+from app.prompts.system.lead_agent import (
+    get_lead_agent_todo_system_prompt,
+    get_lead_agent_todo_tool_description,
+)
 from app.services.ai.lead_agent_skill_access_resolver import (
     LeadAgentSkillAccessResolver,
 )
 
-_BASE_SKILL_TOOL_NAMES = {"load_skill", "search", "fetch_content"}
+_BASE_SKILL_TOOL_NAMES = {"load_skill", "write_todos", "search", "fetch_content"}
 
 
 class LeadAgentSkillPromptMiddleware(AgentMiddleware[LeadAgentState, None, Any]):
@@ -216,7 +225,11 @@ def _get_lead_agent_skill_access_resolver() -> LeadAgentSkillAccessResolver:
     return get_lead_agent_skill_access_resolver()
 
 
-LEAD_AGENT_MIDDLEWARE: list[AgentMiddleware[LeadAgentState, None, Any]] = [
+LEAD_AGENT_MIDDLEWARE: list[AgentMiddleware[Any, None, Any]] = [
     LeadAgentSkillPromptMiddleware(),
+    TodoListMiddleware(
+        system_prompt=get_lead_agent_todo_system_prompt(),
+        tool_description=get_lead_agent_todo_tool_description(),
+    ),
     LeadAgentToolSelectionMiddleware(),
 ]
