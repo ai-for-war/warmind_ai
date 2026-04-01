@@ -28,6 +28,8 @@ from app.socket_gateway import gateway
 
 logger = logging.getLogger(__name__)
 
+LEAD_AGENT_RECURSION_LIMIT = 200
+
 
 class LeadAgentService:
     """Manage lead-agent conversations backed by LangGraph checkpoints."""
@@ -572,9 +574,12 @@ class LeadAgentService:
             raise LeadAgentThreadNotFoundError()
 
     @staticmethod
-    def _thread_config(thread_id: str) -> dict[str, dict[str, str]]:
+    def _thread_config(thread_id: str) -> dict[str, Any]:
         """Build LangGraph config for a thread."""
-        return {"configurable": {"thread_id": thread_id}}
+        return {
+            "configurable": {"thread_id": thread_id},
+            "recursion_limit": LEAD_AGENT_RECURSION_LIMIT,
+        }
 
     @staticmethod
     def _normalize_thread_id(thread_id: str) -> str:
