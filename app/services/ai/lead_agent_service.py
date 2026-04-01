@@ -412,8 +412,6 @@ class LeadAgentService:
         ):
             event_kind = event.get("event", "")
 
-            logger.info("Event kind: %s", event_kind)
-
             if event_kind == "on_chat_model_stream":
                 chunk = event.get("data", {}).get("chunk")
                 token = self._message_content_to_text(chunk)
@@ -476,6 +474,7 @@ class LeadAgentService:
                         },
                         organization_id=organization_id,
                     )
+                print(f"completed_tool_name: {completed_tool_name}")
                 if completed_tool_name == "write_todos":
                     current_todos = await self._get_persisted_todo_snapshot_for_caller(
                         thread_id=thread_id,
