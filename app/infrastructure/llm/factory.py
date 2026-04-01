@@ -80,6 +80,41 @@ def get_chat_openai_legacy(
     )
 
 
+def get_chat_minimax(
+    model: str = "MiniMax-M2.7-highspeed",
+    temperature: float = 0.7,
+    streaming: bool = True,
+    max_tokens: int = 2048,
+    base_url: str | None = None,
+) -> ChatOpenAI:
+    """Create ChatOpenAI MiniMax instance with configurable parameters.
+
+    Args:
+        model: MiniMax model name. Defaults to "MiniMax-M2.7-highspeed".
+        temperature: Sampling temperature. Defaults to 0.7.
+        streaming: Enable streaming responses. Defaults to True.
+        max_tokens: Maximum number of tokens to generate. Defaults to 2048.
+        base_url: Custom API base URL. Defaults to settings value or None.
+
+    Returns:
+        MiniMax instance configured with the specified parameters.
+    """
+    settings = get_settings()
+    api_base = base_url or settings.MINIMAX_API_BASE
+    if not settings.MINIMAX_API_KEY:
+        raise ValueError("MINIMAX_API_KEY is required")
+
+    return ChatOpenAI(
+        store=False,
+        api_key=settings.MINIMAX_API_KEY,
+        base_url=api_base,
+        model=model,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        streaming=streaming,
+    )
+
+
 def get_chat_azure_openai_legacy(
     model: str | None = None,
     temperature: float = 0.7,

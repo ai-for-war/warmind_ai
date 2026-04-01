@@ -35,8 +35,8 @@ def test_create_lead_agent_registers_skill_support_tool_surface(
 
     monkeypatch.setattr(
         lead_agent_module,
-        "get_chat_azure_openai_legacy",
-        lambda **kwargs: fake_model,
+        "build_lead_agent_model",
+        lambda runtime_config=None: fake_model,
     )
     monkeypatch.setattr(
         lead_agent_module,

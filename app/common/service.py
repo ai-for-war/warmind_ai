@@ -1,4 +1,4 @@
-"""Service factory functions with singleton pattern."""
+"""Service factory functions for application dependencies."""
 
 from functools import lru_cache
 
@@ -221,9 +221,8 @@ def get_lead_agent_skill_service() -> LeadAgentSkillService:
     )
 
 
-@lru_cache
 def get_lead_agent_service() -> LeadAgentService:
-    """Get singleton LeadAgentService instance."""
+    """Get one LeadAgentService instance."""
     return LeadAgentService(
         conversation_service=get_conversation_service(),
         skill_access_resolver=get_lead_agent_skill_access_resolver(),

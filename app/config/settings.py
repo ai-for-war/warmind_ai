@@ -56,6 +56,7 @@ class Settings(BaseSettings):
 
     # MiniMax
     MINIMAX_API_KEY: str
+    MINIMAX_API_BASE: str = "https://api.minimax.io/v1"
 
     # Deepgram
     DEEPGRAM_API_KEY: str

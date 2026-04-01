@@ -8,6 +8,10 @@ from fastapi.encoders import jsonable_encoder
 from langgraph.graph.state import CompiledStateGraph
 
 from app.agents.implementations.lead_agent.agent import create_lead_agent
+from app.agents.implementations.lead_agent.runtime import (
+    LeadAgentRuntimeConfig,
+    resolve_lead_agent_runtime_config,
+)
 from app.common.event_socket import ChatEvents
 from app.common.exceptions import AppException
 from app.common.exceptions.ai_exceptions import (
@@ -38,18 +42,36 @@ class LeadAgentService:
         self,
         conversation_service: ConversationService,
         skill_access_resolver: LeadAgentSkillAccessResolver | None = None,
+        runtime_config: LeadAgentRuntimeConfig | None = None,
     ) -> None:
         """Initialize the service with shared persistence helpers."""
         self.conversation_service = conversation_service
         self.skill_access_resolver = skill_access_resolver
+        self.runtime_config = runtime_config
         self._agent: CompiledStateGraph | None = None
 
     @property
     def agent(self) -> CompiledStateGraph:
-        """Return the cached lead-agent runtime."""
+        """Return the lazily built lead-agent runtime for this service instance."""
         if self._agent is None:
-            self._agent = create_lead_agent()
+            self._agent = create_lead_agent(self.runtime_config)
         return self._agent
+
+    def configure_runtime(
+        self,
+        *,
+        provider: str,
+        model: str,
+        reasoning: str | None = None,
+    ) -> LeadAgentRuntimeConfig:
+        """Resolve and pin the runtime config for this service instance."""
+        self.runtime_config = resolve_lead_agent_runtime_config(
+            provider=provider,
+            model=model,
+            reasoning=reasoning,
+        )
+        self._agent = None
+        return self.runtime_config
 
     async def create_thread(
         self,
@@ -152,6 +174,7 @@ class LeadAgentService:
             assistant_metadata = self._build_assistant_metadata(
                 tool_calls=tool_calls,
                 final_state=final_state,
+                runtime_config=self.runtime_config,
             )
             assistant_message = await self.conversation_service.add_message(
                 conversation_id=conversation_id,
@@ -621,9 +644,11 @@ class LeadAgentService:
         *,
         tool_calls: list[dict[str, Any]],
         final_state: dict[str, Any],
+        runtime_config: LeadAgentRuntimeConfig | None,
     ) -> Optional[MessageMetadata]:
         """Build persisted assistant metadata from streamed tool activity."""
         metadata = MessageMetadata(
+            model=runtime_config.model if runtime_config is not None else None,
             tool_calls=[
                 ToolCall(
                     id=tool_call["tool_call_id"],

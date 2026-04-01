@@ -329,6 +329,195 @@ async def test_lead_agent_endpoints_return_thread_backed_conversations_and_order
 
 
 @pytest.mark.asyncio
+async def test_lead_agent_catalog_endpoint_returns_provider_model_reasoning_matrix(
+    monkeypatch,
+) -> None:
+    import app.api.v1.ai.lead_agent as lead_agent_api
+
+    monkeypatch.setattr(
+        lead_agent_api,
+        "get_default_lead_agent_runtime_config",
+        lambda: SimpleNamespace(
+            provider="openai",
+            model="gpt-5.2",
+            reasoning="high",
+        ),
+    )
+    monkeypatch.setattr(
+        lead_agent_api,
+        "get_lead_agent_runtime_catalog",
+        lambda: (
+            SimpleNamespace(
+                provider="openai",
+                display_name="OpenAI",
+                is_default=True,
+                models=(
+                    SimpleNamespace(
+                        model="gpt-5.2",
+                        reasoning_options=("low", "medium", "high"),
+                        default_reasoning="high",
+                        is_default=True,
+                    ),
+                    SimpleNamespace(
+                        model="gpt-4.1",
+                        reasoning_options=(),
+                        default_reasoning=None,
+                        is_default=False,
+                    ),
+                ),
+            ),
+        ),
+    )
+    app = _build_test_app(
+        chat_service=ChatService(
+            conversation_service=_InMemoryConversationService(conversations=[], messages=[]),
+            data_query_service=AsyncMock(),
+        ),
+        lead_agent_service=SimpleNamespace(),
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.get("/lead-agent/catalog")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "default_provider": "openai",
+        "default_model": "gpt-5.2",
+        "default_reasoning": "high",
+        "providers": [
+            {
+                "provider": "openai",
+                "display_name": "OpenAI",
+                "is_default": True,
+                "models": [
+                    {
+                        "model": "gpt-5.2",
+                        "reasoning_options": ["low", "medium", "high"],
+                        "default_reasoning": "high",
+                        "is_default": True,
+                    },
+                    {
+                        "model": "gpt-4.1",
+                        "reasoning_options": [],
+                        "default_reasoning": None,
+                        "is_default": False,
+                    },
+                ],
+            }
+        ],
+    }
+
+
+@pytest.mark.asyncio
+async def test_lead_agent_send_message_accepts_runtime_overrides() -> None:
+    configured_runtime: dict[str, str | None] = {}
+
+    def _configure_runtime(**kwargs):
+        configured_runtime.update(kwargs)
+        return kwargs
+
+    lead_agent_service = SimpleNamespace(
+        configure_runtime=_configure_runtime,
+        send_message=AsyncMock(return_value=("msg-user", "conv-lead")),
+        process_agent_response=AsyncMock(),
+        search_conversations=AsyncMock(),
+        get_conversation_messages=AsyncMock(),
+        get_conversation_plan=AsyncMock(),
+    )
+    app = _build_test_app(
+        chat_service=ChatService(
+            conversation_service=_InMemoryConversationService(conversations=[], messages=[]),
+            data_query_service=AsyncMock(),
+        ),
+        lead_agent_service=lead_agent_service,
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.post(
+            "/lead-agent/messages",
+            json={
+                "content": "Plan this",
+                "provider": "openai",
+                "model": "gpt-5.2",
+                "reasoning": "medium",
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "user_message_id": "msg-user",
+        "conversation_id": "conv-lead",
+    }
+    assert configured_runtime == {
+        "provider": "openai",
+        "model": "gpt-5.2",
+        "reasoning": "medium",
+    }
+    assert lead_agent_service.send_message.await_args.kwargs == {
+        "user_id": "user-1",
+        "content": "Plan this",
+        "conversation_id": None,
+        "organization_id": "org-1",
+    }
+    assert lead_agent_service.process_agent_response.await_args.kwargs == {
+        "user_id": "user-1",
+        "conversation_id": "conv-lead",
+        "user_message_id": "msg-user",
+        "organization_id": "org-1",
+    }
+
+
+@pytest.mark.asyncio
+async def test_lead_agent_send_message_requires_provider_and_model() -> None:
+    lead_agent_service = SimpleNamespace(
+        configure_runtime=lambda **kwargs: kwargs,
+        send_message=AsyncMock(),
+        process_agent_response=AsyncMock(),
+        search_conversations=AsyncMock(),
+        get_conversation_messages=AsyncMock(),
+        get_conversation_plan=AsyncMock(),
+    )
+    app = _build_test_app(
+        chat_service=ChatService(
+            conversation_service=_InMemoryConversationService(conversations=[], messages=[]),
+            data_query_service=AsyncMock(),
+        ),
+        lead_agent_service=lead_agent_service,
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        missing_provider_response = await client.post(
+            "/lead-agent/messages",
+            json={
+                "content": "Plan this",
+                "model": "gpt-5.2",
+                "reasoning": "medium",
+            },
+        )
+        missing_model_response = await client.post(
+            "/lead-agent/messages",
+            json={
+                "content": "Plan this",
+                "provider": "openai",
+                "reasoning": "medium",
+            },
+        )
+
+    assert missing_provider_response.status_code == 422
+    assert missing_model_response.status_code == 422
+    lead_agent_service.send_message.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_chat_endpoints_exclude_lead_agent_projection_records() -> None:
     legacy_conversation = _conversation(
         conversation_id="conv-chat",
