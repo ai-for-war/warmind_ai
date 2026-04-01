@@ -9,10 +9,17 @@ from app.api.deps import (
     get_current_active_user,
     get_current_organization_context,
 )
+from app.agents.implementations.lead_agent.runtime import (
+    get_default_lead_agent_runtime_config,
+    get_lead_agent_runtime_catalog,
+)
 from app.common.service import get_lead_agent_service, get_lead_agent_skill_service
 from app.domain.models.conversation import ConversationStatus
 from app.domain.models.user import User
 from app.domain.schemas.lead_agent import (
+    LeadAgentCatalogModelResponse,
+    LeadAgentCatalogProviderResponse,
+    LeadAgentCatalogResponse,
     LeadAgentCreateSkillRequest,
     LeadAgentConversationListResponse,
     LeadAgentPlanResponse,
@@ -32,6 +39,39 @@ from app.services.ai.lead_agent_service import LeadAgentService
 from app.services.ai.lead_agent_skill_service import LeadAgentSkillService
 
 router = APIRouter(prefix="/lead-agent", tags=["lead-agent"])
+
+
+@router.get("/catalog", response_model=LeadAgentCatalogResponse)
+async def get_catalog(
+    _: User = Depends(get_current_active_user),
+    __: OrganizationContext = Depends(get_current_organization_context),
+) -> LeadAgentCatalogResponse:
+    """Return the supported provider/model/reasoning catalog for lead-agent."""
+    default_runtime = get_default_lead_agent_runtime_config()
+    catalog = get_lead_agent_runtime_catalog()
+
+    return LeadAgentCatalogResponse(
+        default_provider=default_runtime.provider,
+        default_model=default_runtime.model,
+        default_reasoning=default_runtime.reasoning,
+        providers=[
+            LeadAgentCatalogProviderResponse(
+                provider=provider.provider,
+                display_name=provider.display_name,
+                is_default=provider.is_default,
+                models=[
+                    LeadAgentCatalogModelResponse(
+                        model=model.model,
+                        reasoning_options=list(model.reasoning_options),
+                        default_reasoning=model.default_reasoning,
+                        is_default=model.is_default,
+                    )
+                    for model in provider.models
+                ],
+            )
+            for provider in catalog
+        ],
+    )
 
 
 @router.get("/tools", response_model=LeadAgentToolListResponse)
@@ -195,6 +235,11 @@ async def send_message(
     lead_agent_service: LeadAgentService = Depends(get_lead_agent_service),
 ) -> LeadAgentSendMessageResponse:
     """Accept a lead-agent turn and process the response asynchronously."""
+    lead_agent_service.configure_runtime(
+        provider=request.provider,
+        model=request.model,
+        reasoning=request.reasoning,
+    )
     user_message_id, conversation_id = await lead_agent_service.send_message(
         user_id=current_user.id,
         content=request.content,

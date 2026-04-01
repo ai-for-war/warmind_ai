@@ -44,6 +44,9 @@ class LeadAgentSendMessageRequest(LeadAgentSchema):
 
     conversation_id: Optional[str] = None
     content: str = Field(..., min_length=1, max_length=10000)
+    provider: str = Field(..., min_length=1, max_length=100)
+    model: str = Field(..., min_length=1, max_length=200)
+    reasoning: Optional[str] = Field(default=None, min_length=1, max_length=50)
 
 
 class LeadAgentSendMessageResponse(LeadAgentSchema):
@@ -66,6 +69,33 @@ class LeadAgentToolListResponse(LeadAgentSchema):
     """Response schema for the lead-agent selectable tool catalog."""
 
     items: list[LeadAgentToolResponse]
+
+
+class LeadAgentCatalogModelResponse(LeadAgentSchema):
+    """Response schema for one lead-agent runtime model option."""
+
+    model: str
+    reasoning_options: list[str]
+    default_reasoning: Optional[str] = None
+    is_default: bool = False
+
+
+class LeadAgentCatalogProviderResponse(LeadAgentSchema):
+    """Response schema for one lead-agent runtime provider option."""
+
+    provider: str
+    display_name: str
+    models: list[LeadAgentCatalogModelResponse]
+    is_default: bool = False
+
+
+class LeadAgentCatalogResponse(LeadAgentSchema):
+    """Response schema for the configurable lead-agent runtime catalog."""
+
+    default_provider: str
+    default_model: str
+    default_reasoning: Optional[str] = None
+    providers: list[LeadAgentCatalogProviderResponse]
 
 
 class LeadAgentSkillFilterStatus(str, Enum):

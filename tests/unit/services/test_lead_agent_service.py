@@ -384,6 +384,11 @@ async def test_process_agent_response_emits_socket_lifecycle_and_persists_assist
             enabled_skill_ids=["web-research"]
         ),
     )
+    service.runtime_config = lead_agent_service_module.LeadAgentRuntimeConfig(
+        provider="openai",
+        model="gpt-5.2",
+        reasoning="medium",
+    )
     service._agent = _FakeStreamingAgent()
 
     conversation_service.get_user_conversation.return_value = _conversation(
@@ -438,6 +443,7 @@ async def test_process_agent_response_emits_socket_lifecycle_and_persists_assist
     assert assistant_call.kwargs["thread_id"] == THREAD_ID
     metadata = assistant_call.kwargs["metadata"]
     assert metadata is not None
+    assert metadata.model == "gpt-5.2"
     assert metadata.tool_calls is not None
     assert metadata.tool_calls[0].name == "search_docs"
     assert metadata.tool_calls[0].arguments == {"query": "recap"}
