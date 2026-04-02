@@ -148,11 +148,6 @@ combined with a FastAPI gateway for REST API access [FastAPI](https://fastapi.ti
 - Always Respond: Your thinking is internal. You MUST always provide a visible response to the user after thinking.
 </critical_reminders>
 
-<Tools>
-{tools}
-</Tools>
-
-
 """.strip()
 
 LEAD_AGENT_TODO_SYSTEM_PROMPT = """
@@ -256,52 +251,10 @@ Being proactive with task management demonstrates thoroughness and ensures all r
 """.strip()
 
 
-def get_tools_prompt() -> str:
-    return """
-1. search (Web Search Tool)
-**Purpose**: Search the web for current information
-**When to use**:
-- Questions about current events, news, recent developments
-- Questions about prices, availability, or time-sensitive information
-- Questions about specific facts that may have changed
-- When user explicitly asks to search or look up something
-- Questions about weather, sports scores, stock prices
-**Parameters**: 
-- `query` (required): Search query string
-- `max_results` (optional): Maximum number of results (default: 10)
-**Returns**: List of search results with title, URL, and snippet
-
-**Examples of when to search**:
-- "Thời tiết hôm nay thế nào?" → Search for current weather
-- "Tin tức mới nhất về AI?" → Search for latest AI news
-- "Giá iPhone 15 hiện tại?" → Search for current prices
-- "Kết quả bóng đá tối qua?" → Search for recent match results
-
-2. fetch_content (Web Content Fetcher)
-**Purpose**: Get detailed content from a specific URL
-**When to use**:
-- Search snippet doesn't have enough detail
-- Need to read full article for comprehensive answer
-- User provides a specific URL to analyze
-**Parameters**:
-- `url` (required): The URL to fetch content from
-**Returns**: Cleaned text content from the webpage
-
-3. load_skill (Skill Loader)
-**Purpose**: Load a skill from the skill catalog
-**When to use**:
-- The request needs a specific skill to be loaded
-- If no skill is needed or no skill is provided, you can skip this step.
-**Parameters**:
-- `skill_id` (required): The ID of the skill to load
-    """
-
-
 def get_lead_agent_system_prompt(agent_name: str = "Lead Agent") -> str:
     """Render the lead-agent system prompt with the configured agent name."""
     return LEAD_AGENT_SYSTEM_PROMPT_TEMPLATE.format(
         agent_name=agent_name,
-        tools=get_tools_prompt(),
     )
 
 
