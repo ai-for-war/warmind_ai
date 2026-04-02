@@ -18,7 +18,7 @@ from app.services.ai.lead_agent_skill_access_resolver import (
 logger = logging.getLogger(__name__)
 
 
-@tool("load_skill")
+@tool("load_skill", parse_docstring=True)
 async def load_skill(skill_id: str, runtime: ToolRuntime) -> Command:
     """Load one enabled lead-agent skill into the active runtime state.
 
