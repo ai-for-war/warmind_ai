@@ -671,6 +671,7 @@ class LeadAgentService:
         )
         if not any(
             [
+                metadata.model,
                 metadata.tool_calls,
                 metadata.skill_id,
                 metadata.skill_version,
