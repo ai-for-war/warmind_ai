@@ -439,7 +439,7 @@ class LeadAgentService:
 
             if event_kind == "on_chat_model_stream":
                 chunk = event.get("data", {}).get("chunk")
-                token = self._message_content_to_text(chunk)
+                token = self._message_content_to_stream_token(chunk)
                 if token:
                     await gateway.emit_to_user(
                         user_id=user_id,
@@ -858,6 +858,16 @@ class LeadAgentService:
         return cls._content_to_text(content).strip()
 
     @classmethod
+    def _message_content_to_stream_token(cls, message: Any) -> str:
+        """Extract one streamed token while preserving model-emitted whitespace."""
+        if isinstance(message, dict):
+            content = message.get("content")
+        else:
+            content = getattr(message, "content", None)
+
+        return cls._stream_content_to_text(content)
+
+    @classmethod
     def _content_to_text(cls, content: Any) -> str:
         """Convert structured message content into text."""
         if isinstance(content, str):
@@ -876,5 +886,30 @@ class LeadAgentService:
 
         if content is None:
             return ""
+
+        return str(content)
+
+    @classmethod
+    def _stream_content_to_text(cls, content: Any) -> str:
+        """Convert streamed model content into a token string without trimming."""
+        if isinstance(content, str):
+            return content
+
+        if isinstance(content, list):
+            return "".join(cls._stream_content_to_text(item) for item in content)
+
+        if isinstance(content, dict):
+            if "text" in content and content["text"] is not None:
+                return str(content["text"])
+            if "content" in content:
+                return cls._stream_content_to_text(content["content"])
+            return ""
+
+        if content is None:
+            return ""
+
+        text = getattr(content, "text", None)
+        if isinstance(text, str):
+            return text
 
         return str(content)

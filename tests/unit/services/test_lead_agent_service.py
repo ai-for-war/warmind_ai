@@ -675,6 +675,69 @@ async def test_process_agent_response_skips_plan_updated_when_persisted_todos_do
 
 
 @pytest.mark.asyncio
+async def test_process_agent_response_preserves_leading_whitespace_in_streamed_tokens() -> None:
+    conversation_service = _conversation_service()
+    service = LeadAgentService(conversation_service=conversation_service)
+    service._agent = _FakeStreamingAgent()
+    conversation_service.get_user_conversation.return_value = _conversation(
+        thread_id=THREAD_ID
+    )
+    conversation_service.get_message.return_value = _message(
+        message_id="msg-user",
+        role=MessageRole.USER,
+        content="Need help",
+        thread_id=THREAD_ID,
+    )
+
+    async def _persist_assistant(**kwargs):
+        return _message(
+            message_id="msg-assistant",
+            role=MessageRole.ASSISTANT,
+            content=kwargs["content"],
+            conversation_id=kwargs["conversation_id"],
+            thread_id=kwargs["thread_id"],
+            metadata=kwargs["metadata"],
+        )
+
+    conversation_service.add_message.side_effect = _persist_assistant
+    emit_to_user = AsyncMock()
+    monkeypatch_target = lead_agent_service_module.gateway
+    original_emit = monkeypatch_target.emit_to_user
+    monkeypatch_target.emit_to_user = emit_to_user
+
+    try:
+        await service.process_agent_response(
+            user_id="user-1",
+            conversation_id="conv-1",
+            user_message_id="msg-user",
+            organization_id="org-1",
+        )
+    finally:
+        monkeypatch_target.emit_to_user = original_emit
+
+    token_payloads = [
+        call.kwargs["data"]["token"]
+        for call in emit_to_user.await_args_list
+        if call.kwargs["event"] == ChatEvents.MESSAGE_TOKEN
+    ]
+    assert token_payloads == ["Final ", "answer"]
+
+
+def test_message_content_to_stream_token_preserves_whitespace_for_structured_content() -> None:
+    token = LeadAgentService._message_content_to_stream_token(
+        {
+            "content": [
+                {"text": "EM"},
+                {"text": " trong"},
+                {"text": " lĩnh vực"},
+            ]
+        }
+    )
+
+    assert token == "EM trong lĩnh vực"
+
+
+@pytest.mark.asyncio
 async def test_get_conversation_plan_returns_latest_persisted_snapshot() -> None:
     conversation_service = _conversation_service()
     service = LeadAgentService(conversation_service=conversation_service)
