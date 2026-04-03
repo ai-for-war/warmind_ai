@@ -23,7 +23,7 @@ from app.common.exceptions.ai_exceptions import (
     LeadAgentConversationNotFoundError,
 )
 from app.domain.models.conversation import Conversation, ConversationStatus
-from app.domain.models.message import Message, MessageMetadata, MessageRole
+from app.domain.models.message import Message, MessageMetadata, MessageRole, TokenUsage
 from app.services.ai.lead_agent_service import LeadAgentService
 import app.services.ai.lead_agent_service as lead_agent_service_module
 
@@ -159,6 +159,19 @@ class _FakeStreamingAgent:
         yield {
             "event": "on_chat_model_stream",
             "data": {"chunk": SimpleNamespace(content="answer")},
+        }
+        yield {
+            "event": "on_chat_model_end",
+            "data": {
+                "output": SimpleNamespace(
+                    usage_metadata={
+                        "input_tokens": 11,
+                        "output_tokens": 7,
+                        "total_tokens": 18,
+                    },
+                    response_metadata={"finish_reason": "stop"},
+                )
+            },
         }
 
 
@@ -444,10 +457,19 @@ async def test_process_agent_response_emits_socket_lifecycle_and_persists_assist
     metadata = assistant_call.kwargs["metadata"]
     assert metadata is not None
     assert metadata.model == "gpt-5.2"
+    assert metadata.tokens == TokenUsage(prompt=11, completion=7, total=18)
+    assert metadata.finish_reason == "stop"
     assert metadata.tool_calls is not None
     assert metadata.tool_calls[0].name == "search_docs"
     assert metadata.tool_calls[0].arguments == {"query": "recap"}
     assert service._agent.stream_payloads[0]["enabled_skill_ids"] == ["web-research"]
+    completed_payload = emit_to_user.await_args_list[-1].kwargs["data"]["metadata"]
+    assert completed_payload["tokens"] == {
+        "prompt": 11,
+        "completion": 7,
+        "total": 18,
+    }
+    assert completed_payload["finish_reason"] == "stop"
 
 
 @pytest.mark.asyncio
@@ -735,6 +757,22 @@ def test_message_content_to_stream_token_preserves_whitespace_for_structured_con
     )
 
     assert token == "EM trong lĩnh vực"
+
+
+def test_extract_token_usage_falls_back_to_response_metadata_token_usage() -> None:
+    usage = LeadAgentService._extract_token_usage(
+        {
+            "response_metadata": {
+                "token_usage": {
+                    "prompt_tokens": 13,
+                    "completion_tokens": 5,
+                    "total_tokens": 18,
+                }
+            }
+        }
+    )
+
+    assert usage == TokenUsage(prompt=13, completion=5, total=18)
 
 
 @pytest.mark.asyncio

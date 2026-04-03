@@ -36,6 +36,7 @@ def get_chat_openai(
     return ChatOpenAI(
         reasoning_effort=reasoning_effort,
         store=False,
+        stream_usage=streaming,
         api_key=settings.OPENAI_API_KEY,
         base_url=api_base,
         model=model,
@@ -71,6 +72,7 @@ def get_chat_openai_legacy(
 
     return ChatOpenAI(
         store=False,
+        stream_usage=streaming,
         api_key=settings.OPENAI_API_KEY,
         base_url=api_base,
         model=model,
@@ -107,6 +109,7 @@ def get_chat_minimax(
     return ChatOpenAI(
         store=False,
         api_key=settings.MINIMAX_API_KEY,
+        stream_usage=streaming,
         base_url=api_base,
         model=model,
         max_tokens=max_tokens,
@@ -130,6 +133,7 @@ def get_chat_azure_openai_legacy(
 
     return AzureChatOpenAI(
         store=False,
+        stream_usage=streaming,
         api_key=settings.AZURE_OPENAI_API_KEY,
         azure_endpoint=settings.AZURE_OPENAI_ENDPOINT,
         api_version=api_version or settings.AZURE_OPENAI_API_VERSION,

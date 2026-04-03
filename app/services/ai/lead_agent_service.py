@@ -21,7 +21,13 @@ from app.common.exceptions.ai_exceptions import (
     LeadAgentThreadNotFoundError,
 )
 from app.domain.models.conversation import Conversation, ConversationStatus
-from app.domain.models.message import Message, MessageMetadata, MessageRole, ToolCall
+from app.domain.models.message import (
+    Message,
+    MessageMetadata,
+    MessageRole,
+    TokenUsage,
+    ToolCall,
+)
 from app.repo.conversation_repo import SearchResult
 from app.services.ai.conversation_service import ConversationService
 from app.services.ai.lead_agent_skill_access_resolver import (
@@ -158,7 +164,7 @@ class LeadAgentService:
                 thread_id=thread_id,
             )
 
-            tool_calls = await self._stream_thread_execution(
+            tool_calls, model_response_metadata = await self._stream_thread_execution(
                 thread_id=thread_id,
                 user_id=user_id,
                 conversation_id=conversation_id,
@@ -175,6 +181,8 @@ class LeadAgentService:
                 tool_calls=tool_calls,
                 final_state=final_state,
                 runtime_config=self.runtime_config,
+                tokens=model_response_metadata.get("tokens"),
+                finish_reason=model_response_metadata.get("finish_reason"),
             )
             assistant_message = await self.conversation_service.add_message(
                 conversation_id=conversation_id,
@@ -415,9 +423,12 @@ class LeadAgentService:
         conversation_id: str,
         content: str,
         organization_id: Optional[str],
-    ) -> list[dict[str, Any]]:
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         """Stream the lead-agent runtime and emit chat-compatible socket events."""
         tool_calls: list[dict[str, Any]] = []
+        aggregated_tokens = TokenUsage()
+        has_token_usage = False
+        finish_reason: str | None = None
         runtime_payload = await self._build_runtime_payload(
             thread_id=thread_id,
             user_id=user_id,
@@ -450,6 +461,15 @@ class LeadAgentService:
                         },
                         organization_id=organization_id,
                     )
+            elif event_kind == "on_chat_model_end":
+                output = event.get("data", {}).get("output")
+                token_usage = self._extract_token_usage(output)
+                if token_usage is not None:
+                    aggregated_tokens.prompt += token_usage.prompt
+                    aggregated_tokens.completion += token_usage.completion
+                    aggregated_tokens.total += token_usage.total
+                    has_token_usage = True
+                finish_reason = self._extract_finish_reason(output) or finish_reason
             elif event_kind == "on_tool_start":
                 run_id = str(event.get("run_id", ""))
                 tool_name = str(event.get("name", "unknown"))
@@ -518,7 +538,10 @@ class LeadAgentService:
                         )
                         last_todos = current_todos
 
-        return tool_calls
+        return tool_calls, {
+            "tokens": aggregated_tokens if has_token_usage else None,
+            "finish_reason": finish_reason,
+        }
 
     async def _require_user_message(
         self,
@@ -645,10 +668,14 @@ class LeadAgentService:
         tool_calls: list[dict[str, Any]],
         final_state: dict[str, Any],
         runtime_config: LeadAgentRuntimeConfig | None,
+        tokens: TokenUsage | None = None,
+        finish_reason: str | None = None,
     ) -> Optional[MessageMetadata]:
         """Build persisted assistant metadata from streamed tool activity."""
         metadata = MessageMetadata(
             model=runtime_config.model if runtime_config is not None else None,
+            tokens=tokens,
+            finish_reason=finish_reason,
             tool_calls=[
                 ToolCall(
                     id=tool_call["tool_call_id"],
@@ -672,6 +699,8 @@ class LeadAgentService:
         if not any(
             [
                 metadata.model,
+                metadata.tokens,
+                metadata.finish_reason,
                 metadata.tool_calls,
                 metadata.skill_id,
                 metadata.skill_version,
@@ -766,6 +795,95 @@ class LeadAgentService:
             return None
         normalized_value = str(value).strip()
         return normalized_value or None
+
+    @classmethod
+    def _extract_token_usage(cls, model_output: Any) -> TokenUsage | None:
+        """Extract normalized token usage from one model end payload."""
+        usage_metadata = cls._extract_output_field(model_output, "usage_metadata")
+        prompt_tokens = cls._extract_int_value(
+            usage_metadata,
+            primary_key="input_tokens",
+            fallback_key="prompt_tokens",
+        )
+        completion_tokens = cls._extract_int_value(
+            usage_metadata,
+            primary_key="output_tokens",
+            fallback_key="completion_tokens",
+        )
+        total_tokens = cls._extract_int_value(
+            usage_metadata,
+            primary_key="total_tokens",
+            fallback_key="total_tokens",
+        )
+
+        response_metadata = cls._extract_output_field(model_output, "response_metadata")
+        token_usage = cls._extract_output_field(response_metadata, "token_usage")
+        if prompt_tokens == 0:
+            prompt_tokens = cls._extract_int_value(
+                token_usage,
+                primary_key="prompt_tokens",
+                fallback_key="input_tokens",
+            )
+        if completion_tokens == 0:
+            completion_tokens = cls._extract_int_value(
+                token_usage,
+                primary_key="completion_tokens",
+                fallback_key="output_tokens",
+            )
+        if total_tokens == 0:
+            total_tokens = cls._extract_int_value(
+                token_usage,
+                primary_key="total_tokens",
+                fallback_key="total_tokens",
+            )
+
+        if total_tokens == 0 and (prompt_tokens or completion_tokens):
+            total_tokens = prompt_tokens + completion_tokens
+
+        if not any((prompt_tokens, completion_tokens, total_tokens)):
+            return None
+
+        return TokenUsage(
+            prompt=prompt_tokens,
+            completion=completion_tokens,
+            total=total_tokens,
+        )
+
+    @classmethod
+    def _extract_finish_reason(cls, model_output: Any) -> str | None:
+        """Extract one normalized finish reason from a model end payload."""
+        response_metadata = cls._extract_output_field(model_output, "response_metadata")
+        return cls._normalize_optional_string(
+            cls._extract_output_field(response_metadata, "finish_reason")
+        )
+
+    @staticmethod
+    def _extract_output_field(payload: Any, field_name: str) -> Any:
+        """Read one field from either dict or object payload shapes."""
+        if payload is None:
+            return None
+        if isinstance(payload, dict):
+            return payload.get(field_name)
+        return getattr(payload, field_name, None)
+
+    @classmethod
+    def _extract_int_value(
+        cls,
+        payload: Any,
+        *,
+        primary_key: str,
+        fallback_key: str,
+    ) -> int:
+        """Extract one integer value from a metadata payload."""
+        for key in (primary_key, fallback_key):
+            value = cls._extract_output_field(payload, key)
+            if value is None:
+                continue
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                continue
+        return 0
 
     @classmethod
     def _extract_todo_snapshot(cls, state: dict[str, Any]) -> list[dict[str, Any]]:
