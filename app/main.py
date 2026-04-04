@@ -64,9 +64,19 @@ async def _initialize_mcp_tools() -> None:
 
         if mcp_manager.is_initialized:
             logger.info(
-                "MCP Tools Manager initialized successfully with %d tools",
+                "MCP Tools Manager initialized successfully with %d normalized tools (%d raw tools)",
                 mcp_manager.tool_count,
+                mcp_manager.raw_tool_count,
             )
+            logger.info(
+                "Available normalized MCP research tools: %s",
+                mcp_manager.available_normalized_tool_names,
+            )
+            if mcp_manager.missing_normalized_tool_names:
+                logger.warning(
+                    "Missing normalized MCP research tools: %s",
+                    mcp_manager.missing_normalized_tool_names,
+                )
         else:
             logger.warning(
                 "MCP Tools Manager initialization incomplete. "

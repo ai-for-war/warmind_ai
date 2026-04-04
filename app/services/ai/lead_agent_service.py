@@ -1,6 +1,7 @@
 """Lead-agent service for checkpoint-backed conversation projections."""
 
 import logging
+from collections.abc import Mapping, Sequence
 from typing import Any, Optional
 from uuid import UUID, uuid4
 
@@ -39,6 +40,7 @@ from app.socket_gateway import gateway
 logger = logging.getLogger(__name__)
 
 LEAD_AGENT_RECURSION_LIMIT = 200
+FILTERED_TOOL_ARGUMENT_KEYS = frozenset({"runtime"})
 
 
 class LeadAgentService:
@@ -646,7 +648,7 @@ class LeadAgentService:
     @staticmethod
     def _serialize_tool_arguments(tool_input: Any) -> dict[str, Any]:
         """Convert tool input into a JSON-safe dict payload."""
-        encoded_input = jsonable_encoder(tool_input)
+        encoded_input = LeadAgentService._make_json_safe(tool_input)
         if isinstance(encoded_input, dict):
             return encoded_input
         return {"input": encoded_input}
@@ -654,13 +656,41 @@ class LeadAgentService:
     @classmethod
     def _tool_output_to_text(cls, output: Any) -> str:
         """Convert streamed tool output into a user-facing string."""
-        encoded_output = jsonable_encoder(output)
+        encoded_output = cls._make_json_safe(output)
         text = cls._content_to_text(encoded_output).strip()
         if text:
             return text
         if encoded_output is None:
             return ""
         return str(encoded_output)
+
+    @classmethod
+    def _make_json_safe(cls, value: Any) -> Any:
+        """Best-effort conversion of tool payloads into JSON-safe values."""
+        if isinstance(value, (str, int, float, bool, type(None))):
+            return value
+        if isinstance(value, Mapping):
+            normalized_mapping: dict[str, Any] = {}
+            for key, item in value.items():
+                normalized_key = str(key)
+                if normalized_key in FILTERED_TOOL_ARGUMENT_KEYS:
+                    continue
+                normalized_mapping[normalized_key] = cls._make_json_safe(item)
+            return normalized_mapping
+        if isinstance(value, Sequence) and not isinstance(
+            value, (str, bytes, bytearray)
+        ):
+            return [cls._make_json_safe(item) for item in value]
+
+        try:
+            encoded_value = jsonable_encoder(value)
+        except (TypeError, ValueError):
+            return str(value)
+
+        if encoded_value is value:
+            return str(value)
+
+        return cls._make_json_safe(encoded_value)
 
     @staticmethod
     def _build_assistant_metadata(
