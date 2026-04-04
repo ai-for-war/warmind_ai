@@ -126,7 +126,22 @@ class MCPToolsManager:
 
             self._initialized = True
             logger.info(
-                "MCP initialization complete. Loaded %d tools", len(self._tools)
+                "MCP initialization complete. Loaded %d normalized tools from %d raw tools.",
+                len(self._tools),
+                len(self._raw_tools),
+            )
+            logger.info(
+                "MCP research tool mapping: %s",
+                self._normalized_tool_mapping or "{}",
+            )
+            if self._missing_normalized_tool_names:
+                logger.warning(
+                    "MCP provider is missing normalized research capabilities: %s",
+                    self._missing_normalized_tool_names,
+                )
+            logger.info(
+                "MCP raw tool names: %s",
+                [tool.name for tool in self._raw_tools],
             )
 
         except asyncio.TimeoutError:
@@ -257,6 +272,11 @@ class MCPToolsManager:
     def normalized_tool_mapping(self) -> dict[str, str]:
         """Return the current normalized app-level to raw-tool mapping."""
         return dict(self._normalized_tool_mapping)
+
+    @property
+    def available_normalized_tool_names(self) -> list[str]:
+        """Return normalized research capabilities currently available."""
+        return list(self._normalized_tool_mapping)
 
     @property
     def missing_normalized_tool_names(self) -> list[str]:

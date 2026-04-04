@@ -20,9 +20,9 @@
 
 ## 4. Diagnostics And Graceful Degradation
 
-- [ ] 4.1 Add MCP initialization diagnostics that log the active provider, raw upstream tool names, normalized mappings, and any missing normalized capabilities
-- [ ] 4.2 Ensure the MCP manager degrades gracefully when only one normalized research tool or no normalized research tools are available
-- [ ] 4.3 Verify selectable tool catalogs and agent runtime wiring expose only the normalized capabilities that were actually loaded
+- [x] 4.1 Add MCP initialization diagnostics that log the active provider, raw upstream tool names, normalized mappings, and any missing normalized capabilities
+- [x] 4.2 Ensure the MCP manager degrades gracefully when only one normalized research tool or no normalized research tools are available
+- [x] 4.3 Verify selectable tool catalogs and agent runtime wiring expose only the normalized capabilities that were actually loaded
 
 ## 5. Verification And Regression Coverage
 

@@ -43,3 +43,19 @@ def test_tool_catalog_is_empty_when_research_tools_are_unavailable(
     assert [tool.name for tool in tool_catalog_module.get_lead_agent_tools()] == [
         "load_skill"
     ]
+
+
+def test_tool_catalog_exposes_only_available_research_tools(monkeypatch) -> None:
+    search_tool = SimpleNamespace(name="search")
+    monkeypatch.setattr(
+        tool_catalog_module,
+        "get_mcp_tools_manager",
+        lambda: SimpleNamespace(get_tools=lambda tool_names=None: [search_tool]),
+    )
+
+    catalog = tool_catalog_module.get_lead_agent_selectable_tool_catalog()
+    runtime_tools = tool_catalog_module.get_lead_agent_tools()
+
+    assert [tool.tool_name for tool in catalog] == ["search"]
+    assert tool_catalog_module.get_lead_agent_selectable_tool_names() == {"search"}
+    assert [tool.name for tool in runtime_tools] == ["load_skill", "search"]
