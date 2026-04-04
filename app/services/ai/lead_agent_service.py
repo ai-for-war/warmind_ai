@@ -40,6 +40,7 @@ from app.socket_gateway import gateway
 logger = logging.getLogger(__name__)
 
 LEAD_AGENT_RECURSION_LIMIT = 200
+FILTERED_TOOL_ARGUMENT_KEYS = frozenset({"runtime"})
 
 
 class LeadAgentService:
@@ -669,7 +670,13 @@ class LeadAgentService:
         if isinstance(value, (str, int, float, bool, type(None))):
             return value
         if isinstance(value, Mapping):
-            return {str(key): cls._make_json_safe(item) for key, item in value.items()}
+            normalized_mapping: dict[str, Any] = {}
+            for key, item in value.items():
+                normalized_key = str(key)
+                if normalized_key in FILTERED_TOOL_ARGUMENT_KEYS:
+                    continue
+                normalized_mapping[normalized_key] = cls._make_json_safe(item)
+            return normalized_mapping
         if isinstance(value, Sequence) and not isinstance(
             value, (str, bytes, bytearray)
         ):

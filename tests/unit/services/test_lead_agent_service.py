@@ -780,6 +780,21 @@ def test_serialize_tool_arguments_falls_back_for_non_json_runtime_objects() -> N
     assert isinstance(serialized["transport"]["ssl_context"], str)
 
 
+def test_serialize_tool_arguments_filters_injected_runtime_argument() -> None:
+    serialized = LeadAgentService._serialize_tool_arguments(
+        {
+            "url": "https://filum.ai/",
+            "fmt": "text_markdown",
+            "runtime": "ToolRuntime(...)",
+        }
+    )
+
+    assert serialized == {
+        "url": "https://filum.ai/",
+        "fmt": "text_markdown",
+    }
+
+
 def test_extract_token_usage_falls_back_to_response_metadata_token_usage() -> None:
     usage = LeadAgentService._extract_token_usage(
         {
