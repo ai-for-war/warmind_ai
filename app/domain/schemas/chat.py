@@ -56,6 +56,7 @@ class MessageToolEndPayload(BaseModel):
     conversation_id: str
     tool_call_id: str
     result: str
+    error: Optional[str] = None
     organization_id: Optional[str] = None
 
 

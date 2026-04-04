@@ -497,14 +497,12 @@ class LeadAgentService:
                 result = self._tool_output_to_text(
                     event.get("data", {}).get("output", "")
                 )
-                completed_tool_name: str | None = None
-                completed_tool_call: dict[str, Any] | None = None
-                for tool_call in tool_calls:
-                    if tool_call["tool_call_id"] == run_id:
-                        tool_call["result"] = result
-                        completed_tool_name = str(tool_call["tool_name"])
-                        completed_tool_call = tool_call
-                        break
+                completed_tool_name, completed_tool_call = self._finalize_tool_call(
+                    tool_calls,
+                    tool_call_id=run_id,
+                    result=result,
+                    error=None,
+                )
 
                 if completed_tool_name != "write_todos":
                     await gateway.emit_to_user(
@@ -531,6 +529,30 @@ class LeadAgentService:
                             conversation_id=conversation_id,
                             todos=current_todos,
                         ),
+                        organization_id=organization_id,
+                    )
+            elif event_kind == "on_tool_error":
+                run_id = str(event.get("run_id", ""))
+                error_text = self._tool_error_to_text(
+                    event.get("data", {}).get("error", "")
+                )
+                completed_tool_name, _ = self._finalize_tool_call(
+                    tool_calls,
+                    tool_call_id=run_id,
+                    result=error_text,
+                    error=error_text,
+                )
+
+                if completed_tool_name != "write_todos":
+                    await gateway.emit_to_user(
+                        user_id=user_id,
+                        event=ChatEvents.MESSAGE_TOOL_END,
+                        data={
+                            "conversation_id": conversation_id,
+                            "tool_call_id": run_id,
+                            "result": error_text,
+                            "error": error_text,
+                        },
                         organization_id=organization_id,
                     )
 
@@ -658,6 +680,15 @@ class LeadAgentService:
             return ""
         return str(encoded_output)
 
+    @staticmethod
+    def _tool_error_to_text(error: Any) -> str:
+        """Convert one streamed tool error into readable text."""
+        if error is None:
+            return ""
+        if isinstance(error, BaseException):
+            return str(error).strip()
+        return str(error).strip()
+
     @classmethod
     def _make_json_safe(cls, value: Any) -> Any:
         """Best-effort conversion of tool payloads into JSON-safe values."""
@@ -734,6 +765,23 @@ class LeadAgentService:
             return None
 
         return metadata
+
+    @staticmethod
+    def _finalize_tool_call(
+        tool_calls: list[dict[str, Any]],
+        *,
+        tool_call_id: str,
+        result: str | None,
+        error: str | None,
+    ) -> tuple[str | None, dict[str, Any] | None]:
+        """Update one tracked tool call from a streamed completion event."""
+        for tool_call in tool_calls:
+            if tool_call["tool_call_id"] != tool_call_id:
+                continue
+            tool_call["result"] = result
+            tool_call["error"] = error
+            return str(tool_call["tool_name"]), tool_call
+        return None, None
 
     async def _build_runtime_payload(
         self,

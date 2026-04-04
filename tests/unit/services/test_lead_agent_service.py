@@ -221,6 +221,60 @@ class _FakeSkillStreamingAgent(_FakeStreamingAgent):
         )
 
 
+class _FakeToolErrorStreamingAgent(_FakeStreamingAgent):
+    async def astream_events(
+        self,
+        payload: dict[str, object],
+        *,
+        config: dict[str, dict[str, str]] | None = None,
+        version: str | None = None,
+    ):
+        del config, version
+        self.stream_payloads.append(dict(payload))
+        self.state.update(
+            {
+                "messages": payload["messages"]
+                + [{"role": "assistant", "content": "Recovered answer"}],
+                "user_id": payload["user_id"],
+                "organization_id": payload["organization_id"],
+                "enabled_skill_ids": payload.get("enabled_skill_ids", []),
+                "active_skill_id": payload.get("active_skill_id"),
+                "allowed_tool_names": payload.get("allowed_tool_names", []),
+                "active_skill_version": payload.get("active_skill_version"),
+                "loaded_skills": payload.get("loaded_skills", []),
+            }
+        )
+        yield {
+            "event": "on_tool_start",
+            "name": "fetch_content",
+            "run_id": "tool-error-1",
+            "data": {"input": {"url": "https://example.com/missing"}},
+        }
+        yield {
+            "event": "on_tool_error",
+            "name": "fetch_content",
+            "run_id": "tool-error-1",
+            "data": {"error": RuntimeError("HTTP 404")},
+        }
+        yield {
+            "event": "on_chat_model_stream",
+            "data": {"chunk": SimpleNamespace(content="Recovered answer")},
+        }
+        yield {
+            "event": "on_chat_model_end",
+            "data": {
+                "output": SimpleNamespace(
+                    usage_metadata={
+                        "input_tokens": 4,
+                        "output_tokens": 2,
+                        "total_tokens": 6,
+                    },
+                    response_metadata={"finish_reason": "stop"},
+                )
+            },
+        }
+
+
 class _FakePlanStreamingAgent(_FakeStreamingAgent):
     def __init__(
         self,
@@ -538,6 +592,61 @@ async def test_process_agent_response_persists_skill_metadata_additively() -> No
     assert completed_payload["skill_id"] == "web-research"
     assert completed_payload["skill_version"] == "2.1.0"
     assert completed_payload["loaded_skills"] == ["web-research"]
+
+
+@pytest.mark.asyncio
+async def test_process_agent_response_emits_tool_end_for_tool_error_events() -> None:
+    conversation_service = _conversation_service()
+    service = LeadAgentService(conversation_service=conversation_service)
+    service._agent = _FakeToolErrorStreamingAgent()
+    conversation_service.get_user_conversation.return_value = _conversation(
+        thread_id=THREAD_ID
+    )
+    conversation_service.get_message.return_value = _message(
+        message_id="msg-user",
+        role=MessageRole.USER,
+        content="Need a fallback",
+        thread_id=THREAD_ID,
+    )
+
+    async def _persist_assistant(**kwargs):
+        return _message(
+            message_id="msg-assistant",
+            role=MessageRole.ASSISTANT,
+            content=kwargs["content"],
+            conversation_id=kwargs["conversation_id"],
+            thread_id=kwargs["thread_id"],
+            metadata=kwargs["metadata"],
+        )
+
+    conversation_service.add_message.side_effect = _persist_assistant
+    emit_to_user = AsyncMock()
+    monkeypatch_target = lead_agent_service_module.gateway
+    original_emit = monkeypatch_target.emit_to_user
+    monkeypatch_target.emit_to_user = emit_to_user
+
+    try:
+        await service.process_agent_response(
+            user_id="user-1",
+            conversation_id="conv-1",
+            user_message_id="msg-user",
+            organization_id="org-1",
+        )
+    finally:
+        monkeypatch_target.emit_to_user = original_emit
+
+    emitted_events = [call.kwargs["event"] for call in emit_to_user.await_args_list]
+    assert emitted_events == [
+        ChatEvents.MESSAGE_STARTED,
+        ChatEvents.MESSAGE_TOOL_START,
+        ChatEvents.MESSAGE_TOOL_END,
+        ChatEvents.MESSAGE_TOKEN,
+        ChatEvents.MESSAGE_COMPLETED,
+    ]
+    tool_end_payload = emit_to_user.await_args_list[2].kwargs["data"]
+    assert tool_end_payload["tool_call_id"] == "tool-error-1"
+    assert tool_end_payload["result"] == "HTTP 404"
+    assert tool_end_payload["error"] == "HTTP 404"
 
 
 @pytest.mark.asyncio
