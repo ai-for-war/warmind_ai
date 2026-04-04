@@ -571,7 +571,7 @@ async def test_process_agent_response_emits_failed_event_when_runtime_breaks() -
 
 
 @pytest.mark.asyncio
-async def test_process_agent_response_emits_plan_updated_after_persisted_todo_change() -> None:
+async def test_process_agent_response_emits_plan_updated_after_write_todo_completion() -> None:
     conversation_service = _conversation_service()
     service = LeadAgentService(conversation_service=conversation_service)
     service._agent = _FakePlanStreamingAgent(
@@ -628,32 +628,36 @@ async def test_process_agent_response_emits_plan_updated_after_persisted_todo_ch
     assert plan_payload == {
         "conversation_id": "conv-1",
         "todos": [
-            {"content": "Inspect request", "status": "completed"},
-            {"content": "Draft response", "status": "in_progress"},
+            {
+                "content": "Optimistic tool input that should not be emitted yet",
+                "status": "in_progress",
+            }
         ],
         "summary": {
-            "total": 2,
-            "completed": 1,
+            "total": 1,
+            "completed": 0,
             "in_progress": 1,
             "pending": 0,
         },
     }
-    assert (
-        "Optimistic tool input that should not be emitted yet"
-        not in str(plan_payload["todos"])
-    )
 
 
 @pytest.mark.asyncio
-async def test_process_agent_response_skips_plan_updated_when_persisted_todos_do_not_change() -> None:
+async def test_process_agent_response_emits_plan_updated_even_when_snapshot_matches_previous_plan() -> None:
     conversation_service = _conversation_service()
     service = LeadAgentService(conversation_service=conversation_service)
     service._agent = _FakePlanStreamingAgent(
         initial_todos=[
-            {"content": "Inspect request", "status": "in_progress"},
+            {
+                "content": "Optimistic tool input that should not be emitted yet",
+                "status": "in_progress",
+            },
         ],
         persisted_todos_after_write=[
-            {"content": "Inspect request", "status": "in_progress"},
+            {
+                "content": "Optimistic tool input that should not be emitted yet",
+                "status": "in_progress",
+            },
         ],
     )
     conversation_service.get_user_conversation.return_value = _conversation(
@@ -693,7 +697,12 @@ async def test_process_agent_response_skips_plan_updated_when_persisted_todos_do
         monkeypatch_target.emit_to_user = original_emit
 
     emitted_events = [call.kwargs["event"] for call in emit_to_user.await_args_list]
-    assert ChatEvents.MESSAGE_PLAN_UPDATED not in emitted_events
+    assert emitted_events == [
+        ChatEvents.MESSAGE_STARTED,
+        ChatEvents.MESSAGE_PLAN_UPDATED,
+        ChatEvents.MESSAGE_TOKEN,
+        ChatEvents.MESSAGE_COMPLETED,
+    ]
 
 
 @pytest.mark.asyncio

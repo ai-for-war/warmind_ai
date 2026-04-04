@@ -435,12 +435,6 @@ class LeadAgentService:
             content=content,
             organization_id=organization_id,
         )
-        last_todos = await self._get_persisted_todo_snapshot_for_caller(
-            thread_id=thread_id,
-            user_id=user_id,
-            organization_id=organization_id,
-        )
-
         async for event in self.agent.astream_events(
             runtime_payload,
             config=self._thread_config(thread_id),
@@ -502,10 +496,12 @@ class LeadAgentService:
                     event.get("data", {}).get("output", "")
                 )
                 completed_tool_name: str | None = None
+                completed_tool_call: dict[str, Any] | None = None
                 for tool_call in tool_calls:
                     if tool_call["tool_call_id"] == run_id:
                         tool_call["result"] = result
                         completed_tool_name = str(tool_call["tool_name"])
+                        completed_tool_call = tool_call
                         break
 
                 if completed_tool_name != "write_todos":
@@ -519,24 +515,22 @@ class LeadAgentService:
                         },
                         organization_id=organization_id,
                     )
-                print(f"completed_tool_name: {completed_tool_name}")
-                if completed_tool_name == "write_todos":
-                    current_todos = await self._get_persisted_todo_snapshot_for_caller(
-                        thread_id=thread_id,
+                if (
+                    completed_tool_name == "write_todos"
+                    and completed_tool_call is not None
+                ):
+                    current_todos = self._extract_todo_snapshot(
+                        {"todos": completed_tool_call["arguments"].get("todos", [])}
+                    )
+                    await gateway.emit_to_user(
                         user_id=user_id,
+                        event=ChatEvents.MESSAGE_PLAN_UPDATED,
+                        data=self._build_plan_update_payload(
+                            conversation_id=conversation_id,
+                            todos=current_todos,
+                        ),
                         organization_id=organization_id,
                     )
-                    if current_todos != last_todos:
-                        await gateway.emit_to_user(
-                            user_id=user_id,
-                            event=ChatEvents.MESSAGE_PLAN_UPDATED,
-                            data=self._build_plan_update_payload(
-                                conversation_id=conversation_id,
-                                todos=current_todos,
-                            ),
-                            organization_id=organization_id,
-                        )
-                        last_todos = current_todos
 
         return tool_calls, {
             "tokens": aggregated_tokens if has_token_usage else None,
