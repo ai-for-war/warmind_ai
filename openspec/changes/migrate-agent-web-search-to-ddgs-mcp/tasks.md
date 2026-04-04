@@ -1,8 +1,8 @@
 ## 1. DDGS MCP Provider Setup
 
-- [ ] 1.1 Update the MCP server configuration in `app/config/mcp.py` so the default web-research provider launches the official `ddgs` MCP entrypoint instead of `duckduckgo-mcp-server`
-- [ ] 1.2 Add or update dependency and environment setup notes needed for running `ddgs mcp` with MCP support in local and deployed environments
-- [ ] 1.3 Verify the configured provider can still honor proxy-related environment settings without changing the app-level research tool contract
+- [x] 1.1 Update the MCP server configuration in `app/config/mcp.py` so the default web-research provider launches the official `ddgs` MCP entrypoint instead of `duckduckgo-mcp-server`
+- [x] 1.2 Add or update dependency and environment setup notes needed for running `ddgs mcp` with MCP support in local and deployed environments
+- [x] 1.3 Verify the configured provider can still honor proxy-related environment settings without changing the app-level research tool contract
 
 ## 2. Normalized Research Tool Adapter
 

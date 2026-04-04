@@ -41,7 +41,10 @@ MCP_SERVERS: dict[str, MCPServerConfig] = {
     "ddg-search": {
         "transport": "stdio",
         "command": "uvx",
-        "args": ["duckduckgo-mcp-server"],
+        # Install and launch the official DDGS MCP server with stdio transport.
+        # DDGS inherits proxy settings from the parent environment via DDGS_PROXY
+        # and also supports `ddgs mcp -pr <proxy>` if we need explicit args later.
+        "args": ["--from", "ddgs[mcp]", "ddgs", "mcp"],
         "enabled": True,
     },
 }
