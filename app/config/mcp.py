@@ -40,11 +40,12 @@ MCPServerConfig = StdioTransportConfig | HttpTransportConfig
 MCP_SERVERS: dict[str, MCPServerConfig] = {
     "ddg-search": {
         "transport": "stdio",
-        "command": "uvx",
-        # Install and launch the official DDGS MCP server with stdio transport.
+        "command": "ddgs",
+        # Launch the official DDGS MCP server from the app environment.
+        # Install `ddgs[mcp]` into the same Python environment as the app.
         # DDGS inherits proxy settings from the parent environment via DDGS_PROXY
         # and also supports `ddgs mcp -pr <proxy>` if we need explicit args later.
-        "args": ["--from", "ddgs[mcp]", "ddgs", "mcp"],
+        "args": ["mcp"],
         "enabled": True,
     },
 }

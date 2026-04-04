@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import os
+import ssl
 import sys
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from types import ModuleType
@@ -105,6 +107,12 @@ def _skill_access_resolver(
             )
         )
     )
+
+
+@dataclass
+class _ToolInputWithRuntimeState:
+    query: str
+    transport: dict[str, object]
 
 
 class _FakeStreamingAgent:
@@ -757,6 +765,19 @@ def test_message_content_to_stream_token_preserves_whitespace_for_structured_con
     )
 
     assert token == "EM trong lĩnh vực"
+
+
+def test_serialize_tool_arguments_falls_back_for_non_json_runtime_objects() -> None:
+    tool_input = _ToolInputWithRuntimeState(
+        query="recap",
+        transport={"ssl_context": ssl.create_default_context()},
+    )
+
+    serialized = LeadAgentService._serialize_tool_arguments(tool_input)
+
+    assert serialized["query"] == "recap"
+    assert isinstance(serialized["transport"], dict)
+    assert isinstance(serialized["transport"]["ssl_context"], str)
 
 
 def test_extract_token_usage_falls_back_to_response_metadata_token_usage() -> None:
