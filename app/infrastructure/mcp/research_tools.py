@@ -12,6 +12,8 @@ from typing import Any, cast
 from langchain_core.tools import BaseTool
 
 # Stable app-level research capabilities and their provider-specific aliases.
+RESEARCH_TOOL_NAMES: tuple[str, str] = ("search", "fetch_content")
+
 RESEARCH_TOOL_CANDIDATES: dict[str, tuple[str, ...]] = {
     "search": ("search", "search_text"),
     "fetch_content": ("fetch_content", "extract_content"),

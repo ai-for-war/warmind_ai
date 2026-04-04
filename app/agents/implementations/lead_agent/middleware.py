@@ -15,6 +15,7 @@ from langchain_core.messages import SystemMessage
 from langchain_core.tools import BaseTool
 
 from app.agents.implementations.lead_agent.state import LeadAgentState
+from app.infrastructure.mcp.research_tools import RESEARCH_TOOL_NAMES
 from app.prompts.system.lead_agent import (
     get_lead_agent_todo_system_prompt,
     get_lead_agent_todo_tool_description,
@@ -23,7 +24,7 @@ from app.services.ai.lead_agent_skill_access_resolver import (
     LeadAgentSkillAccessResolver,
 )
 
-_BASE_SKILL_TOOL_NAMES = {"load_skill", "write_todos", "search", "fetch_content"}
+_BASE_SKILL_TOOL_NAMES = {"load_skill", "write_todos", *RESEARCH_TOOL_NAMES}
 
 
 class LeadAgentSkillPromptMiddleware(AgentMiddleware[LeadAgentState, None, Any]):
@@ -163,6 +164,7 @@ def _visible_tool_names(
     allowed_tool_names: Sequence[str],
 ) -> set[str]:
     """Resolve the visible tool names for the current model call."""
+    del enabled_skill_ids
     if not active_skill_id:
         return set(_BASE_SKILL_TOOL_NAMES)
     return set(_BASE_SKILL_TOOL_NAMES).union(allowed_tool_names)

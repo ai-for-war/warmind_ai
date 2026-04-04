@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import app.agents.implementations.lead_agent.tool_catalog as tool_catalog_module
 
 
-def test_tool_catalog_exposes_duckduckgo_search_when_available(monkeypatch) -> None:
+def test_tool_catalog_exposes_research_tools_when_available(monkeypatch) -> None:
     search_tool = SimpleNamespace(name="search")
     fetch_content_tool = SimpleNamespace(name="fetch_content")
     monkeypatch.setattr(
@@ -29,7 +29,7 @@ def test_tool_catalog_exposes_duckduckgo_search_when_available(monkeypatch) -> N
     ]
 
 
-def test_tool_catalog_is_empty_when_duckduckgo_search_is_unavailable(
+def test_tool_catalog_is_empty_when_research_tools_are_unavailable(
     monkeypatch,
 ) -> None:
     monkeypatch.setattr(

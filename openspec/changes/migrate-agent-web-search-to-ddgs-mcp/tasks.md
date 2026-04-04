@@ -13,10 +13,10 @@
 
 ## 3. Agent Runtime And Prompt Integration
 
-- [ ] 3.1 Update chat-agent and data-agent MCP tool loading so both runtimes consume only the normalized research tool names
-- [ ] 3.2 Update lead-agent selectable tool registration and runtime tool catalog so they advertise and resolve only `search` and `fetch_content`
-- [ ] 3.3 Update lead-agent middleware base-tool rules so research-tool filtering depends only on the normalized contract and not raw provider names
-- [ ] 3.4 Refresh chat-agent, data-agent, and lead-agent prompt text so research guidance remains provider-agnostic and aligned with the normalized tool surface
+- [x] 3.1 Update chat-agent and data-agent MCP tool loading so both runtimes consume only the normalized research tool names
+- [x] 3.2 Update lead-agent selectable tool registration and runtime tool catalog so they advertise and resolve only `search` and `fetch_content`
+- [x] 3.3 Update lead-agent middleware base-tool rules so research-tool filtering depends only on the normalized contract and not raw provider names
+- [x] 3.4 Refresh chat-agent, data-agent, and lead-agent prompt text so research guidance remains provider-agnostic and aligned with the normalized tool surface
 
 ## 4. Diagnostics And Graceful Degradation
 
