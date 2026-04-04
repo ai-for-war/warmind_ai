@@ -12,6 +12,7 @@ from typing import Optional
 from langchain_core.tools import BaseTool
 
 from app.config.mcp import MCPServerConfig
+from app.infrastructure.mcp.research_tools import normalize_mcp_tools
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,9 @@ class MCPToolsManager:
     _instance: Optional["MCPToolsManager"] = None
     _client: Optional[object] = None  # MultiServerMCPClient
     _tools: list[BaseTool] = []
+    _raw_tools: list[BaseTool] = []
+    _normalized_tool_mapping: dict[str, str] = {}
+    _missing_normalized_tool_names: list[str] = []
     _initialized: bool = False
 
     def __new__(cls) -> "MCPToolsManager":
@@ -42,6 +46,9 @@ class MCPToolsManager:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._tools = []
+            cls._instance._raw_tools = []
+            cls._instance._normalized_tool_mapping = {}
+            cls._instance._missing_normalized_tool_names = []
             cls._instance._client = None
             cls._instance._initialized = False
         return cls._instance
@@ -90,6 +97,9 @@ class MCPToolsManager:
             if not enabled_servers:
                 logger.warning("No enabled MCP servers configured")
                 self._tools = []
+                self._raw_tools = []
+                self._normalized_tool_mapping = {}
+                self._missing_normalized_tool_names = []
                 self._initialized = True
                 return
 
@@ -102,9 +112,16 @@ class MCPToolsManager:
             self._client = MultiServerMCPClient(enabled_servers)
 
             # Load tools with timeout
-            self._tools = await asyncio.wait_for(
+            raw_tools = await asyncio.wait_for(
                 self._client.get_tools(),
                 timeout=timeout,
+            )
+            normalized_tools = normalize_mcp_tools(raw_tools)
+            self._raw_tools = normalized_tools.raw_tools
+            self._tools = normalized_tools.tools
+            self._normalized_tool_mapping = normalized_tools.normalized_mapping
+            self._missing_normalized_tool_names = (
+                normalized_tools.missing_capabilities
             )
 
             self._initialized = True
@@ -119,6 +136,9 @@ class MCPToolsManager:
                 timeout,
             )
             self._tools = []
+            self._raw_tools = []
+            self._normalized_tool_mapping = {}
+            self._missing_normalized_tool_names = []
             self._initialized = True
 
         except ImportError as e:
@@ -128,6 +148,9 @@ class MCPToolsManager:
                 e,
             )
             self._tools = []
+            self._raw_tools = []
+            self._normalized_tool_mapping = {}
+            self._missing_normalized_tool_names = []
             self._initialized = True
 
         except Exception as e:  # noqa: BLE001
@@ -135,6 +158,9 @@ class MCPToolsManager:
                 "MCP initialization failed: %s. Continuing without MCP tools.", e
             )
             self._tools = []
+            self._raw_tools = []
+            self._normalized_tool_mapping = {}
+            self._missing_normalized_tool_names = []
             self._initialized = True
 
     def get_tools(
@@ -196,6 +222,9 @@ class MCPToolsManager:
 
         self._client = None
         self._tools = []
+        self._raw_tools = []
+        self._normalized_tool_mapping = {}
+        self._missing_normalized_tool_names = []
         self._initialized = False
 
         # Reinitialize with new config
@@ -218,6 +247,21 @@ class MCPToolsManager:
             Number of tools loaded from MCP servers.
         """
         return len(self._tools)
+
+    @property
+    def raw_tool_count(self) -> int:
+        """Get the number of raw tools loaded directly from MCP servers."""
+        return len(self._raw_tools)
+
+    @property
+    def normalized_tool_mapping(self) -> dict[str, str]:
+        """Return the current normalized app-level to raw-tool mapping."""
+        return dict(self._normalized_tool_mapping)
+
+    @property
+    def missing_normalized_tool_names(self) -> list[str]:
+        """Return normalized research capabilities missing from the provider."""
+        return list(self._missing_normalized_tool_names)
 
 
 @lru_cache

@@ -6,10 +6,10 @@
 
 ## 2. Normalized Research Tool Adapter
 
-- [ ] 2.1 Add a dedicated MCP research-tool normalization module under `app/infrastructure/mcp/` that defines the stable app-level capabilities `search` and `fetch_content`
-- [ ] 2.2 Implement candidate-name resolution rules so `search` can map to `search` or `search_text` and `fetch_content` can map to `fetch_content` or `extract_content`
-- [ ] 2.3 Implement thin delegating wrapper tools that expose the normalized public names while forwarding execution to the selected upstream MCP tool
-- [ ] 2.4 Update `MCPToolsManager` to retain raw loaded tools for diagnostics and expose normalized research tools through its public `get_tools(...)` path
+- [x] 2.1 Add a dedicated MCP research-tool normalization module under `app/infrastructure/mcp/` that defines the stable app-level capabilities `search` and `fetch_content`
+- [x] 2.2 Implement candidate-name resolution rules so `search` can map to `search` or `search_text` and `fetch_content` can map to `fetch_content` or `extract_content`
+- [x] 2.3 Implement thin delegating wrapper tools that expose the normalized public names while forwarding execution to the selected upstream MCP tool
+- [x] 2.4 Update `MCPToolsManager` to retain raw loaded tools for diagnostics and expose normalized research tools through its public `get_tools(...)` path
 
 ## 3. Agent Runtime And Prompt Integration
 
