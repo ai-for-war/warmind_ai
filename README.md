@@ -2,6 +2,33 @@
 
 A modular AI service built with FastAPI, LangChain, and LangGraph.
 
+## MCP Web Search Setup
+
+The application uses MCP for web research tools. The default provider is the
+official DDGS MCP server launched from the app environment via:
+
+```bash
+ddgs mcp
+```
+
+Notes:
+
+- Install the DDGS MCP dependency into the same Python environment as the app:
+
+```bash
+pip install "ddgs[mcp]"
+```
+
+- If you bootstrap dependencies from the repo file, `requirements.txt` now
+  includes `ddgs[mcp]`.
+- DDGS supports proxy configuration through the inherited `DDGS_PROXY`
+  environment variable.
+- DDGS also supports an explicit proxy CLI flag in direct invocations:
+  `ddgs mcp -pr socks5h://127.0.0.1:9150`
+- The app-level research contract remains `search` and `fetch_content`; the
+  MCP provider can change underneath that contract as long as runtime mapping
+  preserves those tool semantics.
+
 ## Project Structure
 
 ```

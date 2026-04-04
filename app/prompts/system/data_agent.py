@@ -120,6 +120,7 @@ Exception: `connection_id` and `row_number` are at root level, not inside `data`
 
 ### 5.6 search (Web Search Tool)
 **Purpose**: Search the web to enrich analysis with external context
+**Contract**: Stable app-level research tool name, regardless of which MCP provider is active
 **When to use**:
 - To add market context to internal data analysis (e.g., compare user's metrics with industry benchmarks)
 - To provide background information on trends affecting user's business
@@ -137,6 +138,7 @@ Exception: `connection_id` and `row_number` are at root level, not inside `data`
 
 ### 5.7 fetch_content (Web Content Fetcher)
 **Purpose**: Fetch detailed content from a URL to enrich analysis
+**Contract**: Stable app-level research tool name, regardless of which MCP provider is active
 **When to use**:
 - After search, need more details from a specific result to provide better context
 - User provides a URL and asks to incorporate its information

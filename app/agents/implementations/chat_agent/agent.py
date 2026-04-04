@@ -14,6 +14,7 @@ from langgraph.prebuilt import create_react_agent
 
 from app.infrastructure.llm.factory import get_chat_openai
 from app.infrastructure.mcp.manager import get_mcp_tools_manager
+from app.infrastructure.mcp.research_tools import RESEARCH_TOOL_NAMES
 from app.prompts.system.chat_agent import CHAT_AGENT_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
@@ -39,10 +40,9 @@ def create_chat_agent() -> CompiledStateGraph:
         streaming=True,
     )
 
-    # Get MCP tools (web search, fetch content)
+    # Get normalized MCP research tools for the app-level contract.
     mcp_manager = get_mcp_tools_manager()
-    # DuckDuckGo MCP provides: "search" and "fetch" tools
-    mcp_tools = mcp_manager.get_tools(tool_names=["search", "fetch_content"])
+    mcp_tools = mcp_manager.get_tools(tool_names=list(RESEARCH_TOOL_NAMES))
 
     if mcp_tools:
         logger.info(

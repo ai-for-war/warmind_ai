@@ -22,6 +22,7 @@ from app.agents.implementations.data_agent.tools import (
 )
 from app.infrastructure.llm.factory import get_chat_openai
 from app.infrastructure.mcp.manager import get_mcp_tools_manager
+from app.infrastructure.mcp.research_tools import RESEARCH_TOOL_NAMES
 from app.prompts.system.data_agent import DATA_AGENT_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
@@ -114,10 +115,9 @@ def create_data_agent(user_connections: list[dict[str, Any]]) -> CompiledStateGr
         create_execute_aggregation_tool(user_connections),
     ]
 
-    # Get MCP tools (web search, fetch content)
+    # Get normalized MCP research tools for the app-level contract.
     mcp_manager = get_mcp_tools_manager()
-    # DuckDuckGo MCP provides: "search" and "fetch" tools
-    mcp_tools = mcp_manager.get_tools(tool_names=["search", "fetch_content"])
+    mcp_tools = mcp_manager.get_tools(tool_names=list(RESEARCH_TOOL_NAMES))
 
     if mcp_tools:
         logger.info(

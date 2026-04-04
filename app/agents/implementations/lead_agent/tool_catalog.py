@@ -8,6 +8,7 @@ from langchain_core.tools import BaseTool
 
 from app.agents.implementations.lead_agent.tools import LEAD_AGENT_INTERNAL_TOOLS
 from app.infrastructure.mcp.manager import get_mcp_tools_manager
+from app.infrastructure.mcp.research_tools import RESEARCH_TOOL_NAMES
 
 
 @dataclass(frozen=True)
@@ -35,7 +36,7 @@ def _get_selectable_tool_registrations() -> list[_LeadAgentSelectableToolRegistr
     mcp_manager = get_mcp_tools_manager()
     mcp_tools = {
         tool.name: tool
-        for tool in mcp_manager.get_tools(tool_names=["search", "fetch_content"])
+        for tool in mcp_manager.get_tools(tool_names=list(RESEARCH_TOOL_NAMES))
     }
 
     search_tool = mcp_tools.get("search")
@@ -45,7 +46,7 @@ def _get_selectable_tool_registrations() -> list[_LeadAgentSelectableToolRegistr
                 descriptor=LeadAgentSelectableToolDescriptor(
                     tool_name="search",
                     display_name="Web Search",
-                    description="Search the web with DuckDuckGo for current external information.",
+                    description="Search the web for current external information.",
                     category="research",
                 ),
                 tool=search_tool,

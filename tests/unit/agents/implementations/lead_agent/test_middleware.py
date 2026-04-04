@@ -10,11 +10,13 @@ from langchain.agents.middleware import (
     ModelResponse,
     TodoListMiddleware,
 )
-from langchain_core.messages import AIMessage
-from langchain_core.tools import tool
+from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.tools import ToolException, tool
+from langgraph.prebuilt.tool_node import ToolCallRequest
 
 from app.agents.implementations.lead_agent.middleware import (
     LEAD_AGENT_MIDDLEWARE,
+    LeadAgentToolErrorMiddleware,
     LeadAgentSkillPromptMiddleware,
     LeadAgentToolSelectionMiddleware,
 )
@@ -245,6 +247,29 @@ async def test_tool_selection_middleware_filters_to_base_or_skill_allowed_surfac
         "fetch_content",
         "search_docs",
     ]
+
+
+@pytest.mark.asyncio
+async def test_tool_error_middleware_converts_tool_exception_to_error_message() -> None:
+    middleware = LeadAgentToolErrorMiddleware()
+    request = ToolCallRequest(
+        tool_call={"id": "call-1", "name": "extract_content", "args": {}},
+        tool=fetch_content,
+        state={},
+        runtime=None,
+    )
+
+    async def _handler(_: ToolCallRequest) -> ToolMessage:
+        raise ToolException(
+            "Error executing tool extract_content: Failed to fetch https://filum.ai/about-us: HTTP 404"
+        )
+
+    response = await middleware.awrap_tool_call(request, _handler)
+
+    assert response.tool_call_id == "call-1"
+    assert response.status == "error"
+    assert "extract_content" in str(response.content)
+    assert "HTTP 404" in str(response.content)
 
 
 @pytest.mark.asyncio

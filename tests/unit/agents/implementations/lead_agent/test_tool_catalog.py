@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import app.agents.implementations.lead_agent.tool_catalog as tool_catalog_module
 
 
-def test_tool_catalog_exposes_duckduckgo_search_when_available(monkeypatch) -> None:
+def test_tool_catalog_exposes_research_tools_when_available(monkeypatch) -> None:
     search_tool = SimpleNamespace(name="search")
     fetch_content_tool = SimpleNamespace(name="fetch_content")
     monkeypatch.setattr(
@@ -29,7 +29,7 @@ def test_tool_catalog_exposes_duckduckgo_search_when_available(monkeypatch) -> N
     ]
 
 
-def test_tool_catalog_is_empty_when_duckduckgo_search_is_unavailable(
+def test_tool_catalog_is_empty_when_research_tools_are_unavailable(
     monkeypatch,
 ) -> None:
     monkeypatch.setattr(
@@ -43,3 +43,19 @@ def test_tool_catalog_is_empty_when_duckduckgo_search_is_unavailable(
     assert [tool.name for tool in tool_catalog_module.get_lead_agent_tools()] == [
         "load_skill"
     ]
+
+
+def test_tool_catalog_exposes_only_available_research_tools(monkeypatch) -> None:
+    search_tool = SimpleNamespace(name="search")
+    monkeypatch.setattr(
+        tool_catalog_module,
+        "get_mcp_tools_manager",
+        lambda: SimpleNamespace(get_tools=lambda tool_names=None: [search_tool]),
+    )
+
+    catalog = tool_catalog_module.get_lead_agent_selectable_tool_catalog()
+    runtime_tools = tool_catalog_module.get_lead_agent_tools()
+
+    assert [tool.tool_name for tool in catalog] == ["search"]
+    assert tool_catalog_module.get_lead_agent_selectable_tool_names() == {"search"}
+    assert [tool.name for tool in runtime_tools] == ["load_skill", "search"]
