@@ -487,6 +487,34 @@ async def test_send_message_persists_turn_scoped_subagent_request_metadata() -> 
     )
 
 
+def test_service_builds_distinct_agent_variants_for_direct_and_subagent_turns(
+    monkeypatch,
+) -> None:
+    conversation_service = _conversation_service()
+    service = LeadAgentService(conversation_service=conversation_service)
+    created_agents: list[bool] = []
+
+    def _fake_create_lead_agent(runtime_config=None, *, subagent_enabled=False):
+        del runtime_config
+        created_agents.append(subagent_enabled)
+        return f"agent-{subagent_enabled}"
+
+    monkeypatch.setattr(
+        lead_agent_service_module,
+        "create_lead_agent",
+        _fake_create_lead_agent,
+    )
+
+    direct_agent = service._get_agent(subagent_enabled=False)
+    subagent_agent = service._get_agent(subagent_enabled=True)
+    cached_subagent_agent = service._get_agent(subagent_enabled=True)
+
+    assert direct_agent == "agent-False"
+    assert subagent_agent == "agent-True"
+    assert cached_subagent_agent == "agent-True"
+    assert created_agents == [False, True]
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("conversation", "state"),
@@ -625,7 +653,9 @@ async def test_process_agent_response_persists_skill_metadata_additively() -> No
             enabled_skill_ids=["web-research"]
         ),
     )
-    service._agent = _FakeSkillStreamingAgent()
+    shared_agent = _FakeSkillStreamingAgent()
+    service._agent = shared_agent
+    service._subagent_agent = shared_agent
 
     conversation_service.get_user_conversation.return_value = _conversation(
         thread_id=THREAD_ID
@@ -677,8 +707,8 @@ async def test_process_agent_response_persists_skill_metadata_additively() -> No
     assert metadata.orchestration_mode == "subagent"
     assert metadata.delegation_depth == 0
     assert metadata.tool_calls is not None
-    assert service._agent.stream_payloads[0]["subagent_enabled"] is True
-    assert service._agent.stream_payloads[0]["orchestration_mode"] == "subagent"
+    assert shared_agent.stream_payloads[0]["subagent_enabled"] is True
+    assert shared_agent.stream_payloads[0]["orchestration_mode"] == "subagent"
     completed_payload = emit_to_user.await_args_list[-1].kwargs["data"]["metadata"]
     assert completed_payload["skill_id"] == "web-research"
     assert completed_payload["skill_version"] == "2.1.0"

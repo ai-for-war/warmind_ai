@@ -244,7 +244,7 @@ def _get_cached_worker_agent(
     """Compile and cache worker runtimes by resolved lead-agent config."""
     from app.agents.implementations.lead_agent.agent import create_lead_agent
 
-    return create_lead_agent(runtime_config)
+    return create_lead_agent(runtime_config, subagent_enabled=False)
 
 
 def _resolve_runtime_config_from_state(

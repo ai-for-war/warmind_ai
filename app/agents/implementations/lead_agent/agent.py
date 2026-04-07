@@ -16,6 +16,8 @@ from app.prompts.system.lead_agent import get_lead_agent_system_prompt
 
 def create_lead_agent(
     runtime_config: LeadAgentRuntimeConfig | None = None,
+    *,
+    subagent_enabled: bool = False,
 ) -> CompiledStateGraph:
     """Create a skill-aware lead-agent runtime for one resolved model config."""
     llm = build_lead_agent_model(runtime_config)
@@ -23,7 +25,9 @@ def create_lead_agent(
     return create_agent(
         model=llm,
         tools=get_lead_agent_tools(),
-        system_prompt=get_lead_agent_system_prompt(),
+        system_prompt=get_lead_agent_system_prompt(
+            subagent_enabled=subagent_enabled
+        ),
         middleware=LEAD_AGENT_MIDDLEWARE,
         state_schema=LeadAgentState,
         checkpointer=get_langgraph_checkpointer(),

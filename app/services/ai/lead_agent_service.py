@@ -60,6 +60,7 @@ class LeadAgentService:
         self.skill_access_resolver = skill_access_resolver
         self.runtime_config = runtime_config
         self._agent: CompiledStateGraph | None = None
+        self._subagent_agent: CompiledStateGraph | None = None
 
     @property
     def agent(self) -> CompiledStateGraph:
@@ -67,6 +68,18 @@ class LeadAgentService:
         if self._agent is None:
             self._agent = create_lead_agent(self.runtime_config)
         return self._agent
+
+    def _get_agent(self, *, subagent_enabled: bool = False) -> CompiledStateGraph:
+        """Return the compiled lead-agent runtime variant for the current turn."""
+        if not subagent_enabled:
+            return self.agent
+
+        if self._subagent_agent is None:
+            self._subagent_agent = create_lead_agent(
+                self.runtime_config,
+                subagent_enabled=True,
+            )
+        return self._subagent_agent
 
     def configure_runtime(
         self,
@@ -82,6 +95,7 @@ class LeadAgentService:
             reasoning=reasoning,
         )
         self._agent = None
+        self._subagent_agent = None
         return self.runtime_config
 
     async def create_thread(
@@ -441,7 +455,7 @@ class LeadAgentService:
             organization_id=organization_id,
             subagent_enabled=subagent_enabled,
         )
-        return await self.agent.ainvoke(
+        return await self._get_agent(subagent_enabled=subagent_enabled).ainvoke(
             runtime_payload,
             config=self._thread_config(thread_id),
         )
@@ -467,7 +481,9 @@ class LeadAgentService:
             organization_id=organization_id,
             subagent_enabled=subagent_enabled,
         )
-        async for event in self.agent.astream_events(
+        async for event in self._get_agent(
+            subagent_enabled=subagent_enabled
+        ).astream_events(
             runtime_payload,
             config=self._thread_config(thread_id),
             version="v2",

@@ -27,6 +27,7 @@ from app.agents.implementations.lead_agent.tools import load_skill
 from app.domain.models.lead_agent_skill import LeadAgentSkill
 from app.prompts.system.lead_agent import (
     get_lead_agent_orchestration_system_prompt,
+    get_lead_agent_system_prompt,
     get_lead_agent_todo_system_prompt,
     get_lead_agent_todo_tool_description,
     get_lead_agent_worker_system_prompt,
@@ -236,6 +237,35 @@ async def test_orchestration_prompt_middleware_injects_manager_guidance_for_suba
     updated_request = captured["request"]
     assert updated_request.system_prompt is not None
     assert "Base system prompt." in updated_request.system_prompt
+    assert get_lead_agent_orchestration_system_prompt() in updated_request.system_prompt
+
+
+@pytest.mark.asyncio
+async def test_orchestration_prompt_middleware_preserves_subagent_ready_base_prompt() -> None:
+    middleware = LeadAgentOrchestrationPromptMiddleware()
+    request = _request(
+        state={
+            "messages": [],
+            "subagent_enabled": True,
+            "delegation_depth": 0,
+        },
+        system_prompt=get_lead_agent_system_prompt(subagent_enabled=True),
+    )
+    captured: dict[str, ModelRequest[None]] = {}
+
+    async def _handler(updated_request: ModelRequest[None]) -> ModelResponse[object]:
+        captured["request"] = updated_request
+        return ModelResponse(result=[AIMessage(content="ok")])
+
+    await middleware.awrap_model_call(request, _handler)
+
+    updated_request = captured["request"]
+    assert updated_request.system_prompt is not None
+    assert (
+        "DECOMPOSITION CHECK: Can this task be broken into 2+ parallel sub-tasks?"
+        in updated_request.system_prompt
+    )
+    assert "Orchestrator Mode" in updated_request.system_prompt
     assert get_lead_agent_orchestration_system_prompt() in updated_request.system_prompt
 
 
