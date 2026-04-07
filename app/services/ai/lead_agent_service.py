@@ -471,6 +471,7 @@ class LeadAgentService:
     ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         """Stream the lead-agent runtime and emit chat-compatible socket events."""
         tool_calls: list[dict[str, Any]] = []
+        delegated_tool_run_ids: set[str] = set()
         aggregated_tokens = TokenUsage()
         has_token_usage = False
         finish_reason: str | None = None
@@ -489,6 +490,11 @@ class LeadAgentService:
             version="v2",
         ):
             event_kind = event.get("event", "")
+            if self._is_nested_delegation_event(
+                event,
+                delegated_tool_run_ids=delegated_tool_run_ids,
+            ):
+                continue
 
             if event_kind == "on_chat_model_stream":
                 chunk = event.get("data", {}).get("chunk")
@@ -526,6 +532,8 @@ class LeadAgentService:
                     "error": None,
                 }
                 tool_calls.append(tool_call)
+                if tool_name == "delegate_tasks":
+                    delegated_tool_run_ids.add(run_id)
                 if tool_name != "write_todos":
                     await gateway.emit_to_user(
                         user_id=user_id,
@@ -549,6 +557,7 @@ class LeadAgentService:
                     result=result,
                     error=None,
                 )
+                delegated_tool_run_ids.discard(run_id)
 
                 if completed_tool_name != "write_todos":
                     await gateway.emit_to_user(
@@ -588,6 +597,7 @@ class LeadAgentService:
                     result=error_text,
                     error=error_text,
                 )
+                delegated_tool_run_ids.discard(run_id)
 
                 if completed_tool_name != "write_todos":
                     await gateway.emit_to_user(
@@ -606,6 +616,22 @@ class LeadAgentService:
             "tokens": aggregated_tokens if has_token_usage else None,
             "finish_reason": finish_reason,
         }
+
+    @staticmethod
+    def _is_nested_delegation_event(
+        event: Mapping[str, Any],
+        *,
+        delegated_tool_run_ids: set[str],
+    ) -> bool:
+        """Return True when one streamed event belongs to a delegated subagent run."""
+        if not delegated_tool_run_ids:
+            return False
+
+        parent_ids = event.get("parent_ids", [])
+        if not isinstance(parent_ids, list):
+            return False
+
+        return any(str(parent_id) in delegated_tool_run_ids for parent_id in parent_ids)
 
     async def _require_user_message(
         self,

@@ -111,9 +111,7 @@ class LeadAgentToolSelectionMiddleware(AgentMiddleware[LeadAgentState, None, Any
             state.get("allowed_tool_names", [])
         )
         subagent_enabled = _normalize_bool(state.get("subagent_enabled"))
-        delegation_depth = _normalize_non_negative_int(
-            state.get("delegation_depth")
-        )
+        delegation_depth = _normalize_non_negative_int(state.get("delegation_depth"))
 
         visible_tool_names = _visible_tool_names(
             active_skill_id=active_skill_id,
@@ -183,7 +181,9 @@ class LeadAgentDelegationLimitMiddleware(AgentMiddleware[LeadAgentState, None, A
         return self.after_model(state, runtime)
 
 
-class LeadAgentOrchestrationPromptMiddleware(AgentMiddleware[LeadAgentState, None, Any]):
+class LeadAgentOrchestrationPromptMiddleware(
+    AgentMiddleware[LeadAgentState, None, Any]
+):
     """Inject orchestration or worker-specific behavior prompts per turn."""
 
     state_schema = LeadAgentState
@@ -222,7 +222,9 @@ class LeadAgentToolErrorMiddleware(AgentMiddleware[LeadAgentState, None, Any]):
         try:
             return await handler(request)
         except ToolException as exc:
-            tool_name = _tool_name(request.tool) or request.tool_call.get("name") or "tool"
+            tool_name = (
+                _tool_name(request.tool) or request.tool_call.get("name") or "tool"
+            )
             error_message = (
                 f"Tool '{tool_name}' failed: {exc}. "
                 "Continue without this result and try another source if needed."

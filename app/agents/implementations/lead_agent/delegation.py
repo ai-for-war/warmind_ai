@@ -149,10 +149,6 @@ class LeadAgentDelegationExecutor:
                 ),
                 timeout=self.worker_timeout_seconds,
             )
-            # summary = _truncate_text(
-            #     _extract_final_response(final_state),
-            #     max_chars=self.result_max_chars,
-            # )
             return {
                 "status": WORKER_STATUS_COMPLETED,
                 "objective": _truncate_text(task.objective, max_chars=240),

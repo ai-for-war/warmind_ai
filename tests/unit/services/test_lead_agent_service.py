@@ -367,6 +367,99 @@ class _FakePlanStreamingAgent(_FakeStreamingAgent):
         }
 
 
+class _FakeDelegationStreamingAgent(_FakeStreamingAgent):
+    async def astream_events(
+        self,
+        payload: dict[str, object],
+        *,
+        config: dict[str, dict[str, str]] | None = None,
+        version: str | None = None,
+    ):
+        del config, version
+        self.stream_payloads.append(dict(payload))
+        self.state.update(
+            {
+                "messages": payload["messages"]
+                + [{"role": "assistant", "content": "Final parent answer"}],
+                "user_id": payload["user_id"],
+                "organization_id": payload["organization_id"],
+                "subagent_enabled": payload.get("subagent_enabled", False),
+                "orchestration_mode": payload.get("orchestration_mode"),
+                "delegation_depth": payload.get("delegation_depth"),
+                "delegation_parent_run_id": payload.get(
+                    "delegation_parent_run_id"
+                ),
+                "delegated_execution_metadata": payload.get(
+                    "delegated_execution_metadata"
+                ),
+            }
+        )
+        yield {
+            "event": "on_tool_start",
+            "name": "delegate_tasks",
+            "run_id": "delegate-1",
+            "parent_ids": [],
+            "data": {"input": {"task": {"objective": "Research site A"}}},
+        }
+        yield {
+            "event": "on_chat_model_stream",
+            "parent_ids": ["delegate-1"],
+            "data": {"chunk": SimpleNamespace(content="Nested worker token")},
+        }
+        yield {
+            "event": "on_tool_start",
+            "name": "search",
+            "run_id": "nested-tool-1",
+            "parent_ids": ["delegate-1"],
+            "data": {"input": {"query": "site:a.example"}},
+        }
+        yield {
+            "event": "on_tool_end",
+            "run_id": "nested-tool-1",
+            "parent_ids": ["delegate-1"],
+            "data": {"output": {"status": "ok"}},
+        }
+        yield {
+            "event": "on_chat_model_end",
+            "parent_ids": ["delegate-1"],
+            "data": {
+                "output": SimpleNamespace(
+                    usage_metadata={
+                        "input_tokens": 100,
+                        "output_tokens": 50,
+                        "total_tokens": 150,
+                    },
+                    response_metadata={"finish_reason": "stop"},
+                )
+            },
+        }
+        yield {
+            "event": "on_tool_end",
+            "run_id": "delegate-1",
+            "parent_ids": [],
+            "data": {"output": {"status": "completed", "result": {"summary": "done"}}},
+        }
+        yield {
+            "event": "on_chat_model_stream",
+            "parent_ids": [],
+            "data": {"chunk": SimpleNamespace(content="Final parent answer")},
+        }
+        yield {
+            "event": "on_chat_model_end",
+            "parent_ids": [],
+            "data": {
+                "output": SimpleNamespace(
+                    usage_metadata={
+                        "input_tokens": 11,
+                        "output_tokens": 7,
+                        "total_tokens": 18,
+                    },
+                    response_metadata={"finish_reason": "stop"},
+                )
+            },
+        }
+
+
 @pytest.mark.asyncio
 async def test_send_message_creates_conversation_projection_and_thread() -> None:
     conversation_service = _conversation_service()
@@ -750,6 +843,81 @@ async def test_process_agent_response_persists_skill_metadata_additively() -> No
     assert completed_payload["subagent_enabled"] is True
     assert completed_payload["orchestration_mode"] == "subagent"
     assert completed_payload["delegation_depth"] == 0
+
+
+@pytest.mark.asyncio
+async def test_process_agent_response_ignores_nested_subagent_events_in_main_stream() -> None:
+    conversation_service = _conversation_service()
+    service = LeadAgentService(conversation_service=conversation_service)
+    shared_agent = _FakeDelegationStreamingAgent()
+    service._agent = shared_agent
+    service._subagent_agent = shared_agent
+    conversation_service.get_user_conversation.return_value = _conversation(
+        thread_id=THREAD_ID
+    )
+    conversation_service.get_message.return_value = _message(
+        message_id="msg-user",
+        role=MessageRole.USER,
+        content="Need parallel research",
+        thread_id=THREAD_ID,
+        metadata=MessageMetadata(
+            subagent_enabled=True,
+            orchestration_mode="subagent",
+        ),
+    )
+
+    async def _persist_assistant(**kwargs):
+        return _message(
+            message_id="msg-assistant",
+            role=MessageRole.ASSISTANT,
+            content=kwargs["content"],
+            conversation_id=kwargs["conversation_id"],
+            thread_id=kwargs["thread_id"],
+            metadata=kwargs["metadata"],
+        )
+
+    conversation_service.add_message.side_effect = _persist_assistant
+    emit_to_user = AsyncMock()
+    monkeypatch_target = lead_agent_service_module.gateway
+    original_emit = monkeypatch_target.emit_to_user
+    monkeypatch_target.emit_to_user = emit_to_user
+
+    try:
+        await service.process_agent_response(
+            user_id="user-1",
+            conversation_id="conv-1",
+            user_message_id="msg-user",
+            organization_id="org-1",
+        )
+    finally:
+        monkeypatch_target.emit_to_user = original_emit
+
+    emitted_events = [call.kwargs["event"] for call in emit_to_user.await_args_list]
+    assert emitted_events == [
+        ChatEvents.MESSAGE_STARTED,
+        ChatEvents.MESSAGE_TOOL_START,
+        ChatEvents.MESSAGE_TOOL_END,
+        ChatEvents.MESSAGE_TOKEN,
+        ChatEvents.MESSAGE_COMPLETED,
+    ]
+
+    tool_start_payload = emit_to_user.await_args_list[1].kwargs["data"]
+    assert tool_start_payload["tool_name"] == "delegate_tasks"
+    assert tool_start_payload["tool_call_id"] == "delegate-1"
+
+    token_payloads = [
+        call.kwargs["data"]["token"]
+        for call in emit_to_user.await_args_list
+        if call.kwargs["event"] == ChatEvents.MESSAGE_TOKEN
+    ]
+    assert token_payloads == ["Final parent answer"]
+
+    assistant_call = conversation_service.add_message.await_args
+    metadata = assistant_call.kwargs["metadata"]
+    assert metadata is not None
+    assert metadata.tokens == TokenUsage(prompt=11, completion=7, total=18)
+    assert metadata.tool_calls is not None
+    assert [tool_call.name for tool_call in metadata.tool_calls] == ["delegate_tasks"]
 
 
 @pytest.mark.asyncio
