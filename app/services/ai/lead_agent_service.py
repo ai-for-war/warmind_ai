@@ -878,13 +878,8 @@ class LeadAgentService:
         enabled_skill_ids = self._normalize_string_list(
             resolved_access.enabled_skill_ids
         )
-        active_skill_id = self._normalize_optional_string(
-            current_state.get("active_skill_id")
-        )
-        if active_skill_id not in enabled_skill_ids:
-            active_skill_id = None
-
         normalized_subagent_enabled = bool(subagent_enabled)
+        normalized_delegation_depth = max(0, int(delegation_depth))
         return {
             "messages": [{"role": "user", "content": content}],
             "user_id": user_id,
@@ -904,7 +899,7 @@ class LeadAgentService:
             "orchestration_mode": self._resolve_orchestration_mode(
                 normalized_subagent_enabled
             ),
-            "delegation_depth": max(0, int(delegation_depth)),
+            "delegation_depth": normalized_delegation_depth,
             "delegation_parent_run_id": self._normalize_optional_string(
                 delegation_parent_run_id
             ),
@@ -912,22 +907,10 @@ class LeadAgentService:
                 delegated_execution_metadata
             ),
             "enabled_skill_ids": enabled_skill_ids,
-            "active_skill_id": active_skill_id,
-            "loaded_skills": self._normalize_string_list(
-                current_state.get("loaded_skills", [])
-            ),
-            "allowed_tool_names": (
-                self._normalize_string_list(current_state.get("allowed_tool_names", []))
-                if active_skill_id
-                else []
-            ),
-            "active_skill_version": (
-                self._normalize_optional_string(
-                    current_state.get("active_skill_version")
-                )
-                if active_skill_id
-                else None
-            ),
+            "active_skill_id": None,
+            "loaded_skills": [],
+            "allowed_tool_names": [],
+            "active_skill_version": None,
         }
 
     async def _resolve_skill_access_for_turn(

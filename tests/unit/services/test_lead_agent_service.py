@@ -487,6 +487,40 @@ async def test_send_message_persists_turn_scoped_subagent_request_metadata() -> 
     )
 
 
+@pytest.mark.asyncio
+async def test_build_runtime_payload_resets_active_skill_state_for_new_user_turn() -> None:
+    conversation_service = _conversation_service()
+    service = LeadAgentService(conversation_service=conversation_service)
+    service._get_thread_state = AsyncMock(
+        return_value={
+            "messages": [],
+            "user_id": "user-1",
+            "organization_id": "org-1",
+            "active_skill_id": "web-research",
+            "active_skill_version": "2.1.0",
+            "allowed_tool_names": ["search_docs"],
+            "loaded_skills": ["web-research"],
+        }
+    )
+    service._resolve_skill_access_for_turn = AsyncMock(
+        return_value=SimpleNamespace(enabled_skill_ids=["web-research"])
+    )
+
+    payload = await service._build_runtime_payload(
+        thread_id=THREAD_ID,
+        user_id="user-1",
+        content="Need research",
+        organization_id="org-1",
+        subagent_enabled=False,
+    )
+
+    assert payload["enabled_skill_ids"] == ["web-research"]
+    assert payload["active_skill_id"] is None
+    assert payload["active_skill_version"] is None
+    assert payload["allowed_tool_names"] == []
+    assert payload["loaded_skills"] == []
+
+
 def test_service_builds_distinct_agent_variants_for_direct_and_subagent_turns(
     monkeypatch,
 ) -> None:
