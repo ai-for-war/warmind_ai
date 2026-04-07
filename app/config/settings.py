@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     IMAGE_GENERATION_QUEUE_NAME: str = "image_generation_tasks"
     MEETING_NOTE_QUEUE_NAME: str = "meeting_note_tasks"
     IMAGE_GENERATION_MAX_CONCURRENCY: int = 4
+    LEAD_AGENT_MAX_DELEGATED_TASKS: int = 3
+    LEAD_AGENT_MAX_PARALLEL_SUBAGENTS: int = 3
+    LEAD_AGENT_SUBAGENT_TIMEOUT_SECONDS: float = 45.0
+    LEAD_AGENT_DELEGATED_RESULT_MAX_CHARS: int = 2048
 
     # OpenAI
     OPENAI_API_KEY: str | None = None

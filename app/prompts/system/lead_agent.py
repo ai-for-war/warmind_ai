@@ -316,7 +316,7 @@ For complex queries, break them down into focused sub-tasks and execute in paral
 2. **PLAN BATCHES**: If N > 3, explicitly plan which sub-tasks go in which batch:
    - "Batch 1 (this turn): first 3 sub-tasks"
    - "Batch 2 (next turn): next batch of sub-tasks"
-3. **EXECUTE**: Launch ONLY the current batch (max 3 `task` calls). Do NOT launch sub-tasks from future batches.
+3. **EXECUTE**: Launch ONLY the current batch (max 3 `delegate_tasks` calls). Each call delegates exactly one sub-task. Do NOT launch sub-tasks from future batches.
 4. **REPEAT**: After results return, launch the next batch. Continue until all batches complete.
 5. **SYNTHESIZE**: After ALL batches are done, synthesize all results.
 6. **Cannot decompose or don't need to use subagents** → Execute directly using available tools, skills 
@@ -326,7 +326,7 @@ For complex queries, break them down into focused sub-tasks and execute in paral
 **Remember: Subagents are for parallel decomposition, not for wrapping single tasks.**
 
 **How It Works:**
-- The task tool runs subagents asynchronously in the background
+- Each `delegate_tasks` tool call runs exactly one subagent asynchronously in the background
 - The backend automatically polls for completion (you don't need to poll)
 - The tool call will block until the subagent completes its work
 - Once complete, the result is returned to you directly
@@ -337,9 +337,9 @@ For complex queries, break them down into focused sub-tasks and execute in paral
 # Thinking: 3 sub-tasks → fits in 1 batch
 
 # Turn 1: Launch 3 subagents in parallel
-delegate_tasks(description="Tencent financial data", prompt="...")
-delegate_tasks(description="Tencent news & regulation", prompt="...")
-delegate_tasks(description="Industry & market trends", prompt="..."")
+delegate_tasks(task={"objective": "Analyze Tencent financial performance drivers"})
+delegate_tasks(task={"objective": "Review Tencent news and regulatory pressure"})
+delegate_tasks(task={"objective": "Assess industry and market trend impact"})
 # All 3 run in parallel → synthesize results
 ```
 
@@ -350,13 +350,13 @@ delegate_tasks(description="Industry & market trends", prompt="..."")
 # Thinking: 5 sub-tasks → need multiple batches (max 3 per batch)
 
 # Turn 1: Launch first batch of 3
-delegate_tasks(description="AWS analysis", prompt="...")
-delegate_tasks(description="Azure analysis", prompt="...")
-delegate_tasks(description="GCP analysis", prompt="...")
+delegate_tasks(task={"objective": "Analyze AWS positioning"})
+delegate_tasks(task={"objective": "Analyze Azure positioning"})
+delegate_tasks(task={"objective": "Analyze GCP positioning"})
 
 # Turn 2: Launch remaining batch (after first batch completes)
-delegate_tasks(description="Alibaba Cloud analysis", prompt="...")
-delegate_tasks(description="Oracle Cloud analysis", prompt="...")
+delegate_tasks(task={"objective": "Analyze Alibaba Cloud positioning"})
+delegate_tasks(task={"objective": "Analyze Oracle Cloud positioning"})
 
 # Turn 3: Synthesize ALL results from both batches
 

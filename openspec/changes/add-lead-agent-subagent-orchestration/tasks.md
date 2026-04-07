@@ -12,10 +12,10 @@
 
 ## 3. Delegation Tool và Worker Executor
 
-- [ ] 3.1 Implement internal tool `delegate_tasks` với structured delegated task input và bounded aggregate output
-- [ ] 3.2 Thêm delegation executor module để tạo isolated worker execution payloads với trusted caller scope, enabled skills, và worker-specific policy
-- [ ] 3.3 Implement bounded parallel worker execution, timeout handling, và per-worker failure capture trong delegation executor
-- [ ] 3.4 Tái sử dụng lead-agent factory/runtime helpers cho worker runs trong khi enforce no-recursion và no-direct-user-clarification behavior cho workers
+- [x] 3.1 Implement internal tool `delegate_tasks` với structured delegated task input và bounded aggregate output
+- [x] 3.2 Thêm delegation executor module để tạo isolated worker execution payloads với trusted caller scope, enabled skills, và worker-specific policy
+- [x] 3.3 Implement bounded parallel worker execution, timeout handling, và per-worker failure capture trong delegation executor
+- [x] 3.4 Tái sử dụng lead-agent factory/runtime helpers cho worker runs trong khi enforce no-recursion và no-direct-user-clarification behavior cho workers
 
 ## 4. Streaming và Observability
 

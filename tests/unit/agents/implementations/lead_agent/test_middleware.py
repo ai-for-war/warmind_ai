@@ -16,6 +16,7 @@ from langgraph.prebuilt.tool_node import ToolCallRequest
 
 from app.agents.implementations.lead_agent.middleware import (
     LEAD_AGENT_MIDDLEWARE,
+    LeadAgentDelegationLimitMiddleware,
     LeadAgentOrchestrationPromptMiddleware,
     LeadAgentToolErrorMiddleware,
     LeadAgentSkillPromptMiddleware,
@@ -377,6 +378,34 @@ async def test_tool_error_middleware_converts_tool_exception_to_error_message() 
 
 
 @pytest.mark.asyncio
+async def test_delegation_limit_middleware_rejects_more_than_three_parallel_delegate_calls() -> None:
+    middleware = LeadAgentDelegationLimitMiddleware()
+    result = await middleware.aafter_model(
+        {
+            "messages": [
+                AIMessage(
+                    content="Delegating work",
+                    tool_calls=[
+                        {"id": "call-1", "name": "delegate_tasks", "args": {"task": {"objective": "A"}}},
+                        {"id": "call-2", "name": "delegate_tasks", "args": {"task": {"objective": "B"}}},
+                        {"id": "call-3", "name": "delegate_tasks", "args": {"task": {"objective": "C"}}},
+                        {"id": "call-4", "name": "delegate_tasks", "args": {"task": {"objective": "D"}}},
+                    ],
+                )
+            ]
+        },
+        runtime=None,
+    )
+
+    assert result is not None
+    messages = result["messages"]
+    assert len(messages) == 4
+    assert all(isinstance(message, ToolMessage) for message in messages)
+    assert all(message.status == "error" for message in messages)
+    assert all("maximum allowed per model invocation is 3" in str(message.content) for message in messages)
+
+
+@pytest.mark.asyncio
 async def test_middleware_chain_preserves_skill_prompt_todo_guidance_and_filtered_tools() -> None:
     resolver = SimpleNamespace(
         resolve_skill_definitions=AsyncMock(
@@ -475,12 +504,13 @@ async def test_simple_turn_can_finish_without_todo_creation_while_complex_turn_k
 
 
 def test_lead_agent_runtime_registers_todo_middleware_with_complex_task_guidance() -> None:
-    assert len(LEAD_AGENT_MIDDLEWARE) == 5
-    assert isinstance(LEAD_AGENT_MIDDLEWARE[0], LeadAgentSkillPromptMiddleware)
-    assert isinstance(LEAD_AGENT_MIDDLEWARE[1], LeadAgentOrchestrationPromptMiddleware)
+    assert len(LEAD_AGENT_MIDDLEWARE) == 6
+    assert isinstance(LEAD_AGENT_MIDDLEWARE[0], LeadAgentOrchestrationPromptMiddleware)
+    assert isinstance(LEAD_AGENT_MIDDLEWARE[1], LeadAgentSkillPromptMiddleware)
     assert isinstance(LEAD_AGENT_MIDDLEWARE[2], TodoListMiddleware)
-    assert isinstance(LEAD_AGENT_MIDDLEWARE[3], LeadAgentToolSelectionMiddleware)
-    assert isinstance(LEAD_AGENT_MIDDLEWARE[4], LeadAgentToolErrorMiddleware)
+    assert isinstance(LEAD_AGENT_MIDDLEWARE[3], LeadAgentDelegationLimitMiddleware)
+    assert isinstance(LEAD_AGENT_MIDDLEWARE[4], LeadAgentToolSelectionMiddleware)
+    assert isinstance(LEAD_AGENT_MIDDLEWARE[5], LeadAgentToolErrorMiddleware)
 
     todo_middleware = LEAD_AGENT_MIDDLEWARE[2]
     todo_system_prompt = get_lead_agent_todo_system_prompt()

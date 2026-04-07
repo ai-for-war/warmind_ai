@@ -379,6 +379,17 @@ class LeadAgentService:
             "messages": [],
             "user_id": user_id,
             "organization_id": organization_id,
+            "runtime_provider": (
+                self.runtime_config.provider if self.runtime_config is not None else None
+            ),
+            "runtime_model": (
+                self.runtime_config.model if self.runtime_config is not None else None
+            ),
+            "runtime_reasoning": (
+                self.runtime_config.reasoning
+                if self.runtime_config is not None
+                else None
+            ),
             "subagent_enabled": False,
             "orchestration_mode": ORCHESTRATION_MODE_DIRECT,
             "delegation_depth": 0,
@@ -862,6 +873,17 @@ class LeadAgentService:
             "messages": [{"role": "user", "content": content}],
             "user_id": user_id,
             "organization_id": organization_id,
+            "runtime_provider": (
+                self.runtime_config.provider if self.runtime_config is not None else None
+            ),
+            "runtime_model": (
+                self.runtime_config.model if self.runtime_config is not None else None
+            ),
+            "runtime_reasoning": (
+                self.runtime_config.reasoning
+                if self.runtime_config is not None
+                else None
+            ),
             "subagent_enabled": normalized_subagent_enabled,
             "orchestration_mode": self._resolve_orchestration_mode(
                 normalized_subagent_enabled

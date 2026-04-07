@@ -11,6 +11,9 @@ class LeadAgentState(AgentState):
 
     user_id: str
     organization_id: str | None
+    runtime_provider: NotRequired[str | None]
+    runtime_model: NotRequired[str | None]
+    runtime_reasoning: NotRequired[str | None]
     subagent_enabled: NotRequired[bool]
     orchestration_mode: NotRequired[str | None]
     delegation_depth: NotRequired[int]

@@ -11,6 +11,10 @@ from langchain_core.messages import ToolMessage
 from langchain_core.tools import BaseTool, tool
 from langgraph.types import Command
 
+from app.agents.implementations.lead_agent.delegation import (
+    DelegatedTaskInput,
+    LeadAgentDelegationExecutor,
+)
 from app.services.ai.lead_agent_skill_access_resolver import (
     LeadAgentSkillAccessResolver,
 )
@@ -30,6 +34,19 @@ async def load_skill(skill_id: str, runtime: ToolRuntime) -> Command:
         runtime=runtime,
         skill_access_resolver=_get_lead_agent_skill_access_resolver(),
     )
+
+
+@tool("delegate_tasks", parse_docstring=True)
+async def delegate_tasks(
+    task: DelegatedTaskInput,
+    runtime: ToolRuntime,
+) -> dict[str, Any]:
+    """Delegate one independent subtask to an isolated worker run.
+
+    Args:
+        task: One delegated subtask with an objective and optional expected output or context.
+    """
+    return await _delegate_tasks_result(task=task, runtime=runtime)
 
 
 async def _load_skill_command(
@@ -106,6 +123,20 @@ async def _load_skill_command(
     )
 
 
+async def _delegate_tasks_result(
+    *,
+    task: DelegatedTaskInput | dict[str, Any],
+    runtime: ToolRuntime,
+    executor: LeadAgentDelegationExecutor | None = None,
+) -> dict[str, Any]:
+    """Execute one delegated task through an isolated worker executor."""
+    resolved_executor = executor or LeadAgentDelegationExecutor.from_parent_state(
+        parent_state=_as_state_dict(runtime.state),
+        parent_tool_call_id=_tool_call_id(runtime),
+    )
+    return await resolved_executor.execute(task)
+
+
 def _tool_acknowledgement(runtime: ToolRuntime, content: str) -> Command:
     """Build a command that only appends the tool acknowledgement message."""
     return Command(
@@ -166,4 +197,4 @@ def _get_lead_agent_skill_access_resolver() -> LeadAgentSkillAccessResolver:
     return get_lead_agent_skill_access_resolver()
 
 
-LEAD_AGENT_INTERNAL_TOOLS: list[BaseTool] = [load_skill]
+LEAD_AGENT_INTERNAL_TOOLS: list[BaseTool] = [load_skill, delegate_tasks]
