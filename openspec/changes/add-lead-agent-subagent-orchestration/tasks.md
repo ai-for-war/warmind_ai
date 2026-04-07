@@ -6,9 +6,9 @@
 
 ## 2. Prompt Orchestration và Tool Visibility
 
-- [ ] 2.1 Bổ sung lead-agent prompt cho orchestration và worker-specific prompt trong module system prompt của lead-agent
-- [ ] 2.2 Cập nhật middleware của lead-agent để chuyển prompt behavior khi turn-scoped subagent orchestration được bật
-- [ ] 2.3 Cập nhật tool-selection rules để `delegate_tasks` chỉ hiển thị cho parent runs hợp lệ và bị ẩn khỏi worker executions ở `delegation_depth = 1`
+- [x] 2.1 Bổ sung lead-agent prompt cho orchestration và worker-specific prompt trong module system prompt của lead-agent
+- [x] 2.2 Cập nhật middleware của lead-agent để chuyển prompt behavior khi turn-scoped subagent orchestration được bật
+- [x] 2.3 Cập nhật tool-selection rules để `delegate_tasks` chỉ hiển thị cho parent runs hợp lệ và bị ẩn khỏi worker executions ở `delegation_depth = 1`
 
 ## 3. Delegation Tool và Worker Executor
 

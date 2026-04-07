@@ -18,14 +18,17 @@ from langchain_core.tools import BaseTool, ToolException
 from app.agents.implementations.lead_agent.state import LeadAgentState
 from app.infrastructure.mcp.research_tools import RESEARCH_TOOL_NAMES
 from app.prompts.system.lead_agent import (
+    get_lead_agent_orchestration_system_prompt,
     get_lead_agent_todo_system_prompt,
     get_lead_agent_todo_tool_description,
+    get_lead_agent_worker_system_prompt,
 )
 from app.services.ai.lead_agent_skill_access_resolver import (
     LeadAgentSkillAccessResolver,
 )
 
 _BASE_SKILL_TOOL_NAMES = {"load_skill", "write_todos", *RESEARCH_TOOL_NAMES}
+_DELEGATION_TOOL_NAME = "delegate_tasks"
 
 
 class LeadAgentSkillPromptMiddleware(AgentMiddleware[LeadAgentState, None, Any]):
@@ -102,23 +105,50 @@ class LeadAgentToolSelectionMiddleware(AgentMiddleware[LeadAgentState, None, Any
         handler,
     ) -> ModelResponse[Any]:
         state = _as_state_dict(request.state)
-        enabled_skill_ids = _normalize_unique_strings(
-            state.get("enabled_skill_ids", [])
-        )
         active_skill_id = _normalize_optional_string(state.get("active_skill_id"))
         allowed_tool_names = _normalize_unique_strings(
             state.get("allowed_tool_names", [])
         )
+        subagent_enabled = _normalize_bool(state.get("subagent_enabled"))
+        delegation_depth = _normalize_non_negative_int(
+            state.get("delegation_depth")
+        )
 
         visible_tool_names = _visible_tool_names(
-            enabled_skill_ids=enabled_skill_ids,
             active_skill_id=active_skill_id,
             allowed_tool_names=allowed_tool_names,
+            subagent_enabled=subagent_enabled,
+            delegation_depth=delegation_depth,
         )
         filtered_tools = [
             tool for tool in request.tools if _tool_name(tool) in visible_tool_names
         ]
         return await handler(request.override(tools=filtered_tools))
+
+
+class LeadAgentOrchestrationPromptMiddleware(AgentMiddleware[LeadAgentState, None, Any]):
+    """Inject orchestration or worker-specific behavior prompts per turn."""
+
+    state_schema = LeadAgentState
+    tools: Sequence[BaseTool] = ()
+
+    async def awrap_model_call(
+        self,
+        request: ModelRequest[None],
+        handler,
+    ) -> ModelResponse[Any]:
+        state = _as_state_dict(request.state)
+        prompt_update = _resolve_orchestration_prompt_update(
+            state,
+            existing_prompt=request.system_prompt,
+        )
+        if prompt_update is None:
+            return await handler(request)
+
+        updated_request = request.override(
+            system_message=SystemMessage(content=prompt_update)
+        )
+        return await handler(updated_request)
 
 
 class LeadAgentToolErrorMiddleware(AgentMiddleware[LeadAgentState, None, Any]):
@@ -186,15 +216,40 @@ def _render_active_skill_prompt(skill: Any) -> str:
 
 def _visible_tool_names(
     *,
-    enabled_skill_ids: Sequence[str],
     active_skill_id: str | None,
     allowed_tool_names: Sequence[str],
+    subagent_enabled: bool,
+    delegation_depth: int,
 ) -> set[str]:
     """Resolve the visible tool names for the current model call."""
-    del enabled_skill_ids
     if not active_skill_id:
-        return set(_BASE_SKILL_TOOL_NAMES)
-    return set(_BASE_SKILL_TOOL_NAMES).union(allowed_tool_names)
+        visible_tool_names = set(_BASE_SKILL_TOOL_NAMES)
+    else:
+        visible_tool_names = set(_BASE_SKILL_TOOL_NAMES).union(allowed_tool_names)
+
+    if subagent_enabled and delegation_depth == 0:
+        visible_tool_names.add(_DELEGATION_TOOL_NAME)
+
+    return visible_tool_names
+
+
+def _resolve_orchestration_prompt_update(
+    state: dict[str, Any],
+    *,
+    existing_prompt: str | None,
+) -> str | None:
+    """Return the full system prompt content appropriate for the current run."""
+    delegation_depth = _normalize_non_negative_int(state.get("delegation_depth"))
+    if delegation_depth > 0:
+        return get_lead_agent_worker_system_prompt()
+
+    if _normalize_bool(state.get("subagent_enabled")):
+        return _merge_system_prompt(
+            existing_prompt,
+            [get_lead_agent_orchestration_system_prompt()],
+        )
+
+    return None
 
 
 def _tool_name(tool: BaseTool | dict[str, Any]) -> str | None:
@@ -234,6 +289,20 @@ def _normalize_optional_string(value: Any) -> str | None:
     return normalized_value or None
 
 
+def _normalize_bool(value: Any) -> bool:
+    """Normalize one flag-like value into a strict boolean."""
+    return value is True
+
+
+def _normalize_non_negative_int(value: Any) -> int:
+    """Normalize one optional numeric value into a non-negative integer."""
+    try:
+        normalized_value = int(value)
+    except (TypeError, ValueError):
+        return 0
+    return max(0, normalized_value)
+
+
 def _normalize_unique_strings(values: Sequence[Any]) -> list[str]:
     """Normalize ordered strings while dropping blanks and duplicates."""
     normalized_values: list[str] = []
@@ -256,6 +325,7 @@ def _get_lead_agent_skill_access_resolver() -> LeadAgentSkillAccessResolver:
 
 LEAD_AGENT_MIDDLEWARE: list[AgentMiddleware[Any, None, Any]] = [
     LeadAgentSkillPromptMiddleware(),
+    LeadAgentOrchestrationPromptMiddleware(),
     TodoListMiddleware(
         system_prompt=get_lead_agent_todo_system_prompt(),
         tool_description=get_lead_agent_todo_tool_description(),
