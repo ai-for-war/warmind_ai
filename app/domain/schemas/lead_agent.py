@@ -47,6 +47,7 @@ class LeadAgentSendMessageRequest(LeadAgentSchema):
     provider: str = Field(..., min_length=1, max_length=100)
     model: str = Field(..., min_length=1, max_length=200)
     reasoning: Optional[str] = Field(default=None, min_length=1, max_length=50)
+    subagent_enabled: bool = False
 
 
 class LeadAgentSendMessageResponse(LeadAgentSchema):

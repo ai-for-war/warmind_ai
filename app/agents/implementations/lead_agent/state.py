@@ -1,5 +1,7 @@
 """Lead-agent state schema."""
 
+from typing import Any
+
 from langchain.agents import AgentState
 from typing_extensions import NotRequired
 
@@ -9,6 +11,11 @@ class LeadAgentState(AgentState):
 
     user_id: str
     organization_id: str | None
+    subagent_enabled: NotRequired[bool]
+    orchestration_mode: NotRequired[str | None]
+    delegation_depth: NotRequired[int]
+    delegation_parent_run_id: NotRequired[str | None]
+    delegated_execution_metadata: NotRequired[dict[str, Any] | None]
     enabled_skill_ids: NotRequired[list[str]]
     active_skill_id: NotRequired[str | None]
     loaded_skills: NotRequired[list[str]]

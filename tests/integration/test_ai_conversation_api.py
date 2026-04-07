@@ -446,6 +446,7 @@ async def test_lead_agent_send_message_accepts_runtime_overrides() -> None:
                 "provider": "openai",
                 "model": "gpt-5.2",
                 "reasoning": "medium",
+                "subagent_enabled": True,
             },
         )
 
@@ -464,6 +465,7 @@ async def test_lead_agent_send_message_accepts_runtime_overrides() -> None:
         "content": "Plan this",
         "conversation_id": None,
         "organization_id": "org-1",
+        "subagent_enabled": True,
     }
     assert lead_agent_service.process_agent_response.await_args.kwargs == {
         "user_id": "user-1",

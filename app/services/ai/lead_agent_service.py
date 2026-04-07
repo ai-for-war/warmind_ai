@@ -1,6 +1,7 @@
 """Lead-agent service for checkpoint-backed conversation projections."""
 
 import logging
+from dataclasses import is_dataclass
 from collections.abc import Mapping, Sequence
 from typing import Any, Optional
 from uuid import UUID, uuid4
@@ -41,6 +42,8 @@ logger = logging.getLogger(__name__)
 
 LEAD_AGENT_RECURSION_LIMIT = 200
 FILTERED_TOOL_ARGUMENT_KEYS = frozenset({"runtime"})
+ORCHESTRATION_MODE_DIRECT = "direct"
+ORCHESTRATION_MODE_SUBAGENT = "subagent"
 
 
 class LeadAgentService:
@@ -120,6 +123,7 @@ class LeadAgentService:
         content: str,
         conversation_id: Optional[str] = None,
         organization_id: Optional[str] = None,
+        subagent_enabled: bool = False,
     ) -> tuple[str, str]:
         """Persist a lead-agent user turn and return message/conversation IDs."""
         normalized_content = self._normalize_content(content)
@@ -134,6 +138,9 @@ class LeadAgentService:
             role=MessageRole.USER,
             content=normalized_content,
             organization_id=organization_id,
+            metadata=self._build_user_message_metadata(
+                subagent_enabled=subagent_enabled
+            ),
             thread_id=thread_id,
         )
         return user_message.id, conversation.id
@@ -172,6 +179,9 @@ class LeadAgentService:
                 conversation_id=conversation_id,
                 content=user_message.content,
                 organization_id=organization_id,
+                subagent_enabled=self._extract_subagent_enabled_from_message(
+                    user_message
+                ),
             )
             final_state = await self._get_thread_state_for_caller(
                 thread_id=thread_id,
@@ -369,6 +379,11 @@ class LeadAgentService:
             "messages": [],
             "user_id": user_id,
             "organization_id": organization_id,
+            "subagent_enabled": False,
+            "orchestration_mode": ORCHESTRATION_MODE_DIRECT,
+            "delegation_depth": 0,
+            "delegation_parent_run_id": None,
+            "delegated_execution_metadata": None,
             "enabled_skill_ids": [],
             "loaded_skills": [],
             "allowed_tool_names": [],
@@ -405,6 +420,7 @@ class LeadAgentService:
         user_id: str,
         content: str,
         organization_id: Optional[str],
+        subagent_enabled: bool = False,
     ) -> dict[str, Any]:
         """Invoke a checkpoint-backed thread with a new user message."""
         runtime_payload = await self._build_runtime_payload(
@@ -412,6 +428,7 @@ class LeadAgentService:
             user_id=user_id,
             content=content,
             organization_id=organization_id,
+            subagent_enabled=subagent_enabled,
         )
         return await self.agent.ainvoke(
             runtime_payload,
@@ -425,6 +442,7 @@ class LeadAgentService:
         conversation_id: str,
         content: str,
         organization_id: Optional[str],
+        subagent_enabled: bool = False,
     ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         """Stream the lead-agent runtime and emit chat-compatible socket events."""
         tool_calls: list[dict[str, Any]] = []
@@ -436,6 +454,7 @@ class LeadAgentService:
             user_id=user_id,
             content=content,
             organization_id=organization_id,
+            subagent_enabled=subagent_enabled,
         )
         async for event in self.agent.astream_events(
             runtime_payload,
@@ -706,6 +725,12 @@ class LeadAgentService:
             value, (str, bytes, bytearray)
         ):
             return [cls._make_json_safe(item) for item in value]
+        if is_dataclass(value):
+            return cls._make_json_safe(vars(value))
+        if hasattr(value, "__dict__"):
+            object_vars = vars(value)
+            if object_vars:
+                return cls._make_json_safe(object_vars)
 
         try:
             encoded_value = jsonable_encoder(value)
@@ -713,6 +738,8 @@ class LeadAgentService:
             return str(value)
 
         if encoded_value is value:
+            return str(value)
+        if encoded_value in ({}, []) and not isinstance(value, (Mapping, Sequence)):
             return str(value)
 
         return cls._make_json_safe(encoded_value)
@@ -750,16 +777,36 @@ class LeadAgentService:
                 final_state.get("loaded_skills", [])
             )
             or None,
+            subagent_enabled=LeadAgentService._normalize_optional_bool(
+                final_state.get("subagent_enabled")
+            ),
+            orchestration_mode=LeadAgentService._normalize_optional_string(
+                final_state.get("orchestration_mode")
+            ),
+            delegation_depth=LeadAgentService._normalize_optional_int(
+                final_state.get("delegation_depth")
+            ),
+            delegation_parent_run_id=LeadAgentService._normalize_optional_string(
+                final_state.get("delegation_parent_run_id")
+            ),
+            delegated_execution_metadata=LeadAgentService._normalize_optional_mapping(
+                final_state.get("delegated_execution_metadata")
+            ),
         )
         if not any(
             [
-                metadata.model,
-                metadata.tokens,
-                metadata.finish_reason,
-                metadata.tool_calls,
-                metadata.skill_id,
-                metadata.skill_version,
-                metadata.loaded_skills,
+                metadata.model is not None,
+                metadata.tokens is not None,
+                metadata.finish_reason is not None,
+                metadata.tool_calls is not None,
+                metadata.skill_id is not None,
+                metadata.skill_version is not None,
+                metadata.loaded_skills is not None,
+                metadata.subagent_enabled is not None,
+                metadata.orchestration_mode is not None,
+                metadata.delegation_depth is not None,
+                metadata.delegation_parent_run_id is not None,
+                metadata.delegated_execution_metadata is not None,
             ]
         ):
             return None
@@ -790,6 +837,10 @@ class LeadAgentService:
         user_id: str,
         content: str,
         organization_id: Optional[str],
+        subagent_enabled: bool = False,
+        delegation_depth: int = 0,
+        delegation_parent_run_id: str | None = None,
+        delegated_execution_metadata: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Build one turn payload with refreshed skill-access state."""
         current_state = await self._get_thread_state(thread_id)
@@ -806,10 +857,22 @@ class LeadAgentService:
         if active_skill_id not in enabled_skill_ids:
             active_skill_id = None
 
+        normalized_subagent_enabled = bool(subagent_enabled)
         return {
             "messages": [{"role": "user", "content": content}],
             "user_id": user_id,
             "organization_id": organization_id,
+            "subagent_enabled": normalized_subagent_enabled,
+            "orchestration_mode": self._resolve_orchestration_mode(
+                normalized_subagent_enabled
+            ),
+            "delegation_depth": max(0, int(delegation_depth)),
+            "delegation_parent_run_id": self._normalize_optional_string(
+                delegation_parent_run_id
+            ),
+            "delegated_execution_metadata": self._normalize_optional_mapping(
+                delegated_execution_metadata
+            ),
             "enabled_skill_ids": enabled_skill_ids,
             "active_skill_id": active_skill_id,
             "loaded_skills": self._normalize_string_list(
@@ -867,6 +930,68 @@ class LeadAgentService:
             return None
         normalized_value = str(value).strip()
         return normalized_value or None
+
+    @staticmethod
+    def _normalize_optional_bool(value: Any) -> bool | None:
+        """Normalize one optional boolean value."""
+        if isinstance(value, bool):
+            return value
+        return None
+
+    @staticmethod
+    def _normalize_optional_int(value: Any) -> int | None:
+        """Normalize one optional non-negative integer value."""
+        if value is None:
+            return None
+        try:
+            normalized_value = int(value)
+        except (TypeError, ValueError):
+            return None
+        return normalized_value if normalized_value >= 0 else None
+
+    @classmethod
+    def _normalize_optional_mapping(cls, value: Any) -> dict[str, Any] | None:
+        """Normalize one optional mapping into a JSON-safe dictionary."""
+        if not isinstance(value, Mapping):
+            return None
+        normalized_value = cls._make_json_safe(value)
+        if isinstance(normalized_value, dict):
+            return normalized_value
+        return None
+
+    @classmethod
+    def _build_user_message_metadata(
+        cls,
+        *,
+        subagent_enabled: bool = False,
+    ) -> MessageMetadata:
+        """Persist the turn-scoped orchestration request on the user message."""
+        normalized_subagent_enabled = bool(subagent_enabled)
+        return MessageMetadata(
+            subagent_enabled=normalized_subagent_enabled,
+            orchestration_mode=cls._resolve_orchestration_mode(
+                normalized_subagent_enabled
+            ),
+        )
+
+    @staticmethod
+    def _extract_subagent_enabled_from_message(message: Message) -> bool:
+        """Resolve the turn-scoped orchestration flag from persisted user metadata."""
+        metadata = message.metadata
+        if metadata is None:
+            return False
+        if metadata.subagent_enabled is not None:
+            return metadata.subagent_enabled
+        return metadata.orchestration_mode == ORCHESTRATION_MODE_SUBAGENT
+
+    @staticmethod
+    def _resolve_orchestration_mode(subagent_enabled: bool) -> str:
+        """Map the turn-scoped orchestration flag to a runtime mode string."""
+        return (
+            ORCHESTRATION_MODE_SUBAGENT
+            if subagent_enabled
+            else ORCHESTRATION_MODE_DIRECT
+        )
 
     @classmethod
     def _extract_token_usage(cls, model_output: Any) -> TokenUsage | None:

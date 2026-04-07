@@ -1,8 +1,8 @@
 ## 1. Hợp đồng API và Runtime
 
-- [ ] 1.1 Mở rộng lead-agent request và persistence models để nhận input `subagent_enabled` theo từng turn trên `POST /lead-agent/messages`
-- [ ] 1.2 Cập nhật phần dựng runtime payload trong service để orchestration mode theo turn được inject vào runtime state mà không trở thành thread mode cố định
-- [ ] 1.3 Mở rộng lead-agent runtime state và assistant metadata models với các trường liên quan đến delegation như orchestration mode, delegation depth, và delegated execution metadata
+- [x] 1.1 Mở rộng lead-agent request và persistence models để nhận input `subagent_enabled` theo từng turn trên `POST /lead-agent/messages`
+- [x] 1.2 Cập nhật phần dựng runtime payload trong service để orchestration mode theo turn được inject vào runtime state mà không trở thành thread mode cố định
+- [x] 1.3 Mở rộng lead-agent runtime state và assistant metadata models với các trường liên quan đến delegation như orchestration mode, delegation depth, và delegated execution metadata
 
 ## 2. Prompt Orchestration và Tool Visibility
 
