@@ -23,7 +23,6 @@ logger = logging.getLogger(__name__)
 LEAD_AGENT_WORKER_RECURSION_LIMIT = 200
 WORKER_ORCHESTRATION_MODE = "worker"
 DELEGATION_STATUS_COMPLETED = "completed"
-DELEGATION_STATUS_PARTIAL_FAILURE = "partial_failure"
 DELEGATION_STATUS_FAILED = "failed"
 DELEGATION_STATUS_REJECTED = "rejected"
 WORKER_STATUS_COMPLETED = "completed"
@@ -34,12 +33,6 @@ WORKER_STATUS_TIMEOUT = "timeout"
 class DelegatedTaskInput(BaseModel):
     """Structured delegated task request accepted by the internal tool."""
 
-    task_id: str | None = Field(
-        default=None,
-        min_length=1,
-        max_length=100,
-        description="Optional stable identifier for the delegated task. Use this when you want the result to be easy to reference later.",
-    )
     objective: str = Field(
         ...,
         min_length=1,
@@ -106,7 +99,7 @@ class LeadAgentDelegationExecutor:
         self,
         task: DelegatedTaskInput | Mapping[str, Any],
     ) -> dict[str, Any]:
-        """Execute one delegated task and aggregate the worker outcome."""
+        """Execute one delegated task and return the worker outcome."""
         delegation_depth = _normalize_non_negative_int(
             self.parent_state.get("delegation_depth")
         )
@@ -114,10 +107,7 @@ class LeadAgentDelegationExecutor:
             return {
                 "status": DELEGATION_STATUS_REJECTED,
                 "error": "delegate_tasks is only available to parent lead-agent runs.",
-                "task_count": 0,
-                "completed_count": 0,
-                "failed_count": 0,
-                "results": [],
+                "result": None,
             }
 
         normalized_task = _normalize_task(task)
@@ -125,7 +115,6 @@ class LeadAgentDelegationExecutor:
         result = await self._execute_one_task(
             worker_agent=worker_agent,
             task=normalized_task,
-            task_index=1,
         )
         if result["status"] == WORKER_STATUS_COMPLETED:
             status = DELEGATION_STATUS_COMPLETED
@@ -134,11 +123,8 @@ class LeadAgentDelegationExecutor:
 
         return {
             "status": status,
-            "task_count": 1,
-            "completed_count": 1 if result["status"] == WORKER_STATUS_COMPLETED else 0,
-            "failed_count": 0 if result["status"] == WORKER_STATUS_COMPLETED else 1,
             "worker_timeout_seconds": self.worker_timeout_seconds,
-            "results": [result],
+            "result": result,
         }
 
     async def _execute_one_task(
@@ -146,14 +132,10 @@ class LeadAgentDelegationExecutor:
         *,
         worker_agent: CompiledStateGraph,
         task: DelegatedTaskInput,
-        task_index: int,
     ) -> dict[str, Any]:
         """Execute one delegated worker task with timeout and failure capture."""
-        task_id = task.task_id or f"task-{task_index}"
         payload = self._build_worker_payload(
             task=task,
-            task_id=task_id,
-            task_index=task_index,
         )
         thread_id = str(uuid4())
         try:
@@ -172,7 +154,6 @@ class LeadAgentDelegationExecutor:
             #     max_chars=self.result_max_chars,
             # )
             return {
-                "task_id": task_id,
                 "status": WORKER_STATUS_COMPLETED,
                 "objective": _truncate_text(task.objective, max_chars=240),
                 "summary": _extract_final_response(final_state),
@@ -180,12 +161,10 @@ class LeadAgentDelegationExecutor:
             }
         except asyncio.TimeoutError:
             logger.warning(
-                "Delegated worker timed out (task_id=%s, parent_tool_call_id=%s)",
-                task_id,
+                "Delegated worker timed out (parent_tool_call_id=%s)",
                 self.parent_tool_call_id,
             )
             return {
-                "task_id": task_id,
                 "status": WORKER_STATUS_TIMEOUT,
                 "objective": _truncate_text(task.objective, max_chars=240),
                 "summary": None,
@@ -193,12 +172,10 @@ class LeadAgentDelegationExecutor:
             }
         except Exception as exc:
             logger.exception(
-                "Delegated worker failed (task_id=%s, parent_tool_call_id=%s)",
-                task_id,
+                "Delegated worker failed (parent_tool_call_id=%s)",
                 self.parent_tool_call_id,
             )
             return {
-                "task_id": task_id,
                 "status": WORKER_STATUS_FAILED,
                 "objective": _truncate_text(task.objective, max_chars=240),
                 "summary": None,
@@ -211,8 +188,6 @@ class LeadAgentDelegationExecutor:
         self,
         *,
         task: DelegatedTaskInput,
-        task_id: str,
-        task_index: int,
     ) -> dict[str, Any]:
         """Build an isolated worker execution payload from one delegated task."""
         return {
@@ -221,7 +196,6 @@ class LeadAgentDelegationExecutor:
                     "role": "user",
                     "content": _render_worker_task_message(
                         task=task,
-                        task_id=task_id,
                     ),
                 }
             ],
@@ -238,8 +212,6 @@ class LeadAgentDelegationExecutor:
             "delegation_depth": 1,
             "delegation_parent_run_id": self.parent_tool_call_id,
             "delegated_execution_metadata": {
-                "delegated_task_id": task_id,
-                "task_index": task_index,
                 "parent_tool_call_id": self.parent_tool_call_id,
             },
             "enabled_skill_ids": _normalize_string_list(
@@ -294,11 +266,9 @@ def _resolve_runtime_config_from_state(
 def _render_worker_task_message(
     *,
     task: DelegatedTaskInput,
-    task_id: str,
 ) -> str:
     """Render the delegated task into the isolated worker user message."""
     sections = [
-        f"Delegated task id: {task_id}",
         f"Objective:\n{task.objective.strip()}",
     ]
     if task.expected_output:

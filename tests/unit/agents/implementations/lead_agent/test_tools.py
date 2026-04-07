@@ -124,16 +124,11 @@ async def test_delegate_tasks_result_uses_supplied_executor() -> None:
         execute=AsyncMock(
             return_value={
                 "status": "completed",
-                "task_count": 1,
-                "completed_count": 1,
-                "failed_count": 0,
-                "results": [
-                    {
-                        "task_id": "task-1",
-                        "status": "completed",
-                        "summary": "done",
-                    }
-                ],
+                "worker_timeout_seconds": 30,
+                "result": {
+                    "status": "completed",
+                    "summary": "done",
+                },
             }
         )
     )

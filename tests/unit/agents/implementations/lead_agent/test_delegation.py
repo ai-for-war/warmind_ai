@@ -67,9 +67,9 @@ async def test_delegation_executor_builds_isolated_worker_payload() -> None:
     result = await executor.execute(DelegatedTaskInput(objective="Research option A"))
 
     assert result["status"] == DELEGATION_STATUS_COMPLETED
-    assert result["task_count"] == 1
-    assert result["completed_count"] == 1
-    assert result["failed_count"] == 0
+    worker_result = result["result"]
+    assert isinstance(worker_result, dict)
+    assert worker_result["status"] == "completed"
     assert len(worker_agent.calls) == 1
 
     first_payload = worker_agent.calls[0]["payload"]
@@ -107,11 +107,8 @@ async def test_delegation_executor_captures_worker_failure() -> None:
     )
 
     assert result["status"] == DELEGATION_STATUS_FAILED
-    assert result["completed_count"] == 0
-    assert result["failed_count"] == 1
-    failed_result = next(
-        item for item in result["results"] if item["status"] == WORKER_STATUS_FAILED
-    )
+    failed_result = result["result"]
+    assert failed_result["status"] == WORKER_STATUS_FAILED
     assert failed_result["error"] == "worker exploded"
 
 
@@ -127,5 +124,5 @@ async def test_delegation_executor_rejects_recursive_worker_delegation() -> None
     result = await executor.execute(DelegatedTaskInput(objective="Should be rejected"))
 
     assert result["status"] == DELEGATION_STATUS_REJECTED
-    assert result["task_count"] == 0
+    assert result["result"] is None
     assert worker_agent.calls == []
