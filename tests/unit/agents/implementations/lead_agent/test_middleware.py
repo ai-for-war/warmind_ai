@@ -16,6 +16,8 @@ from langgraph.prebuilt.tool_node import ToolCallRequest
 
 from app.agents.implementations.lead_agent.middleware import (
     LEAD_AGENT_MIDDLEWARE,
+    LeadAgentDelegationLimitMiddleware,
+    LeadAgentOrchestrationPromptMiddleware,
     LeadAgentToolErrorMiddleware,
     LeadAgentSkillPromptMiddleware,
     LeadAgentToolSelectionMiddleware,
@@ -24,8 +26,11 @@ from app.agents.implementations.lead_agent.state import LeadAgentState
 from app.agents.implementations.lead_agent.tools import load_skill
 from app.domain.models.lead_agent_skill import LeadAgentSkill
 from app.prompts.system.lead_agent import (
+    get_lead_agent_orchestration_system_prompt,
+    get_lead_agent_system_prompt,
     get_lead_agent_todo_system_prompt,
     get_lead_agent_todo_tool_description,
+    get_lead_agent_worker_system_prompt,
 )
 
 
@@ -121,6 +126,11 @@ def secret_tool(query: str) -> str:
     """Secret tool."""
 
 
+@tool
+def delegate_tasks(tasks: str) -> str:
+    """Delegate work to isolated worker agents."""
+
+
 @pytest.mark.asyncio
 async def test_prompt_middleware_injects_lightweight_skill_summaries() -> None:
     resolver = SimpleNamespace(
@@ -206,10 +216,88 @@ async def test_prompt_middleware_reinjects_active_skill_instructions() -> None:
 
 
 @pytest.mark.asyncio
-async def test_tool_selection_middleware_filters_to_base_or_skill_allowed_surface() -> None:
+async def test_orchestration_prompt_middleware_injects_manager_guidance_for_subagent_turns() -> None:
+    middleware = LeadAgentOrchestrationPromptMiddleware()
+    request = _request(
+        state={
+            "messages": [],
+            "subagent_enabled": True,
+            "delegation_depth": 0,
+        },
+        system_prompt="Base system prompt.",
+    )
+    captured: dict[str, ModelRequest[None]] = {}
+
+    async def _handler(updated_request: ModelRequest[None]) -> ModelResponse[object]:
+        captured["request"] = updated_request
+        return ModelResponse(result=[AIMessage(content="ok")])
+
+    await middleware.awrap_model_call(request, _handler)
+
+    updated_request = captured["request"]
+    assert updated_request.system_prompt is not None
+    assert "Base system prompt." in updated_request.system_prompt
+    assert get_lead_agent_orchestration_system_prompt() in updated_request.system_prompt
+
+
+@pytest.mark.asyncio
+async def test_orchestration_prompt_middleware_preserves_subagent_ready_base_prompt() -> None:
+    middleware = LeadAgentOrchestrationPromptMiddleware()
+    request = _request(
+        state={
+            "messages": [],
+            "subagent_enabled": True,
+            "delegation_depth": 0,
+        },
+        system_prompt=get_lead_agent_system_prompt(subagent_enabled=True),
+    )
+    captured: dict[str, ModelRequest[None]] = {}
+
+    async def _handler(updated_request: ModelRequest[None]) -> ModelResponse[object]:
+        captured["request"] = updated_request
+        return ModelResponse(result=[AIMessage(content="ok")])
+
+    await middleware.awrap_model_call(request, _handler)
+
+    updated_request = captured["request"]
+    assert updated_request.system_prompt is not None
+    assert (
+        "DECOMPOSITION CHECK: Can this task be broken into 2+ parallel sub-tasks?"
+        in updated_request.system_prompt
+    )
+    assert "Orchestrator Mode" in updated_request.system_prompt
+    assert get_lead_agent_orchestration_system_prompt() in updated_request.system_prompt
+
+
+@pytest.mark.asyncio
+async def test_orchestration_prompt_middleware_injects_worker_guidance_for_worker_runs() -> None:
+    middleware = LeadAgentOrchestrationPromptMiddleware()
+    request = _request(
+        state={
+            "messages": [],
+            "subagent_enabled": True,
+            "delegation_depth": 1,
+        },
+        system_prompt="Base system prompt.",
+    )
+    captured: dict[str, ModelRequest[None]] = {}
+
+    async def _handler(updated_request: ModelRequest[None]) -> ModelResponse[object]:
+        captured["request"] = updated_request
+        return ModelResponse(result=[AIMessage(content="ok")])
+
+    await middleware.awrap_model_call(request, _handler)
+
+    updated_request = captured["request"]
+    assert updated_request.system_prompt is not None
+    assert updated_request.system_prompt == get_lead_agent_worker_system_prompt()
+
+
+@pytest.mark.asyncio
+async def test_tool_selection_middleware_filters_to_base_skill_and_delegation_surface() -> None:
     middleware = LeadAgentToolSelectionMiddleware()
     handler_requests: list[ModelRequest[None]] = []
-    todo_tool = LEAD_AGENT_MIDDLEWARE[1].tools[0]
+    todo_tool = LEAD_AGENT_MIDDLEWARE[2].tools[0]
 
     async def _handler(updated_request: ModelRequest[None]) -> ModelResponse[object]:
         handler_requests.append(updated_request)
@@ -219,20 +307,59 @@ async def test_tool_selection_middleware_filters_to_base_or_skill_allowed_surfac
         state={
             "messages": [],
         },
-        tools=[load_skill, todo_tool, search, fetch_content, search_docs, secret_tool],
+        tools=[
+            load_skill,
+            todo_tool,
+            search,
+            fetch_content,
+            search_docs,
+            delegate_tasks,
+            secret_tool,
+        ],
     )
     await middleware.awrap_model_call(pre_activation_request, _handler)
 
-    active_skill_request = _request(
+    orchestrated_parent_request = _request(
         state={
             "messages": [],
             "enabled_skill_ids": ["web-research"],
             "active_skill_id": "web-research",
             "allowed_tool_names": ["search_docs"],
+            "subagent_enabled": True,
+            "delegation_depth": 0,
         },
-        tools=[load_skill, todo_tool, search, fetch_content, search_docs, secret_tool],
+        tools=[
+            load_skill,
+            todo_tool,
+            search,
+            fetch_content,
+            search_docs,
+            delegate_tasks,
+            secret_tool,
+        ],
     )
-    await middleware.awrap_model_call(active_skill_request, _handler)
+    await middleware.awrap_model_call(orchestrated_parent_request, _handler)
+
+    worker_request = _request(
+        state={
+            "messages": [],
+            "enabled_skill_ids": ["web-research"],
+            "active_skill_id": "web-research",
+            "allowed_tool_names": ["search_docs"],
+            "subagent_enabled": True,
+            "delegation_depth": 1,
+        },
+        tools=[
+            load_skill,
+            todo_tool,
+            search,
+            fetch_content,
+            search_docs,
+            delegate_tasks,
+            secret_tool,
+        ],
+    )
+    await middleware.awrap_model_call(worker_request, _handler)
 
     assert [tool.name for tool in handler_requests[0].tools] == [
         "load_skill",
@@ -241,6 +368,14 @@ async def test_tool_selection_middleware_filters_to_base_or_skill_allowed_surfac
         "fetch_content",
     ]
     assert [tool.name for tool in handler_requests[1].tools] == [
+        "load_skill",
+        "write_todos",
+        "search",
+        "fetch_content",
+        "search_docs",
+        "delegate_tasks",
+    ]
+    assert [tool.name for tool in handler_requests[2].tools] == [
         "load_skill",
         "write_todos",
         "search",
@@ -273,6 +408,34 @@ async def test_tool_error_middleware_converts_tool_exception_to_error_message() 
 
 
 @pytest.mark.asyncio
+async def test_delegation_limit_middleware_rejects_more_than_three_parallel_delegate_calls() -> None:
+    middleware = LeadAgentDelegationLimitMiddleware()
+    result = await middleware.aafter_model(
+        {
+            "messages": [
+                AIMessage(
+                    content="Delegating work",
+                    tool_calls=[
+                        {"id": "call-1", "name": "delegate_tasks", "args": {"task": {"objective": "A"}}},
+                        {"id": "call-2", "name": "delegate_tasks", "args": {"task": {"objective": "B"}}},
+                        {"id": "call-3", "name": "delegate_tasks", "args": {"task": {"objective": "C"}}},
+                        {"id": "call-4", "name": "delegate_tasks", "args": {"task": {"objective": "D"}}},
+                    ],
+                )
+            ]
+        },
+        runtime=None,
+    )
+
+    assert result is not None
+    messages = result["messages"]
+    assert len(messages) == 4
+    assert all(isinstance(message, ToolMessage) for message in messages)
+    assert all(message.status == "error" for message in messages)
+    assert all("maximum allowed per model invocation is 3" in str(message.content) for message in messages)
+
+
+@pytest.mark.asyncio
 async def test_middleware_chain_preserves_skill_prompt_todo_guidance_and_filtered_tools() -> None:
     resolver = SimpleNamespace(
         resolve_skill_definitions=AsyncMock(
@@ -287,7 +450,8 @@ async def test_middleware_chain_preserves_skill_prompt_todo_guidance_and_filtere
         )
     )
     skill_prompt = LeadAgentSkillPromptMiddleware(skill_access_resolver=resolver)
-    todo_middleware = LEAD_AGENT_MIDDLEWARE[1]
+    orchestration_prompt = LeadAgentOrchestrationPromptMiddleware()
+    todo_middleware = LEAD_AGENT_MIDDLEWARE[2]
     tool_selection = LeadAgentToolSelectionMiddleware()
     request = _request(
         state={
@@ -298,6 +462,8 @@ async def test_middleware_chain_preserves_skill_prompt_todo_guidance_and_filtere
             "active_skill_id": "web-research",
             "loaded_skills": ["web-research"],
             "allowed_tool_names": ["search_docs"],
+            "subagent_enabled": True,
+            "delegation_depth": 0,
         },
         system_prompt="Base system prompt.",
         tools=[
@@ -306,19 +472,21 @@ async def test_middleware_chain_preserves_skill_prompt_todo_guidance_and_filtere
             search,
             fetch_content,
             search_docs,
+            delegate_tasks,
             secret_tool,
         ],
     )
 
     final_request = await _run_middleware_chain(
         request,
-        [skill_prompt, todo_middleware, tool_selection],
+        [skill_prompt, orchestration_prompt, todo_middleware, tool_selection],
     )
 
     assert final_request.system_prompt is not None
     assert "Base system prompt." in final_request.system_prompt
     assert "<Available Skills>" in final_request.system_prompt
     assert "Active skill: web-research (version 2.1.0)" in final_request.system_prompt
+    assert get_lead_agent_orchestration_system_prompt() in final_request.system_prompt
     assert "write_todos" in final_request.system_prompt
     assert "simple tasks (< 3 steps)" in final_request.system_prompt
     assert [tool.name for tool in final_request.tools] == [
@@ -327,12 +495,13 @@ async def test_middleware_chain_preserves_skill_prompt_todo_guidance_and_filtere
         "search",
         "fetch_content",
         "search_docs",
+        "delegate_tasks",
     ]
 
 
 @pytest.mark.asyncio
 async def test_simple_turn_can_finish_without_todo_creation_while_complex_turn_keeps_planning_tool() -> None:
-    todo_middleware = LEAD_AGENT_MIDDLEWARE[1]
+    todo_middleware = LEAD_AGENT_MIDDLEWARE[2]
     tool_selection = LeadAgentToolSelectionMiddleware()
 
     simple_turn_result = await todo_middleware.aafter_model(
@@ -365,12 +534,15 @@ async def test_simple_turn_can_finish_without_todo_creation_while_complex_turn_k
 
 
 def test_lead_agent_runtime_registers_todo_middleware_with_complex_task_guidance() -> None:
-    assert len(LEAD_AGENT_MIDDLEWARE) == 3
-    assert isinstance(LEAD_AGENT_MIDDLEWARE[0], LeadAgentSkillPromptMiddleware)
-    assert isinstance(LEAD_AGENT_MIDDLEWARE[1], TodoListMiddleware)
-    assert isinstance(LEAD_AGENT_MIDDLEWARE[2], LeadAgentToolSelectionMiddleware)
+    assert len(LEAD_AGENT_MIDDLEWARE) == 6
+    assert isinstance(LEAD_AGENT_MIDDLEWARE[0], LeadAgentOrchestrationPromptMiddleware)
+    assert isinstance(LEAD_AGENT_MIDDLEWARE[1], LeadAgentSkillPromptMiddleware)
+    assert isinstance(LEAD_AGENT_MIDDLEWARE[2], TodoListMiddleware)
+    assert isinstance(LEAD_AGENT_MIDDLEWARE[3], LeadAgentDelegationLimitMiddleware)
+    assert isinstance(LEAD_AGENT_MIDDLEWARE[4], LeadAgentToolSelectionMiddleware)
+    assert isinstance(LEAD_AGENT_MIDDLEWARE[5], LeadAgentToolErrorMiddleware)
 
-    todo_middleware = LEAD_AGENT_MIDDLEWARE[1]
+    todo_middleware = LEAD_AGENT_MIDDLEWARE[2]
     todo_system_prompt = get_lead_agent_todo_system_prompt()
     todo_tool_description = get_lead_agent_todo_tool_description()
     assert todo_middleware.system_prompt == todo_system_prompt

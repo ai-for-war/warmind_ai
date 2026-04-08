@@ -19,6 +19,9 @@ sys.modules.setdefault(
     "app.infrastructure.langgraph.checkpointer",
     checkpointer_module,
 )
+socket_gateway_module = ModuleType("app.socket_gateway")
+socket_gateway_module.gateway = SimpleNamespace(emit_to_user=None)
+sys.modules.setdefault("app.socket_gateway", socket_gateway_module)
 
 from app.common.event_socket import ChatEvents
 from app.common.exceptions.ai_exceptions import (
@@ -121,6 +124,11 @@ class _FakeStreamingAgent:
             "messages": [],
             "user_id": "user-1",
             "organization_id": "org-1",
+            "subagent_enabled": False,
+            "orchestration_mode": "direct",
+            "delegation_depth": 0,
+            "delegation_parent_run_id": None,
+            "delegated_execution_metadata": None,
         }
         self.stream_payloads: list[dict[str, object]] = []
 
@@ -142,6 +150,15 @@ class _FakeStreamingAgent:
                 + [{"role": "assistant", "content": "Final answer"}],
                 "user_id": payload["user_id"],
                 "organization_id": payload["organization_id"],
+                "subagent_enabled": payload.get("subagent_enabled", False),
+                "orchestration_mode": payload.get("orchestration_mode"),
+                "delegation_depth": payload.get("delegation_depth"),
+                "delegation_parent_run_id": payload.get(
+                    "delegation_parent_run_id"
+                ),
+                "delegated_execution_metadata": payload.get(
+                    "delegated_execution_metadata"
+                ),
                 "enabled_skill_ids": payload.get("enabled_skill_ids", []),
                 "active_skill_id": payload.get("active_skill_id"),
                 "allowed_tool_names": payload.get("allowed_tool_names", []),
@@ -237,6 +254,15 @@ class _FakeToolErrorStreamingAgent(_FakeStreamingAgent):
                 + [{"role": "assistant", "content": "Recovered answer"}],
                 "user_id": payload["user_id"],
                 "organization_id": payload["organization_id"],
+                "subagent_enabled": payload.get("subagent_enabled", False),
+                "orchestration_mode": payload.get("orchestration_mode"),
+                "delegation_depth": payload.get("delegation_depth"),
+                "delegation_parent_run_id": payload.get(
+                    "delegation_parent_run_id"
+                ),
+                "delegated_execution_metadata": payload.get(
+                    "delegated_execution_metadata"
+                ),
                 "enabled_skill_ids": payload.get("enabled_skill_ids", []),
                 "active_skill_id": payload.get("active_skill_id"),
                 "allowed_tool_names": payload.get("allowed_tool_names", []),
@@ -303,6 +329,15 @@ class _FakePlanStreamingAgent(_FakeStreamingAgent):
                 + [{"role": "assistant", "content": "Planned answer"}],
                 "user_id": payload["user_id"],
                 "organization_id": payload["organization_id"],
+                "subagent_enabled": payload.get("subagent_enabled", False),
+                "orchestration_mode": payload.get("orchestration_mode"),
+                "delegation_depth": payload.get("delegation_depth"),
+                "delegation_parent_run_id": payload.get(
+                    "delegation_parent_run_id"
+                ),
+                "delegated_execution_metadata": payload.get(
+                    "delegated_execution_metadata"
+                ),
             }
         )
         yield {
@@ -329,6 +364,99 @@ class _FakePlanStreamingAgent(_FakeStreamingAgent):
         yield {
             "event": "on_chat_model_stream",
             "data": {"chunk": SimpleNamespace(content="Planned answer")},
+        }
+
+
+class _FakeDelegationStreamingAgent(_FakeStreamingAgent):
+    async def astream_events(
+        self,
+        payload: dict[str, object],
+        *,
+        config: dict[str, dict[str, str]] | None = None,
+        version: str | None = None,
+    ):
+        del config, version
+        self.stream_payloads.append(dict(payload))
+        self.state.update(
+            {
+                "messages": payload["messages"]
+                + [{"role": "assistant", "content": "Final parent answer"}],
+                "user_id": payload["user_id"],
+                "organization_id": payload["organization_id"],
+                "subagent_enabled": payload.get("subagent_enabled", False),
+                "orchestration_mode": payload.get("orchestration_mode"),
+                "delegation_depth": payload.get("delegation_depth"),
+                "delegation_parent_run_id": payload.get(
+                    "delegation_parent_run_id"
+                ),
+                "delegated_execution_metadata": payload.get(
+                    "delegated_execution_metadata"
+                ),
+            }
+        )
+        yield {
+            "event": "on_tool_start",
+            "name": "delegate_tasks",
+            "run_id": "delegate-1",
+            "parent_ids": [],
+            "data": {"input": {"task": {"objective": "Research site A"}}},
+        }
+        yield {
+            "event": "on_chat_model_stream",
+            "parent_ids": ["delegate-1"],
+            "data": {"chunk": SimpleNamespace(content="Nested worker token")},
+        }
+        yield {
+            "event": "on_tool_start",
+            "name": "search",
+            "run_id": "nested-tool-1",
+            "parent_ids": ["delegate-1"],
+            "data": {"input": {"query": "site:a.example"}},
+        }
+        yield {
+            "event": "on_tool_end",
+            "run_id": "nested-tool-1",
+            "parent_ids": ["delegate-1"],
+            "data": {"output": {"status": "ok"}},
+        }
+        yield {
+            "event": "on_chat_model_end",
+            "parent_ids": ["delegate-1"],
+            "data": {
+                "output": SimpleNamespace(
+                    usage_metadata={
+                        "input_tokens": 100,
+                        "output_tokens": 50,
+                        "total_tokens": 150,
+                    },
+                    response_metadata={"finish_reason": "stop"},
+                )
+            },
+        }
+        yield {
+            "event": "on_tool_end",
+            "run_id": "delegate-1",
+            "parent_ids": [],
+            "data": {"output": {"status": "completed", "result": {"summary": "done"}}},
+        }
+        yield {
+            "event": "on_chat_model_stream",
+            "parent_ids": [],
+            "data": {"chunk": SimpleNamespace(content="Final parent answer")},
+        }
+        yield {
+            "event": "on_chat_model_end",
+            "parent_ids": [],
+            "data": {
+                "output": SimpleNamespace(
+                    usage_metadata={
+                        "input_tokens": 11,
+                        "output_tokens": 7,
+                        "total_tokens": 18,
+                    },
+                    response_metadata={"finish_reason": "stop"},
+                )
+            },
         }
 
 
@@ -368,6 +496,10 @@ async def test_send_message_creates_conversation_projection_and_thread() -> None
         role=MessageRole.USER,
         content="hello there",
         organization_id="org-1",
+        metadata=MessageMetadata(
+            subagent_enabled=False,
+            orchestration_mode="direct",
+        ),
         thread_id=THREAD_ID,
     )
 
@@ -413,8 +545,101 @@ async def test_send_message_reuses_stored_thread_for_follow_up_turns() -> None:
         role=MessageRole.USER,
         content="follow-up",
         organization_id="org-1",
+        metadata=MessageMetadata(
+            subagent_enabled=False,
+            orchestration_mode="direct",
+        ),
         thread_id=THREAD_ID,
     )
+
+
+@pytest.mark.asyncio
+async def test_send_message_persists_turn_scoped_subagent_request_metadata() -> None:
+    conversation_service = _conversation_service()
+    service = LeadAgentService(conversation_service=conversation_service)
+    service._create_thread = AsyncMock(return_value=THREAD_ID)
+    conversation_service.create_conversation_from_initial_message.return_value = _conversation(
+        thread_id=THREAD_ID
+    )
+    conversation_service.add_message.return_value = _message(
+        message_id="msg-user",
+        thread_id=THREAD_ID,
+        content="research this",
+    )
+
+    await service.send_message(
+        user_id="user-1",
+        content="research this",
+        organization_id="org-1",
+        subagent_enabled=True,
+    )
+
+    assert conversation_service.add_message.await_args.kwargs["metadata"] == MessageMetadata(
+        subagent_enabled=True,
+        orchestration_mode="subagent",
+    )
+
+
+@pytest.mark.asyncio
+async def test_build_runtime_payload_resets_active_skill_state_for_new_user_turn() -> None:
+    conversation_service = _conversation_service()
+    service = LeadAgentService(conversation_service=conversation_service)
+    service._get_thread_state = AsyncMock(
+        return_value={
+            "messages": [],
+            "user_id": "user-1",
+            "organization_id": "org-1",
+            "active_skill_id": "web-research",
+            "active_skill_version": "2.1.0",
+            "allowed_tool_names": ["search_docs"],
+            "loaded_skills": ["web-research"],
+        }
+    )
+    service._resolve_skill_access_for_turn = AsyncMock(
+        return_value=SimpleNamespace(enabled_skill_ids=["web-research"])
+    )
+
+    payload = await service._build_runtime_payload(
+        thread_id=THREAD_ID,
+        user_id="user-1",
+        content="Need research",
+        organization_id="org-1",
+        subagent_enabled=False,
+    )
+
+    assert payload["enabled_skill_ids"] == ["web-research"]
+    assert payload["active_skill_id"] is None
+    assert payload["active_skill_version"] is None
+    assert payload["allowed_tool_names"] == []
+    assert payload["loaded_skills"] == []
+
+
+def test_service_builds_distinct_agent_variants_for_direct_and_subagent_turns(
+    monkeypatch,
+) -> None:
+    conversation_service = _conversation_service()
+    service = LeadAgentService(conversation_service=conversation_service)
+    created_agents: list[bool] = []
+
+    def _fake_create_lead_agent(runtime_config=None, *, subagent_enabled=False):
+        del runtime_config
+        created_agents.append(subagent_enabled)
+        return f"agent-{subagent_enabled}"
+
+    monkeypatch.setattr(
+        lead_agent_service_module,
+        "create_lead_agent",
+        _fake_create_lead_agent,
+    )
+
+    direct_agent = service._get_agent(subagent_enabled=False)
+    subagent_agent = service._get_agent(subagent_enabled=True)
+    cached_subagent_agent = service._get_agent(subagent_enabled=True)
+
+    assert direct_agent == "agent-False"
+    assert subagent_agent == "agent-True"
+    assert cached_subagent_agent == "agent-True"
+    assert created_agents == [False, True]
 
 
 @pytest.mark.asyncio
@@ -474,6 +699,10 @@ async def test_process_agent_response_emits_socket_lifecycle_and_persists_assist
         role=MessageRole.USER,
         content="Need help",
         thread_id=THREAD_ID,
+        metadata=MessageMetadata(
+            subagent_enabled=False,
+            orchestration_mode="direct",
+        ),
     )
 
     async def _persist_assistant(**kwargs):
@@ -524,7 +753,12 @@ async def test_process_agent_response_emits_socket_lifecycle_and_persists_assist
     assert metadata.tool_calls is not None
     assert metadata.tool_calls[0].name == "search_docs"
     assert metadata.tool_calls[0].arguments == {"query": "recap"}
+    assert metadata.subagent_enabled is False
+    assert metadata.orchestration_mode == "direct"
+    assert metadata.delegation_depth == 0
     assert service._agent.stream_payloads[0]["enabled_skill_ids"] == ["web-research"]
+    assert service._agent.stream_payloads[0]["subagent_enabled"] is False
+    assert service._agent.stream_payloads[0]["orchestration_mode"] == "direct"
     completed_payload = emit_to_user.await_args_list[-1].kwargs["data"]["metadata"]
     assert completed_payload["tokens"] == {
         "prompt": 11,
@@ -532,6 +766,9 @@ async def test_process_agent_response_emits_socket_lifecycle_and_persists_assist
         "total": 18,
     }
     assert completed_payload["finish_reason"] == "stop"
+    assert completed_payload["subagent_enabled"] is False
+    assert completed_payload["orchestration_mode"] == "direct"
+    assert completed_payload["delegation_depth"] == 0
 
 
 @pytest.mark.asyncio
@@ -543,7 +780,9 @@ async def test_process_agent_response_persists_skill_metadata_additively() -> No
             enabled_skill_ids=["web-research"]
         ),
     )
-    service._agent = _FakeSkillStreamingAgent()
+    shared_agent = _FakeSkillStreamingAgent()
+    service._agent = shared_agent
+    service._subagent_agent = shared_agent
 
     conversation_service.get_user_conversation.return_value = _conversation(
         thread_id=THREAD_ID
@@ -553,6 +792,10 @@ async def test_process_agent_response_persists_skill_metadata_additively() -> No
         role=MessageRole.USER,
         content="Need research",
         thread_id=THREAD_ID,
+        metadata=MessageMetadata(
+            subagent_enabled=True,
+            orchestration_mode="subagent",
+        ),
     )
 
     async def _persist_assistant(**kwargs):
@@ -587,11 +830,94 @@ async def test_process_agent_response_persists_skill_metadata_additively() -> No
     assert metadata.skill_id == "web-research"
     assert metadata.skill_version == "2.1.0"
     assert metadata.loaded_skills == ["web-research"]
+    assert metadata.subagent_enabled is True
+    assert metadata.orchestration_mode == "subagent"
+    assert metadata.delegation_depth == 0
     assert metadata.tool_calls is not None
+    assert shared_agent.stream_payloads[0]["subagent_enabled"] is True
+    assert shared_agent.stream_payloads[0]["orchestration_mode"] == "subagent"
     completed_payload = emit_to_user.await_args_list[-1].kwargs["data"]["metadata"]
     assert completed_payload["skill_id"] == "web-research"
     assert completed_payload["skill_version"] == "2.1.0"
     assert completed_payload["loaded_skills"] == ["web-research"]
+    assert completed_payload["subagent_enabled"] is True
+    assert completed_payload["orchestration_mode"] == "subagent"
+    assert completed_payload["delegation_depth"] == 0
+
+
+@pytest.mark.asyncio
+async def test_process_agent_response_ignores_nested_subagent_events_in_main_stream() -> None:
+    conversation_service = _conversation_service()
+    service = LeadAgentService(conversation_service=conversation_service)
+    shared_agent = _FakeDelegationStreamingAgent()
+    service._agent = shared_agent
+    service._subagent_agent = shared_agent
+    conversation_service.get_user_conversation.return_value = _conversation(
+        thread_id=THREAD_ID
+    )
+    conversation_service.get_message.return_value = _message(
+        message_id="msg-user",
+        role=MessageRole.USER,
+        content="Need parallel research",
+        thread_id=THREAD_ID,
+        metadata=MessageMetadata(
+            subagent_enabled=True,
+            orchestration_mode="subagent",
+        ),
+    )
+
+    async def _persist_assistant(**kwargs):
+        return _message(
+            message_id="msg-assistant",
+            role=MessageRole.ASSISTANT,
+            content=kwargs["content"],
+            conversation_id=kwargs["conversation_id"],
+            thread_id=kwargs["thread_id"],
+            metadata=kwargs["metadata"],
+        )
+
+    conversation_service.add_message.side_effect = _persist_assistant
+    emit_to_user = AsyncMock()
+    monkeypatch_target = lead_agent_service_module.gateway
+    original_emit = monkeypatch_target.emit_to_user
+    monkeypatch_target.emit_to_user = emit_to_user
+
+    try:
+        await service.process_agent_response(
+            user_id="user-1",
+            conversation_id="conv-1",
+            user_message_id="msg-user",
+            organization_id="org-1",
+        )
+    finally:
+        monkeypatch_target.emit_to_user = original_emit
+
+    emitted_events = [call.kwargs["event"] for call in emit_to_user.await_args_list]
+    assert emitted_events == [
+        ChatEvents.MESSAGE_STARTED,
+        ChatEvents.MESSAGE_TOOL_START,
+        ChatEvents.MESSAGE_TOOL_END,
+        ChatEvents.MESSAGE_TOKEN,
+        ChatEvents.MESSAGE_COMPLETED,
+    ]
+
+    tool_start_payload = emit_to_user.await_args_list[1].kwargs["data"]
+    assert tool_start_payload["tool_name"] == "delegate_tasks"
+    assert tool_start_payload["tool_call_id"] == "delegate-1"
+
+    token_payloads = [
+        call.kwargs["data"]["token"]
+        for call in emit_to_user.await_args_list
+        if call.kwargs["event"] == ChatEvents.MESSAGE_TOKEN
+    ]
+    assert token_payloads == ["Final parent answer"]
+
+    assistant_call = conversation_service.add_message.await_args
+    metadata = assistant_call.kwargs["metadata"]
+    assert metadata is not None
+    assert metadata.tokens == TokenUsage(prompt=11, completion=7, total=18)
+    assert metadata.tool_calls is not None
+    assert [tool_call.name for tool_call in metadata.tool_calls] == ["delegate_tasks"]
 
 
 @pytest.mark.asyncio
@@ -607,6 +933,10 @@ async def test_process_agent_response_emits_tool_end_for_tool_error_events() -> 
         role=MessageRole.USER,
         content="Need a fallback",
         thread_id=THREAD_ID,
+        metadata=MessageMetadata(
+            subagent_enabled=False,
+            orchestration_mode="direct",
+        ),
     )
 
     async def _persist_assistant(**kwargs):
@@ -662,6 +992,10 @@ async def test_process_agent_response_emits_failed_event_when_runtime_breaks() -
         role=MessageRole.USER,
         content="Need help",
         thread_id=OTHER_THREAD_ID,
+        metadata=MessageMetadata(
+            subagent_enabled=False,
+            orchestration_mode="direct",
+        ),
     )
     emit_to_user = AsyncMock()
     monkeypatch_target = lead_agent_service_module.gateway
@@ -706,6 +1040,10 @@ async def test_process_agent_response_emits_plan_updated_after_write_todo_comple
         role=MessageRole.USER,
         content="Need a plan",
         thread_id=THREAD_ID,
+        metadata=MessageMetadata(
+            subagent_enabled=False,
+            orchestration_mode="direct",
+        ),
     )
 
     async def _persist_assistant(**kwargs):
@@ -785,6 +1123,10 @@ async def test_process_agent_response_emits_plan_updated_even_when_snapshot_matc
         role=MessageRole.USER,
         content="Need a plan",
         thread_id=THREAD_ID,
+        metadata=MessageMetadata(
+            subagent_enabled=False,
+            orchestration_mode="direct",
+        ),
     )
 
     async def _persist_assistant(**kwargs):
@@ -835,6 +1177,10 @@ async def test_process_agent_response_preserves_leading_whitespace_in_streamed_t
         role=MessageRole.USER,
         content="Need help",
         thread_id=THREAD_ID,
+        metadata=MessageMetadata(
+            subagent_enabled=False,
+            orchestration_mode="direct",
+        ),
     )
 
     async def _persist_assistant(**kwargs):

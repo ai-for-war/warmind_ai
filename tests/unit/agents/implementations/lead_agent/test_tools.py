@@ -9,6 +9,7 @@ from langchain_core.messages import ToolMessage
 
 from app.agents.implementations.lead_agent.tools import (
     LEAD_AGENT_INTERNAL_TOOLS,
+    _delegate_tasks_result,
     _load_skill_command,
 )
 from app.domain.models.lead_agent_skill import LeadAgentSkill
@@ -117,5 +118,33 @@ async def test_load_skill_command_rejects_disabled_skill_without_repo_lookup() -
     skill_access_resolver.resolve_enabled_skill_for_caller.assert_not_awaited()
 
 
+@pytest.mark.asyncio
+async def test_delegate_tasks_result_uses_supplied_executor() -> None:
+    executor = SimpleNamespace(
+        execute=AsyncMock(
+            return_value={
+                "status": "completed",
+                "worker_timeout_seconds": 30,
+                "result": {
+                    "status": "completed",
+                    "summary": "done",
+                },
+            }
+        )
+    )
+
+    result = await _delegate_tasks_result(
+        task={"objective": "Investigate the runtime"},
+        runtime=_runtime(),
+        executor=executor,
+    )
+
+    assert result["status"] == "completed"
+    executor.execute.assert_awaited_once_with({"objective": "Investigate the runtime"})
+
+
 def test_lead_agent_tools_register_internal_load_skill_tool() -> None:
-    assert [tool.name for tool in LEAD_AGENT_INTERNAL_TOOLS] == ["load_skill"]
+    assert [tool.name for tool in LEAD_AGENT_INTERNAL_TOOLS] == [
+        "load_skill",
+        "delegate_tasks",
+    ]

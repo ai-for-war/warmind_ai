@@ -56,7 +56,9 @@ def test_create_lead_agent_registers_skill_support_tool_surface(
     monkeypatch.setattr(
         lead_agent_module,
         "get_lead_agent_system_prompt",
-        lambda: fake_prompt,
+        lambda *, subagent_enabled=False: (
+            f"{fake_prompt}-subagent" if subagent_enabled else fake_prompt
+        ),
     )
 
     compiled_agent = lead_agent_module.create_lead_agent()
@@ -68,3 +70,54 @@ def test_create_lead_agent_registers_skill_support_tool_surface(
     assert captured["middleware"] == LEAD_AGENT_MIDDLEWARE
     assert captured["state_schema"] is LeadAgentState
     assert captured["checkpointer"] is fake_checkpointer
+
+
+def test_create_lead_agent_can_render_subagent_enabled_base_prompt(
+    monkeypatch,
+) -> None:
+    checkpointer_module = ModuleType("app.infrastructure.langgraph.checkpointer")
+    checkpointer_module.get_langgraph_checkpointer = lambda: object()
+    monkeypatch.setitem(
+        sys.modules,
+        "app.infrastructure.langgraph.checkpointer",
+        checkpointer_module,
+    )
+    sys.modules.pop("app.agents.implementations.lead_agent.agent", None)
+    lead_agent_module = importlib.import_module(
+        "app.agents.implementations.lead_agent.agent"
+    )
+
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        lead_agent_module,
+        "build_lead_agent_model",
+        lambda runtime_config=None: object(),
+    )
+    monkeypatch.setattr(
+        lead_agent_module,
+        "get_langgraph_checkpointer",
+        lambda: object(),
+    )
+    monkeypatch.setattr(
+        lead_agent_module,
+        "create_agent",
+        lambda **kwargs: captured.update(kwargs) or "compiled-agent",
+    )
+    monkeypatch.setattr(
+        lead_agent_module,
+        "get_lead_agent_tools",
+        lambda: [object()],
+    )
+    monkeypatch.setattr(
+        lead_agent_module,
+        "get_lead_agent_system_prompt",
+        lambda *, subagent_enabled=False: (
+            "prompt-with-subagents" if subagent_enabled else "prompt-default"
+        ),
+    )
+
+    compiled_agent = lead_agent_module.create_lead_agent(subagent_enabled=True)
+
+    assert compiled_agent == "compiled-agent"
+    assert captured["system_prompt"] == "prompt-with-subagents"

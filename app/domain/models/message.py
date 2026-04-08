@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -64,6 +64,11 @@ class MessageMetadata(BaseModel):
     skill_id: Optional[str] = None
     skill_version: Optional[str] = None
     loaded_skills: Optional[list[str]] = None
+    subagent_enabled: Optional[bool] = None
+    orchestration_mode: Optional[str] = None
+    delegation_depth: Optional[int] = None
+    delegation_parent_run_id: Optional[str] = None
+    delegated_execution_metadata: Optional[dict[str, Any]] = None
 
 
 class Message(BaseModel):

@@ -245,6 +245,7 @@ async def send_message(
         content=request.content,
         conversation_id=request.conversation_id,
         organization_id=org_context.organization_id,
+        subagent_enabled=request.subagent_enabled,
     )
     background_tasks.add_task(
         lead_agent_service.process_agent_response,

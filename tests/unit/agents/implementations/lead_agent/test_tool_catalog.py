@@ -24,6 +24,7 @@ def test_tool_catalog_exposes_research_tools_when_available(monkeypatch) -> None
     assert catalog[1].display_name == "Fetch Web Content"
     assert [tool.name for tool in runtime_tools] == [
         "load_skill",
+        "delegate_tasks",
         "search",
         "fetch_content",
     ]
@@ -41,7 +42,8 @@ def test_tool_catalog_is_empty_when_research_tools_are_unavailable(
     assert tool_catalog_module.get_lead_agent_selectable_tool_catalog() == []
     assert tool_catalog_module.get_lead_agent_selectable_tool_names() == set()
     assert [tool.name for tool in tool_catalog_module.get_lead_agent_tools()] == [
-        "load_skill"
+        "load_skill",
+        "delegate_tasks",
     ]
 
 
@@ -58,4 +60,8 @@ def test_tool_catalog_exposes_only_available_research_tools(monkeypatch) -> None
 
     assert [tool.tool_name for tool in catalog] == ["search"]
     assert tool_catalog_module.get_lead_agent_selectable_tool_names() == {"search"}
-    assert [tool.name for tool in runtime_tools] == ["load_skill", "search"]
+    assert [tool.name for tool in runtime_tools] == [
+        "load_skill",
+        "delegate_tasks",
+        "search",
+    ]
