@@ -7,10 +7,10 @@
 
 ## 2. Upstream integration and normalization
 
-- [ ] 2.1 Create a `VnstockListingGateway` that fetches stock listing data from `Listing(source='VCI')`
-- [ ] 2.2 Implement normalization helpers that map upstream listing fields into the persisted stock-symbol document shape
-- [ ] 2.3 Implement group membership assembly for the v1-supported stock groups and merge that data into the normalized snapshot
-- [ ] 2.4 Implement manual refresh persistence flow that upserts normalized symbol documents without deleting the previous snapshot first
+- [x] 2.1 Create a `VnstockListingGateway` that fetches stock listing data from `Listing(source='VCI')`
+- [x] 2.2 Implement normalization helpers that map upstream listing fields into the persisted stock-symbol document shape
+- [x] 2.3 Implement group membership assembly for the v1-supported stock groups and merge that data into the normalized snapshot
+- [x] 2.4 Implement manual refresh persistence flow that upserts normalized symbol documents without deleting the previous snapshot first
 
 ## 3. Service and cache behavior
 
@@ -31,4 +31,4 @@
 - [ ] 5.1 Add repository and service tests for unfiltered pagination, `q` filtering, `exchange` filtering, and `group` filtering
 - [ ] 5.2 Add service tests that verify unfiltered requests use cache while filtered requests bypass cache
 - [ ] 5.3 Add API tests for org-auth read access and Super Admin-only refresh authorization
-- [ ] 5.4 Add refresh-path tests that verify successful upsert behavior and preservation of the previous snapshot when refresh fails
+- [x] 5.4 Add refresh-path tests that verify successful upsert behavior and preservation of the previous snapshot when refresh fails
