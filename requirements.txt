@@ -26,6 +26,9 @@ python-dateutil
 # Redis
 redis
 
+# Stock Catalog
+vnstock3
+
 # Image Upload
 cloudinary
 python-magic

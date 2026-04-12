@@ -22,6 +22,7 @@ from app.common.repo import (
     get_sheet_connection_repo,
     get_sheet_data_repo,
     get_sheet_sync_state_repo,
+    get_stock_symbol_repo,
     get_user_repo,
     get_voice_repo,
 )
@@ -60,6 +61,10 @@ from app.services.meeting.note_state_store import RedisMeetingNoteStateStore
 from app.services.meeting.session_manager import MeetingSessionManager
 from app.services.organization.organization_service import OrganizationService
 from app.services.sheet_crawler.crawler_service import SheetCrawlerService
+from app.services.stocks.cache import StockCatalogCache
+from app.services.stocks.refresh import StockCatalogSnapshotRefresher
+from app.services.stocks.stock_catalog_service import StockCatalogService
+from app.services.stocks.vnstock_gateway import VnstockListingGateway
 from app.services.stt.context_store import RedisInterviewContextStore
 from app.services.stt.interview_session_manager import InterviewSessionManager
 from app.services.stt.session_manager import STTSessionManager
@@ -186,6 +191,38 @@ def get_analytics_service() -> AnalyticsService:
         connection_repo=get_sheet_connection_repo(),
         data_repo=get_sheet_data_repo(),
         cache_manager=get_analytics_cache_manager(),
+    )
+
+
+@lru_cache
+def get_stock_catalog_cache() -> StockCatalogCache:
+    """Get singleton stock catalog cache helper."""
+    client = RedisClient.get_client()
+    return StockCatalogCache(client)
+
+
+@lru_cache
+def get_vnstock_listing_gateway() -> VnstockListingGateway:
+    """Get singleton vnstock listing gateway."""
+    return VnstockListingGateway()
+
+
+@lru_cache
+def get_stock_catalog_refresher() -> StockCatalogSnapshotRefresher:
+    """Get singleton stock catalog snapshot refresher."""
+    return StockCatalogSnapshotRefresher(
+        gateway=get_vnstock_listing_gateway(),
+        repository=get_stock_symbol_repo(),
+    )
+
+
+@lru_cache
+def get_stock_catalog_service() -> StockCatalogService:
+    """Get singleton stock catalog service."""
+    return StockCatalogService(
+        repository=get_stock_symbol_repo(),
+        refresher=get_stock_catalog_refresher(),
+        cache=get_stock_catalog_cache(),
     )
 
 

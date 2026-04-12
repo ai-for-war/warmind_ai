@@ -206,6 +206,43 @@ class MongoDB:
         )
         logger.info("Created index: idx_sheet_connections_sync_org")
 
+        # Indexes for stock_symbols collection
+        await cls.db.stock_symbols.create_index(
+            [("symbol", ASCENDING)],
+            name="idx_stock_symbols_symbol_unique",
+            unique=True,
+            background=True,
+        )
+        logger.info("Created index: idx_stock_symbols_symbol_unique")
+
+        await cls.db.stock_symbols.create_index(
+            [("exchange", ASCENDING)],
+            name="idx_stock_symbols_exchange",
+            background=True,
+        )
+        logger.info("Created index: idx_stock_symbols_exchange")
+
+        await cls.db.stock_symbols.create_index(
+            [("groups", ASCENDING)],
+            name="idx_stock_symbols_groups",
+            background=True,
+        )
+        logger.info("Created index: idx_stock_symbols_groups")
+
+        await cls.db.stock_symbols.create_index(
+            [("normalized_symbol", ASCENDING)],
+            name="idx_stock_symbols_normalized_symbol",
+            background=True,
+        )
+        logger.info("Created index: idx_stock_symbols_normalized_symbol")
+
+        await cls.db.stock_symbols.create_index(
+            [("normalized_organ_name", ASCENDING)],
+            name="idx_stock_symbols_normalized_organ_name",
+            background=True,
+        )
+        logger.info("Created index: idx_stock_symbols_normalized_organ_name")
+
         # Index for messages collection
         # Supports: get_by_conversation() with chronological ordering
         # Requirements: 2.2 (retrieve by conversation_id in chronological order)

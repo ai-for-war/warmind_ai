@@ -99,6 +99,8 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:5173"]  # Frontend origins
 
+    # VNStock
+    VNSTOCK_API_KEY: str
 
 @lru_cache
 def get_settings() -> Settings:
