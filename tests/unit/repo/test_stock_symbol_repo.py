@@ -21,12 +21,14 @@ def _stock_document(
     organ_name: str | None = None,
     exchange: str | None = None,
     groups: list[str] | None = None,
+    industry_code: int | None = None,
 ) -> dict[str, object]:
     stock = StockSymbol(
         symbol=symbol,
         organ_name=organ_name,
         exchange=exchange,
         groups=groups or [],
+        industry_code=industry_code,
         snapshot_at=_utc(2026, 4, 12),
         updated_at=_utc(2026, 4, 12, 1),
     )
@@ -197,6 +199,28 @@ async def test_find_filtered_supports_exchange_and_group_filters() -> None:
 
     assert [item.symbol for item in items] == ["FPT"]
     assert total == 1
+
+
+@pytest.mark.asyncio
+async def test_find_filtered_supports_industry_code_filter() -> None:
+    repository = StockSymbolRepository(
+        _FakeDB(
+            [
+                _stock_document(symbol="FPT", organ_name="FPT", exchange="HOSE", industry_code=9500),
+                _stock_document(symbol="VCB", organ_name="VCB", exchange="HOSE", industry_code=8300),
+                _stock_document(symbol="MBB", organ_name="MBB", exchange="HOSE", industry_code=8300),
+            ]
+        )
+    )
+
+    items, total = await repository.find_filtered(
+        industry_code=8300,
+        page=1,
+        page_size=10,
+    )
+
+    assert [item.symbol for item in items] == ["MBB", "VCB"]
+    assert total == 2
 
 
 @pytest.mark.asyncio

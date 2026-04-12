@@ -39,6 +39,7 @@ class StockCatalogService:
                 q=query.q,
                 exchange=query.exchange,
                 group=query.group,
+                industry_code=query.industry_code,
                 page=query.page,
                 page_size=query.page_size,
             )
@@ -83,7 +84,7 @@ class StockCatalogService:
 
     @staticmethod
     def _has_filters(query: StockListQuery) -> bool:
-        return any((query.q, query.exchange, query.group))
+        return any((query.q, query.exchange, query.group, query.industry_code is not None))
 
     @staticmethod
     def _build_response(

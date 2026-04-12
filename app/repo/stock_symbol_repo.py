@@ -51,13 +51,24 @@ class StockSymbolRepository:
         q: str | None = None,
         exchange: str | None = None,
         group: str | None = None,
+        industry_code: int | None = None,
         page: int = 1,
         page_size: int = 20,
     ) -> tuple[list[StockSymbol], int]:
         """Return one filtered page of stock symbols plus total match count."""
         skip = (page - 1) * page_size
-        query = self._build_query(q=q, exchange=exchange, group=group)
-        total = await self.count(q=q, exchange=exchange, group=group)
+        query = self._build_query(
+            q=q,
+            exchange=exchange,
+            group=group,
+            industry_code=industry_code,
+        )
+        total = await self.count(
+            q=q,
+            exchange=exchange,
+            group=group,
+            industry_code=industry_code,
+        )
         cursor = (
             self.collection.find(query)
             .sort([("symbol", ASCENDING)])
@@ -73,10 +84,16 @@ class StockSymbolRepository:
         q: str | None = None,
         exchange: str | None = None,
         group: str | None = None,
+        industry_code: int | None = None,
     ) -> int:
         """Count stock symbols matching the supplied optional filters."""
         return await self.collection.count_documents(
-            self._build_query(q=q, exchange=exchange, group=group)
+            self._build_query(
+                q=q,
+                exchange=exchange,
+                group=group,
+                industry_code=industry_code,
+            )
         )
 
     def _build_query(
@@ -85,6 +102,7 @@ class StockSymbolRepository:
         q: str | None,
         exchange: str | None,
         group: str | None,
+        industry_code: int | None,
     ) -> dict[str, object]:
         query: dict[str, object] = {}
 
@@ -95,6 +113,9 @@ class StockSymbolRepository:
         normalized_group = (group or "").strip().upper()
         if normalized_group:
             query["groups"] = normalized_group
+
+        if industry_code is not None:
+            query["industry_code"] = industry_code
 
         normalized_query = (q or "").strip().lower()
         if normalized_query:
