@@ -20,6 +20,7 @@ from app.repo.organization_repo import OrganizationRepository
 from app.repo.sheet_connection_repo import SheetConnectionRepository
 from app.repo.sheet_data_repo import SheetDataRepository
 from app.repo.sheet_sync_state_repo import SheetSyncStateRepository
+from app.repo.stock_symbol_repo import StockSymbolRepository
 from app.repo.user_repo import UserRepository
 from app.repo.voice_repo import VoiceRepository
 
@@ -199,3 +200,10 @@ def get_meeting_note_chunk_repo() -> MeetingNoteChunkRepository:
     """Get singleton meeting note chunk repository instance."""
     db = MongoDB.get_db()
     return MeetingNoteChunkRepository(db)
+
+
+@lru_cache
+def get_stock_symbol_repo() -> StockSymbolRepository:
+    """Get singleton stock symbol repository instance."""
+    db = MongoDB.get_db()
+    return StockSymbolRepository(db)

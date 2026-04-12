@@ -16,6 +16,13 @@ passlib[bcrypt]
 # MongoDB
 motor
 email-validator
+pandas
+
+# Vnstock runtime dependencies
+beautifulsoup4
+ipython
+plotly
+pytesseract
 
 # Google Sheets
 gspread
@@ -25,6 +32,9 @@ python-dateutil
 
 # Redis
 redis
+
+# Stock Catalog
+vnstock
 
 # Image Upload
 cloudinary

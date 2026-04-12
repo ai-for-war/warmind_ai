@@ -1,9 +1,9 @@
 ## 1. Setup and persistence foundations
 
-- [ ] 1.1 Add `vnstock` to the backend dependency set and ensure the application environment can import it
-- [ ] 1.2 Add stock catalog domain schemas for list query params, list response items, paginated response envelope, and manual refresh response
-- [ ] 1.3 Create a `stock_symbols` repository with MongoDB upsert, paginated unfiltered reads, filtered reads, and count support
-- [ ] 1.4 Add MongoDB indexes for `stock_symbols` covering unique `symbol`, `exchange`, `groups`, and normalized search fields
+- [x] 1.1 Add `vnstock` to the backend dependency set and ensure the application environment can import it
+- [x] 1.2 Add stock catalog domain schemas for list query params, list response items, paginated response envelope, and manual refresh response
+- [x] 1.3 Create a `stock_symbols` repository with MongoDB upsert, paginated unfiltered reads, filtered reads, and count support
+- [x] 1.4 Add MongoDB indexes for `stock_symbols` covering unique `symbol`, `exchange`, `groups`, and normalized search fields
 
 ## 2. Upstream integration and normalization
 
