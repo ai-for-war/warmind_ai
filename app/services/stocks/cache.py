@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 
 from pydantic import ValidationError
@@ -38,7 +37,7 @@ class StockCatalogCache:
             if not payload:
                 return None
             return StockListResponse.model_validate_json(payload)
-        except (ConnectionError, TimeoutError, ValidationError, json.JSONDecodeError) as exc:
+        except (ConnectionError, TimeoutError, ValidationError, ValueError, TypeError, AttributeError) as exc:
             logger.warning("Stock catalog cache get error: %s", exc)
             return None
 
@@ -57,7 +56,7 @@ class StockCatalogCache:
                 self.CACHE_TTL_SECONDS,
                 response.model_dump_json(),
             )
-        except (ConnectionError, TimeoutError, TypeError, ValueError) as exc:
+        except (ConnectionError, TimeoutError, TypeError, ValueError, AttributeError) as exc:
             logger.warning("Stock catalog cache set error: %s", exc)
 
     async def invalidate_all(self) -> int:
@@ -69,6 +68,6 @@ class StockCatalogCache:
             if not keys:
                 return 0
             return await self.redis.unlink(*keys)
-        except (ConnectionError, TimeoutError) as exc:
+        except (ConnectionError, TimeoutError, AttributeError) as exc:
             logger.warning("Stock catalog cache invalidation error: %s", exc)
             return 0

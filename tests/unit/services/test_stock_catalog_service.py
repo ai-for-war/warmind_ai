@@ -89,6 +89,35 @@ class _FakeCache:
         return 1
 
 
+class _ExplodingCache(_FakeCache):
+    def __init__(
+        self,
+        *,
+        explode_on_get: bool = False,
+        explode_on_set: bool = False,
+        explode_on_invalidate: bool = False,
+    ) -> None:
+        super().__init__()
+        self.explode_on_get = explode_on_get
+        self.explode_on_set = explode_on_set
+        self.explode_on_invalidate = explode_on_invalidate
+
+    async def get_page(self, *, page: int, page_size: int):
+        if self.explode_on_get:
+            raise AttributeError("redis transport unavailable")
+        return await super().get_page(page=page, page_size=page_size)
+
+    async def set_page(self, *, page: int, page_size: int, response) -> None:
+        if self.explode_on_set:
+            raise AttributeError("redis transport unavailable")
+        await super().set_page(page=page, page_size=page_size, response=response)
+
+    async def invalidate_all(self) -> int:
+        if self.explode_on_invalidate:
+            raise AttributeError("redis transport unavailable")
+        return await super().invalidate_all()
+
+
 class _FakeRefresher:
     def __init__(
         self,
@@ -187,3 +216,35 @@ async def test_refresh_catalog_does_not_invalidate_cache_when_refresh_fails() ->
     assert refresher.calls == 1
     assert cache.invalidate_calls == 0
     assert (1, 20) in cache.cached_pages
+
+
+@pytest.mark.asyncio
+async def test_list_stocks_falls_back_to_repository_when_cache_get_fails() -> None:
+    repository = _FakeRepository()
+    repository.unfiltered_result = (
+        [_stock(symbol="FPT", organ_name="FPT", exchange="HOSE")],
+        1,
+    )
+    cache = _ExplodingCache(explode_on_get=True, explode_on_set=True)
+    refresher = _FakeRefresher()
+    service = StockCatalogService(repository=repository, refresher=refresher, cache=cache)
+
+    response = await service.list_stocks(StockListQuery(page=1, page_size=20))
+
+    assert [item.symbol for item in response.items] == ["FPT"]
+    assert repository.list_paginated_calls == [(1, 20)]
+
+
+@pytest.mark.asyncio
+async def test_refresh_catalog_still_succeeds_when_cache_invalidation_fails() -> None:
+    repository = _FakeRepository()
+    cache = _ExplodingCache(explode_on_invalidate=True)
+    refresher = _FakeRefresher(
+        result=StockCatalogRefreshResult(source="VCI", upserted=3)
+    )
+    service = StockCatalogService(repository=repository, refresher=refresher, cache=cache)
+
+    response = await service.refresh_catalog()
+
+    assert response.status == "success"
+    assert response.upserted == 3

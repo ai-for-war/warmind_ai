@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import logging
 
 from app.domain.models.stock import StockSymbol
 from app.domain.schemas.stock import (
@@ -14,6 +15,8 @@ from app.domain.schemas.stock import (
 from app.repo.stock_symbol_repo import StockSymbolRepository
 from app.services.stocks.cache import StockCatalogCache
 from app.services.stocks.refresh import StockCatalogSnapshotRefresher
+
+logger = logging.getLogger(__name__)
 
 
 class StockCatalogService:
@@ -46,7 +49,7 @@ class StockCatalogService:
                 page_size=query.page_size,
             )
 
-        cached = await self.cache.get_page(page=query.page, page_size=query.page_size)
+        cached = await self._get_cached_page(page=query.page, page_size=query.page_size)
         if cached is not None:
             return cached
 
@@ -60,7 +63,7 @@ class StockCatalogService:
             page=query.page,
             page_size=query.page_size,
         )
-        await self.cache.set_page(
+        await self._set_cached_page(
             page=query.page,
             page_size=query.page_size,
             response=response,
@@ -70,7 +73,7 @@ class StockCatalogService:
     async def refresh_catalog(self) -> StockRefreshResponse:
         """Refresh persisted stock catalog snapshot and invalidate default-list cache."""
         refresh_result = await self.refresher.refresh()
-        await self.cache.invalidate_all()
+        await self._invalidate_cache()
         return StockRefreshResponse(
             status="success",
             source=refresh_result.source,
@@ -109,3 +112,33 @@ class StockCatalogService:
             page=page,
             page_size=page_size,
         )
+
+    async def _get_cached_page(
+        self,
+        *,
+        page: int,
+        page_size: int,
+    ) -> StockListResponse | None:
+        try:
+            return await self.cache.get_page(page=page, page_size=page_size)
+        except Exception as exc:
+            logger.warning("Stock catalog cache read failed: %s", exc)
+            return None
+
+    async def _set_cached_page(
+        self,
+        *,
+        page: int,
+        page_size: int,
+        response: StockListResponse,
+    ) -> None:
+        try:
+            await self.cache.set_page(page=page, page_size=page_size, response=response)
+        except Exception as exc:
+            logger.warning("Stock catalog cache write failed: %s", exc)
+
+    async def _invalidate_cache(self) -> None:
+        try:
+            await self.cache.invalidate_all()
+        except Exception as exc:
+            logger.warning("Stock catalog cache invalidation failed: %s", exc)
