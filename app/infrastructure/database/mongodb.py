@@ -243,6 +243,13 @@ class MongoDB:
         )
         logger.info("Created index: idx_stock_symbols_normalized_organ_name")
 
+        await cls.db.stock_symbols.create_index(
+            [("snapshot_at", ASCENDING)],
+            name="idx_stock_symbols_snapshot_at",
+            background=True,
+        )
+        logger.info("Created index: idx_stock_symbols_snapshot_at")
+
         # Index for messages collection
         # Supports: get_by_conversation() with chronological ordering
         # Requirements: 2.2 (retrieve by conversation_id in chronological order)

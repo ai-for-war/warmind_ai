@@ -51,6 +51,10 @@ def _matches_query(document: dict[str, object], query: dict[str, object]) -> boo
                 if not isinstance(text, str) or re.search(regex, text, flags) is None:
                     return False
                 continue
+            if "$ne" in expected:
+                if actual == expected["$ne"]:
+                    return False
+                continue
         elif isinstance(actual, list):
             if expected not in actual:
                 return False
@@ -136,10 +140,87 @@ class _FakeStockCollection:
         self._documents.append(created)
         return deepcopy(created)
 
+    async def bulk_write(self, operations: list[object], ordered: bool = True) -> None:
+        for operation in operations:
+            query = deepcopy(operation._filter)
+            update = deepcopy(operation._doc)
+            await self.find_one_and_update(
+                query,
+                update,
+                upsert=operation._upsert,
+                return_document=ReturnDocument.AFTER,
+            )
+
+    async def delete_many(self, query: dict[str, object]):
+        retained: list[dict[str, object]] = []
+        deleted_count = 0
+        for document in self._documents:
+            if _matches_query(document, query):
+                deleted_count += 1
+                continue
+            retained.append(document)
+        self._documents = retained
+
+        class _Result:
+            def __init__(self, count: int) -> None:
+                self.deleted_count = count
+
+        return _Result(deleted_count)
+
+
+class _FakeMetadataCollection:
+    def __init__(self, metadata: dict[str, dict[str, object]] | None = None) -> None:
+        self._documents = deepcopy(metadata or {})
+
+    async def find_one(self, query: dict[str, object]) -> dict[str, object] | None:
+        document_id = query.get("_id")
+        if not isinstance(document_id, str):
+            return None
+        document = self._documents.get(document_id)
+        return deepcopy(document) if isinstance(document, dict) else None
+
+    async def find_one_and_update(
+        self,
+        query: dict[str, object],
+        update: dict[str, dict[str, object]],
+        *,
+        upsert: bool = False,
+        return_document: ReturnDocument | bool | None = None,
+    ) -> dict[str, object] | None:
+        document_id = query.get("_id")
+        if not isinstance(document_id, str):
+            return None
+
+        current = deepcopy(self._documents.get(document_id, {"_id": document_id}))
+        if document_id not in self._documents and not upsert:
+            return None
+
+        updated = deepcopy(current)
+        for field_name, value in update.get("$set", {}).items():
+            updated[field_name] = value
+        self._documents[document_id] = updated
+        if return_document == ReturnDocument.AFTER:
+            return deepcopy(updated)
+        return deepcopy(current)
+
 
 class _FakeDB:
-    def __init__(self, documents: list[dict[str, object]]) -> None:
+    def __init__(
+        self,
+        documents: list[dict[str, object]],
+        *,
+        active_snapshot_at: datetime | None = None,
+    ) -> None:
         self.stock_symbols = _FakeStockCollection(documents)
+        metadata = None
+        if active_snapshot_at is not None:
+            metadata = {
+                StockSymbolRepository.SNAPSHOT_META_ID: {
+                    "_id": StockSymbolRepository.SNAPSHOT_META_ID,
+                    "snapshot_at": active_snapshot_at,
+                }
+            }
+        self.stock_catalog_metadata = _FakeMetadataCollection(metadata)
 
 
 @pytest.mark.asyncio
@@ -150,7 +231,8 @@ async def test_list_paginated_returns_sorted_page_and_total() -> None:
                 _stock_document(symbol="VCB", organ_name="Vietcombank", exchange="HOSE"),
                 _stock_document(symbol="ACB", organ_name="ACB", exchange="HNX"),
                 _stock_document(symbol="FPT", organ_name="FPT", exchange="HOSE"),
-            ]
+            ],
+            active_snapshot_at=_utc(2026, 4, 12),
         )
     )
 
@@ -168,7 +250,8 @@ async def test_find_filtered_supports_symbol_or_name_query() -> None:
                 _stock_document(symbol="FPT", organ_name="Cong ty Co phan FPT", exchange="HOSE"),
                 _stock_document(symbol="VCB", organ_name="Ngan hang Vietcombank", exchange="HOSE"),
                 _stock_document(symbol="ACB", organ_name="Asia Commercial Bank", exchange="HNX"),
-            ]
+            ],
+            active_snapshot_at=_utc(2026, 4, 12),
         )
     )
 
@@ -186,7 +269,8 @@ async def test_find_filtered_supports_exchange_and_group_filters() -> None:
                 _stock_document(symbol="FPT", organ_name="FPT", exchange="HOSE", groups=["VN30"]),
                 _stock_document(symbol="VCB", organ_name="VCB", exchange="HOSE", groups=["VN100"]),
                 _stock_document(symbol="SHS", organ_name="SHS", exchange="HNX", groups=["HNX30"]),
-            ]
+            ],
+            active_snapshot_at=_utc(2026, 4, 12),
         )
     )
 
@@ -209,7 +293,8 @@ async def test_find_filtered_supports_industry_code_filter() -> None:
                 _stock_document(symbol="FPT", organ_name="FPT", exchange="HOSE", industry_code=9500),
                 _stock_document(symbol="VCB", organ_name="VCB", exchange="HOSE", industry_code=8300),
                 _stock_document(symbol="MBB", organ_name="MBB", exchange="HOSE", industry_code=8300),
-            ]
+            ],
+            active_snapshot_at=_utc(2026, 4, 12),
         )
     )
 
@@ -229,7 +314,8 @@ async def test_upsert_replaces_existing_symbol_document() -> None:
         _FakeDB(
             [
                 _stock_document(symbol="FPT", organ_name="Old Name", exchange="HOSE"),
-            ]
+            ],
+            active_snapshot_at=_utc(2026, 4, 12),
         )
     )
 
@@ -248,3 +334,64 @@ async def test_upsert_replaces_existing_symbol_document() -> None:
     assert persisted.organ_name == "New Name"
     assert persisted.groups == ["VN30"]
     assert persisted.snapshot_at == _utc(2026, 4, 13)
+
+
+@pytest.mark.asyncio
+async def test_list_paginated_only_returns_active_snapshot() -> None:
+    repository = StockSymbolRepository(
+        _FakeDB(
+            [
+                _stock_document(symbol="AAA", organ_name="Old AAA", exchange="HOSE"),
+                _stock_document(symbol="BBB", organ_name="Old BBB", exchange="HOSE"),
+                {
+                    **_stock_document(symbol="CCC", organ_name="New CCC", exchange="HOSE"),
+                    "snapshot_at": _utc(2026, 4, 13),
+                    "updated_at": _utc(2026, 4, 13, 1),
+                },
+            ],
+            active_snapshot_at=_utc(2026, 4, 13),
+        )
+    )
+
+    items, total = await repository.list_paginated(page=1, page_size=10)
+
+    assert [item.symbol for item in items] == ["CCC"]
+    assert total == 1
+
+
+@pytest.mark.asyncio
+async def test_replace_snapshot_marks_new_snapshot_active_and_prunes_old_symbols() -> None:
+    db = _FakeDB(
+        [
+            _stock_document(symbol="SSI", organ_name="SSI", exchange="HOSE"),
+            _stock_document(symbol="VCI", organ_name="VCI", exchange="HOSE"),
+        ],
+        active_snapshot_at=_utc(2026, 4, 12),
+    )
+    repository = StockSymbolRepository(db)
+    snapshot_at = _utc(2026, 4, 13)
+
+    upserted = await repository.replace_snapshot(
+        [
+            StockSymbol(
+                symbol="FPT",
+                organ_name="FPT",
+                exchange="HOSE",
+                snapshot_at=snapshot_at,
+                updated_at=snapshot_at,
+            ),
+            StockSymbol(
+                symbol="VCB",
+                organ_name="VCB",
+                exchange="HOSE",
+                snapshot_at=snapshot_at,
+                updated_at=snapshot_at,
+            ),
+        ],
+        snapshot_at=snapshot_at,
+    )
+
+    assert upserted == 2
+    assert await repository.get_active_snapshot_at() == snapshot_at
+    symbols = sorted(document["symbol"] for document in db.stock_symbols._documents)
+    assert symbols == ["FPT", "VCB"]

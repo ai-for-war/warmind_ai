@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 from app.repo.stock_symbol_repo import StockSymbolRepository
 from app.services.stocks.normalizer import build_stock_symbol_snapshot
@@ -33,6 +34,7 @@ class StockCatalogSnapshotRefresher:
 
     async def refresh(self) -> StockCatalogRefreshResult:
         """Refresh the stock catalog by upserting normalized symbol documents."""
+        snapshot_at = datetime.now(timezone.utc)
         snapshot = build_stock_symbol_snapshot(
             all_symbols=self.gateway.fetch_all_symbols(),
             symbols_by_exchange=self.gateway.fetch_symbols_by_exchange(),
@@ -41,12 +43,12 @@ class StockCatalogSnapshotRefresher:
                 SUPPORTED_STOCK_GROUPS
             ),
             source=self.gateway.SOURCE,
+            now=snapshot_at,
         )
-
-        upserted = 0
-        for stock_symbol in snapshot:
-            await self.repository.upsert(stock_symbol)
-            upserted += 1
+        upserted = await self.repository.replace_snapshot(
+            snapshot,
+            snapshot_at=snapshot_at,
+        )
 
         return StockCatalogRefreshResult(
             source=self.gateway.SOURCE,
