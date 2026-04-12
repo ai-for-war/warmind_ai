@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class StockCatalogCache:
     """Cache unfiltered stock list responses keyed by page and page size."""
 
-    CACHE_TTL_SECONDS = 300
+    CACHE_TTL_SECONDS = 302400
     KEY_PREFIX = "stocks:list"
 
     def __init__(self, redis_client: Redis) -> None:
@@ -37,7 +37,14 @@ class StockCatalogCache:
             if not payload:
                 return None
             return StockListResponse.model_validate_json(payload)
-        except (ConnectionError, TimeoutError, ValidationError, ValueError, TypeError, AttributeError) as exc:
+        except (
+            ConnectionError,
+            TimeoutError,
+            ValidationError,
+            ValueError,
+            TypeError,
+            AttributeError,
+        ) as exc:
             logger.warning("Stock catalog cache get error: %s", exc)
             return None
 
@@ -56,7 +63,13 @@ class StockCatalogCache:
                 self.CACHE_TTL_SECONDS,
                 response.model_dump_json(),
             )
-        except (ConnectionError, TimeoutError, TypeError, ValueError, AttributeError) as exc:
+        except (
+            ConnectionError,
+            TimeoutError,
+            TypeError,
+            ValueError,
+            AttributeError,
+        ) as exc:
             logger.warning("Stock catalog cache set error: %s", exc)
 
     async def invalidate_all(self) -> int:
