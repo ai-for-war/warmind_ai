@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import math
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -41,9 +42,9 @@ class StockSymbol(BaseModel):
 
     @field_validator("organ_name", "industry_name", mode="before")
     @classmethod
-    def normalize_optional_text(cls, value: str | None) -> str | None:
+    def normalize_optional_text(cls, value: object) -> str | None:
         """Collapse blank text fields to null for stable persistence."""
-        if value is None:
+        if value is None or _is_nan_like(value):
             return None
         if not isinstance(value, str):
             raise TypeError("text fields must be strings")
@@ -52,9 +53,9 @@ class StockSymbol(BaseModel):
 
     @field_validator("exchange", "source", mode="before")
     @classmethod
-    def normalize_optional_uppercase(cls, value: str | None) -> str | None:
+    def normalize_optional_uppercase(cls, value: object) -> str | None:
         """Store exchange and source values in uppercase form when present."""
-        if value is None:
+        if value is None or _is_nan_like(value):
             return None
         if not isinstance(value, str):
             raise TypeError("exchange/source fields must be strings")
@@ -63,18 +64,20 @@ class StockSymbol(BaseModel):
 
     @field_validator("industry_code", mode="before")
     @classmethod
-    def normalize_industry_code(cls, value: int | str | None) -> int | None:
+    def normalize_industry_code(cls, value: int | float | str | None) -> int | None:
         """Allow numeric industry codes to arrive as strings."""
-        if value is None or value == "":
+        if value is None or value == "" or _is_nan_like(value):
             return None
         if isinstance(value, int):
             return value
+        if isinstance(value, float):
+            return int(value)
         if isinstance(value, str):
             normalized = value.strip()
             if not normalized:
                 return None
             return int(normalized)
-        raise TypeError("industry_code must be an int, str, or None")
+        raise TypeError("industry_code must be an int, float, str, or None")
 
     @field_validator("groups", mode="before")
     @classmethod
@@ -110,3 +113,8 @@ class StockSymbol(BaseModel):
             ).strip().lower() or None
         self.source = self.source or "VCI"
         return self
+
+
+def _is_nan_like(value: object) -> bool:
+    """Treat pandas/numpy NaN values as absent optional fields."""
+    return isinstance(value, float) and math.isnan(value)

@@ -1,0 +1,1 @@
+"""Stock catalog API package."""

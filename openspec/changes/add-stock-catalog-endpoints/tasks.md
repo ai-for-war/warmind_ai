@@ -21,14 +21,14 @@
 
 ## 4. API wiring and authorization
 
-- [ ] 4.1 Add a new FastAPI router for `GET /api/v1/stocks` using active-user and organization-context dependencies
-- [ ] 4.2 Add a new FastAPI endpoint `POST /api/v1/stocks/refresh` protected by `require_super_admin`
-- [ ] 4.3 Register the stock router in the v1 router aggregation and wire the stock catalog service into shared service factories
-- [ ] 4.4 Ensure read responses expose the persisted catalog fields needed for list, search, exchange filter, and group filter behavior
+- [x] 4.1 Add a new FastAPI router for `GET /api/v1/stocks` using active-user and organization-context dependencies
+- [x] 4.2 Add a new FastAPI endpoint `POST /api/v1/stocks/refresh` protected by `require_super_admin`
+- [x] 4.3 Register the stock router in the v1 router aggregation and wire the stock catalog service into shared service factories
+- [x] 4.4 Ensure read responses expose the persisted catalog fields needed for list, search, exchange filter, and group filter behavior
 
 ## 5. Tests and verification
 
 - [x] 5.1 Add repository and service tests for unfiltered pagination, `q` filtering, `exchange` filtering, and `group` filtering
 - [x] 5.2 Add service tests that verify unfiltered requests use cache while filtered requests bypass cache
-- [ ] 5.3 Add API tests for org-auth read access and Super Admin-only refresh authorization
+- [x] 5.3 Add API tests for org-auth read access and Super Admin-only refresh authorization
 - [x] 5.4 Add refresh-path tests that verify successful upsert behavior and preservation of the previous snapshot when refresh fails

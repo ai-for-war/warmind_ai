@@ -5,15 +5,17 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any
 
-from vnstock import Listing
+from vnstock import Listing, register_user
+
+from app.config.settings import get_settings
 
 
 SUPPORTED_STOCK_GROUPS: tuple[str, ...] = (
     "VN30",
     "VN100",
-    "VNALLSHARE",
-    "VNMIDCAP",
-    "VNSMALLCAP",
+    "VNAllShare",
+    "VNMidCap",
+    "VNSmallCap",
     "HNX30",
     "ETF",
     "CW",
@@ -26,6 +28,8 @@ class VnstockListingGateway:
     SOURCE = "VCI"
 
     def __init__(self) -> None:
+        settings = get_settings()
+        register_user(api_key=settings.VNSTOCK_API_KEY)
         self.listing = Listing(source=self.SOURCE)
 
     def fetch_all_symbols(self) -> list[dict[str, Any]]:

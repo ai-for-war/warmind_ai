@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import math
 
 import pytest
 
@@ -90,3 +91,32 @@ def test_stock_symbol_rejects_non_string_groups() -> None:
             snapshot_at=_utc(2026, 4, 12),
             updated_at=_utc(2026, 4, 12, 1),
         )
+
+
+def test_stock_symbol_treats_pandas_nan_like_values_as_missing() -> None:
+    stock = StockSymbol(
+        symbol="vcb",
+        organ_name=math.nan,
+        exchange=math.nan,
+        industry_code=math.nan,
+        industry_name=math.nan,
+        snapshot_at=_utc(2026, 4, 12),
+        updated_at=_utc(2026, 4, 12, 1),
+    )
+
+    assert stock.organ_name is None
+    assert stock.exchange is None
+    assert stock.industry_code is None
+    assert stock.industry_name is None
+    assert stock.source == "VCI"
+
+
+def test_stock_symbol_accepts_float_industry_code_from_pandas() -> None:
+    stock = StockSymbol(
+        symbol="fpt",
+        industry_code=8300.0,
+        snapshot_at=_utc(2026, 4, 12),
+        updated_at=_utc(2026, 4, 12, 1),
+    )
+
+    assert stock.industry_code == 8300
