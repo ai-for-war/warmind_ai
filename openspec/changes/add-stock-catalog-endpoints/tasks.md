@@ -14,10 +14,10 @@
 
 ## 3. Service and cache behavior
 
-- [ ] 3.1 Create a `StockCatalogService` that orchestrates manual refresh, unfiltered reads, filtered reads, and cache invalidation
-- [ ] 3.2 Implement Redis cache helpers for unfiltered stock-list responses keyed by page and page size
-- [ ] 3.3 Implement `GET /stocks` service behavior so unfiltered requests use cache and filtered requests query MongoDB directly
-- [ ] 3.4 Implement refresh error handling so failed refresh attempts leave the last successful persisted snapshot readable
+- [x] 3.1 Create a `StockCatalogService` that orchestrates manual refresh, unfiltered reads, filtered reads, and cache invalidation
+- [x] 3.2 Implement Redis cache helpers for unfiltered stock-list responses keyed by page and page size
+- [x] 3.3 Implement `GET /stocks` service behavior so unfiltered requests use cache and filtered requests query MongoDB directly
+- [x] 3.4 Implement refresh error handling so failed refresh attempts leave the last successful persisted snapshot readable
 
 ## 4. API wiring and authorization
 
@@ -28,7 +28,7 @@
 
 ## 5. Tests and verification
 
-- [ ] 5.1 Add repository and service tests for unfiltered pagination, `q` filtering, `exchange` filtering, and `group` filtering
-- [ ] 5.2 Add service tests that verify unfiltered requests use cache while filtered requests bypass cache
+- [x] 5.1 Add repository and service tests for unfiltered pagination, `q` filtering, `exchange` filtering, and `group` filtering
+- [x] 5.2 Add service tests that verify unfiltered requests use cache while filtered requests bypass cache
 - [ ] 5.3 Add API tests for org-auth read access and Super Admin-only refresh authorization
 - [x] 5.4 Add refresh-path tests that verify successful upsert behavior and preservation of the previous snapshot when refresh fails
