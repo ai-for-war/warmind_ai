@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import Any
 
 import pytest
@@ -275,6 +276,70 @@ def test_fetch_news_normalizes_runtime_timestamp_fields_to_strings() -> None:
         }
     ]
     assert calls == [("news", "FPT", {})]
+
+
+def test_to_records_coerces_nan_cells_to_none() -> None:
+    payload = VnstockCompanyGateway._to_records(  # noqa: SLF001
+        _FakeFrame(
+            [
+                {
+                    "symbol": "FPT",
+                    "company_profile": math.nan,
+                    "history": math.nan,
+                }
+            ]
+        ),
+        allowed_fields=("symbol", "company_profile", "history"),
+    )
+
+    assert payload == [
+        {
+            "symbol": "FPT",
+            "company_profile": None,
+            "history": None,
+        }
+    ]
+
+
+@pytest.mark.parametrize(
+    ("method_name", "expected_call"),
+    [
+        ("overview", ("overview", "FPT", {})),
+        ("ratio_summary", ("ratio_summary", "FPT", {})),
+        ("trading_stats", ("trading_stats", "FPT", {})),
+    ],
+)
+def test_empty_snapshot_payloads_return_symbol_only_record(
+    method_name: str,
+    expected_call: tuple[str, str, dict[str, Any]],
+) -> None:
+    calls: list[tuple[str, str, dict[str, Any]]] = []
+
+    class _EmptySnapshotCompany:
+        def __init__(self, symbol: str, source: str) -> None:
+            self.symbol = symbol
+            self.source = source
+
+        def overview(self) -> _FakeFrame:
+            calls.append(("overview", self.symbol, {}))
+            return _FakeFrame([])
+
+        def ratio_summary(self) -> _FakeFrame:
+            calls.append(("ratio_summary", self.symbol, {}))
+            return _FakeFrame([])
+
+        def trading_stats(self) -> _FakeFrame:
+            calls.append(("trading_stats", self.symbol, {}))
+            return _FakeFrame([])
+
+    gateway = VnstockCompanyGateway(
+        company_factory=lambda symbol, source: _EmptySnapshotCompany(symbol, source)
+    )
+
+    payload = getattr(gateway, f"fetch_{method_name}")("fpt")
+
+    assert payload == {"symbol": "FPT"}
+    assert calls == [expected_call]
 
 
 def test_blank_symbol_is_rejected_before_building_company() -> None:

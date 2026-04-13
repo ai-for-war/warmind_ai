@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import datetime, timezone
+import math
 from typing import Any
 
 from app.config.settings import get_settings
@@ -157,8 +158,13 @@ class VnstockCompanyGateway:
 
     def fetch_overview(self, symbol: str) -> dict[str, Any]:
         """Fetch overview data for one stock symbol."""
+        normalized_symbol = self._normalize_symbol(symbol)
         payload = self._build_company(symbol).overview()
-        return self._to_single_record(payload, allowed_fields=OVERVIEW_FIELDS)
+        return self._to_single_record(
+            payload,
+            allowed_fields=OVERVIEW_FIELDS,
+            empty_record={"symbol": normalized_symbol},
+        )
 
     def fetch_shareholders(self, symbol: str) -> list[dict[str, Any]]:
         """Fetch major shareholders for one stock symbol."""
@@ -217,23 +223,31 @@ class VnstockCompanyGateway:
 
     def fetch_ratio_summary(self, symbol: str) -> dict[str, Any]:
         """Fetch ratio-summary data for one stock symbol."""
+        normalized_symbol = self._normalize_symbol(symbol)
         payload = self._build_company(symbol).ratio_summary()
-        record = self._to_single_record(payload, allowed_fields=RATIO_SUMMARY_FIELDS)
+        record = self._to_single_record(
+            payload,
+            allowed_fields=RATIO_SUMMARY_FIELDS,
+            empty_record={"symbol": normalized_symbol},
+        )
         normalized = self._normalize_timestamp_fields(
             [record],
             field_names=("update_date",),
         )
-        return normalized[0] if normalized else {}
+        return normalized[0] if normalized else {"symbol": normalized_symbol}
 
     def fetch_trading_stats(self, symbol: str) -> dict[str, Any]:
         """Fetch trading-stat snapshot data for one stock symbol."""
+        normalized_symbol = self._normalize_symbol(symbol)
         payload = self._build_company(symbol).trading_stats()
-        return self._to_single_record(payload, allowed_fields=TRADING_STATS_FIELDS)
+        return self._to_single_record(
+            payload,
+            allowed_fields=TRADING_STATS_FIELDS,
+            empty_record={"symbol": normalized_symbol},
+        )
 
     def _build_company(self, symbol: str) -> Any:
-        normalized_symbol = symbol.strip().upper()
-        if not normalized_symbol:
-            raise ValueError("symbol must not be blank")
+        normalized_symbol = self._normalize_symbol(symbol)
 
         if self._company_factory is not None:
             return self._company_factory(normalized_symbol, self.SOURCE)
@@ -263,7 +277,11 @@ class VnstockCompanyGateway:
             if not isinstance(record, dict):
                 continue
             normalized.append(
-                {key: record[key] for key in allowed_fields if key in record}
+                {
+                    key: VnstockCompanyGateway._normalize_missing_value(record[key])
+                    for key in allowed_fields
+                    if key in record
+                }
             )
         return normalized
 
@@ -273,11 +291,12 @@ class VnstockCompanyGateway:
         payload: Any,
         *,
         allowed_fields: tuple[str, ...],
+        empty_record: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Convert one vnstock snapshot payload to one normalized record."""
         records = cls._to_records(payload, allowed_fields=allowed_fields)
         if not records:
-            return {}
+            return dict(empty_record or {})
         return records[0]
 
     @staticmethod
@@ -300,3 +319,22 @@ class VnstockCompanyGateway:
                     )
             normalized.append(normalized_record)
         return normalized
+
+    @staticmethod
+    def _normalize_symbol(symbol: str) -> str:
+        normalized_symbol = symbol.strip().upper()
+        if not normalized_symbol:
+            raise ValueError("symbol must not be blank")
+        return normalized_symbol
+
+    @staticmethod
+    def _normalize_missing_value(value: Any) -> Any:
+        # The installed vnstock runtime materializes missing DataFrame cells as
+        # NaN in record dicts. Collapse them to `None` before Pydantic validation
+        # so optional text/numeric fields stay stable across sections.
+        try:
+            if math.isnan(value):
+                return None
+        except (TypeError, ValueError):
+            pass
+        return value
