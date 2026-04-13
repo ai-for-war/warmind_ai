@@ -27,7 +27,7 @@
 
 ## 5. Tests and verification
 
-- [ ] 5.1 Add gateway and service tests for section fetches, canonical field preservation, and symbol validation before upstream calls
-- [ ] 5.2 Add cache behavior tests covering cache hit, cache miss, and stale-cache fallback for company-information endpoints
-- [ ] 5.3 Add API tests for organization-scoped read access across the new company-information routes
-- [ ] 5.4 Add API or service tests for section-specific filters on officers and subsidiaries plus endpoint-level failure isolation
+- [x] 5.1 Add gateway and service tests for section fetches, canonical field preservation, and symbol validation before upstream calls
+- [x] 5.2 Add cache behavior tests covering cache hit, cache miss, and stale-cache fallback for company-information endpoints
+- [x] 5.3 Add API tests for organization-scoped read access across the new company-information routes
+- [x] 5.4 Add API or service tests for section-specific filters on officers and subsidiaries plus endpoint-level failure isolation
