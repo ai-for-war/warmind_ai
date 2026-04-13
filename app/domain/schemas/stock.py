@@ -25,6 +25,7 @@ class StockListQuery(StockSchemaBase):
     q: str | None = None
     exchange: str | None = None
     group: str | None = None
+    industry_code: int | None = None
     page: int = Field(default=1, ge=1)
     page_size: int = Field(
         default=DEFAULT_STOCK_PAGE_SIZE,
@@ -49,6 +50,21 @@ class StockListQuery(StockSchemaBase):
             return None
         normalized = value.strip().upper()
         return normalized or None
+
+    @field_validator("industry_code", mode="before")
+    @classmethod
+    def normalize_industry_code(cls, value: int | str | None) -> int | None:
+        """Treat blank industry-code filter as absent and coerce numeric strings."""
+        if value is None or value == "":
+            return None
+        if isinstance(value, int):
+            return value
+        if isinstance(value, str):
+            normalized = value.strip()
+            if not normalized:
+                return None
+            return int(normalized)
+        raise TypeError("industry_code must be an int, str, or None")
 
 
 class StockListItem(StockSchemaBase):

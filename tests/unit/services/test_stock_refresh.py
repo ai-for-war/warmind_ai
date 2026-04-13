@@ -48,15 +48,23 @@ class _FailingGateway(_FakeGateway):
 class _FakeRepository:
     def __init__(self, existing: list[StockSymbol] | None = None) -> None:
         self.persisted: list[StockSymbol] = list(existing or [])
-        self.upsert_calls: list[str] = []
+        self.replace_calls: list[tuple[list[str], datetime]] = []
+        self.fail_after_symbols: set[str] = set()
 
-    async def upsert(self, stock_symbol: StockSymbol) -> StockSymbol:
-        self.upsert_calls.append(stock_symbol.symbol)
-        self.persisted = [
-            item for item in self.persisted if item.symbol != stock_symbol.symbol
-        ]
-        self.persisted.append(stock_symbol)
-        return stock_symbol
+    async def replace_snapshot(
+        self,
+        snapshot: list[StockSymbol],
+        *,
+        snapshot_at: datetime,
+    ) -> int:
+        self.replace_calls.append(([item.symbol for item in snapshot], snapshot_at))
+        if self.fail_after_symbols:
+            for stock_symbol in snapshot:
+                if stock_symbol.symbol in self.fail_after_symbols:
+                    raise RuntimeError(f"failed on {stock_symbol.symbol}")
+
+        self.persisted = list(snapshot)
+        return len(snapshot)
 
 
 @pytest.mark.asyncio
@@ -69,7 +77,7 @@ async def test_refresh_upserts_full_snapshot() -> None:
 
     assert result.source == "VCI"
     assert result.upserted == 2
-    assert repository.upsert_calls == ["FPT", "VCB"]
+    assert [symbols for symbols, _ in repository.replace_calls] == [["FPT", "VCB"]]
     assert gateway.group_requests
     assert {item.symbol for item in repository.persisted} == {"FPT", "VCB"}
 
@@ -91,5 +99,24 @@ async def test_refresh_failure_preserves_previous_snapshot() -> None:
     with pytest.raises(RuntimeError, match="VCI unavailable"):
         await refresher.refresh()
 
-    assert repository.upsert_calls == []
+    assert repository.replace_calls == []
     assert [item.symbol for item in repository.persisted] == ["SSI"]
+
+
+@pytest.mark.asyncio
+async def test_refresh_replaces_previous_snapshot_symbols() -> None:
+    existing = [
+        StockSymbol(
+            symbol="SSI",
+            organ_name="SSI",
+            exchange="HOSE",
+            snapshot_at=_utc(2026, 4, 11),
+            updated_at=_utc(2026, 4, 11, 1),
+        )
+    ]
+    repository = _FakeRepository(existing=existing)
+    refresher = StockCatalogSnapshotRefresher(_FakeGateway(), repository)
+
+    await refresher.refresh()
+
+    assert {item.symbol for item in repository.persisted} == {"FPT", "VCB"}

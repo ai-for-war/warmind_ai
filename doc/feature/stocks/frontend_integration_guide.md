@@ -8,6 +8,7 @@ Tài liệu này mô tả backend hiện đang cung cấp gì cho tính năng:
 - tìm kiếm mã chứng khoán
 - lọc theo sàn
 - lọc theo nhóm
+- lọc theo mã ngành
 
 Phạm vi tài liệu chỉ gồm:
 
@@ -63,6 +64,7 @@ Query params hỗ trợ:
 - `q`: optional, tìm theo mã hoặc tên công ty
 - `exchange`: optional, lọc theo sàn
 - `group`: optional, lọc theo nhóm
+- `industry_code`: optional, lọc theo mã ngành
 - `page`: optional, mặc định `1`
 - `page_size`: optional, mặc định `20`, tối đa `100`
 
@@ -80,11 +82,16 @@ GET /api/v1/stocks?q=fpt&page=1&page_size=20
 GET /api/v1/stocks?exchange=HOSE&group=VN30&page=1&page_size=20
 ```
 
+```http
+GET /api/v1/stocks?industry_code=8300&page=1&page_size=20
+```
+
 Lưu ý semantics:
 
-- nếu không truyền `q`, `exchange`, `group`, backend sẽ đi theo flow default list
-- nếu có bất kỳ filter nào trong `q`, `exchange`, `group`, backend xem đó là filtered request
+- nếu không truyền `q`, `exchange`, `group`, `industry_code`, backend sẽ đi theo flow default list
+- nếu có bất kỳ filter nào trong `q`, `exchange`, `group`, `industry_code`, backend xem đó là filtered request
 - backend normalize `exchange` và `group` sang uppercase trước khi query
+- `industry_code` được parse thành số nguyên trước khi query
 - `q` được trim khoảng trắng; blank string được coi như không truyền
 
 ## 5. Backend trả về gì
@@ -182,6 +189,7 @@ Root response semantics:
 - `q` match trên symbol hoặc tên công ty đã được normalize trong backend
 - `exchange` lọc exact match
 - `group` lọc theo membership trong `groups`
+- `industry_code` lọc exact match trên mã ngành đã persist
 
 ### 6.2 Pagination
 
@@ -215,6 +223,7 @@ Root response semantics:
   - `q`
   - `exchange`
   - `group`
+  - `industry_code`
   - `page`
   - `page_size`
 - Response:

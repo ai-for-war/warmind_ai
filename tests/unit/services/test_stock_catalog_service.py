@@ -20,12 +20,14 @@ def _stock(
     organ_name: str | None = None,
     exchange: str | None = None,
     groups: list[str] | None = None,
+    industry_code: int | None = None,
 ) -> StockSymbol:
     return StockSymbol(
         symbol=symbol,
         organ_name=organ_name,
         exchange=exchange,
         groups=groups or [],
+        industry_code=industry_code,
         snapshot_at=_utc(2026, 4, 12),
         updated_at=_utc(2026, 4, 12, 1),
     )
@@ -53,6 +55,7 @@ class _FakeRepository:
         q: str | None = None,
         exchange: str | None = None,
         group: str | None = None,
+        industry_code: int | None = None,
         page: int = 1,
         page_size: int = 20,
     ) -> tuple[list[StockSymbol], int]:
@@ -61,6 +64,7 @@ class _FakeRepository:
                 "q": q,
                 "exchange": exchange,
                 "group": group,
+                "industry_code": industry_code,
                 "page": page,
                 "page_size": page_size,
             }
@@ -157,7 +161,7 @@ async def test_list_stocks_uses_cache_for_unfiltered_requests() -> None:
 async def test_list_stocks_bypasses_cache_for_filtered_requests() -> None:
     repository = _FakeRepository()
     repository.filtered_result = (
-        [_stock(symbol="FPT", organ_name="FPT", exchange="HOSE", groups=["VN30"])],
+        [_stock(symbol="FPT", organ_name="FPT", exchange="HOSE", groups=["VN30"], industry_code=9500)],
         1,
     )
     cache = _FakeCache()
@@ -165,7 +169,14 @@ async def test_list_stocks_bypasses_cache_for_filtered_requests() -> None:
     service = StockCatalogService(repository=repository, refresher=refresher, cache=cache)
 
     response = await service.list_stocks(
-        StockListQuery(q="fpt", exchange="hose", group="vn30", page=1, page_size=20)
+        StockListQuery(
+            q="fpt",
+            exchange="hose",
+            group="vn30",
+            industry_code=9500,
+            page=1,
+            page_size=20,
+        )
     )
 
     assert [item.symbol for item in response.items] == ["FPT"]
@@ -174,6 +185,7 @@ async def test_list_stocks_bypasses_cache_for_filtered_requests() -> None:
             "q": "fpt",
             "exchange": "HOSE",
             "group": "VN30",
+            "industry_code": 9500,
             "page": 1,
             "page_size": 20,
         }
@@ -233,6 +245,36 @@ async def test_list_stocks_falls_back_to_repository_when_cache_get_fails() -> No
 
     assert [item.symbol for item in response.items] == ["FPT"]
     assert repository.list_paginated_calls == [(1, 20)]
+
+
+@pytest.mark.asyncio
+async def test_list_stocks_treats_industry_code_as_filtered_request() -> None:
+    repository = _FakeRepository()
+    repository.filtered_result = (
+        [_stock(symbol="VCB", organ_name="VCB", exchange="HOSE", industry_code=8300)],
+        1,
+    )
+    cache = _FakeCache()
+    refresher = _FakeRefresher()
+    service = StockCatalogService(repository=repository, refresher=refresher, cache=cache)
+
+    response = await service.list_stocks(
+        StockListQuery(industry_code=8300, page=1, page_size=20)
+    )
+
+    assert [item.symbol for item in response.items] == ["VCB"]
+    assert repository.find_filtered_calls == [
+        {
+            "q": None,
+            "exchange": None,
+            "group": None,
+            "industry_code": 8300,
+            "page": 1,
+            "page_size": 20,
+        }
+    ]
+    assert cache.get_calls == []
+    assert cache.set_calls == []
 
 
 @pytest.mark.asyncio

@@ -5,8 +5,6 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any
 
-from vnstock import Listing, register_user
-
 from app.config.settings import get_settings
 
 
@@ -28,6 +26,8 @@ class VnstockListingGateway:
     SOURCE = "VCI"
 
     def __init__(self) -> None:
+        from vnstock import Listing, register_user
+
         settings = get_settings()
         register_user(api_key=settings.VNSTOCK_API_KEY)
         self.listing = Listing(source=self.SOURCE)

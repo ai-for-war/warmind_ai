@@ -1,0 +1,78 @@
+[
+  {
+    "industry_code": 500,
+    "industry_name": "Dầu khí"
+  },
+  {
+    "industry_code": 1300,
+    "industry_name": "Hóa chất"
+  },
+  {
+    "industry_code": 1700,
+    "industry_name": "Tài nguyên Cơ bản"
+  },
+  {
+    "industry_code": 2300,
+    "industry_name": "Xây dựng và Vật liệu"
+  },
+  {
+    "industry_code": 2700,
+    "industry_name": "Hàng & Dịch vụ Công nghiệp"
+  },
+  {
+    "industry_code": 3300,
+    "industry_name": "Ô tô và phụ tùng"
+  },
+  {
+    "industry_code": 3500,
+    "industry_name": "Thực phẩm và đồ uống"
+  },
+  {
+    "industry_code": 3700,
+    "industry_name": "Hàng cá nhân & Gia dụng"
+  },
+  {
+    "industry_code": 4500,
+    "industry_name": "Y tế"
+  },
+  {
+    "industry_code": 5300,
+    "industry_name": "Bán lẻ"
+  },
+  {
+    "industry_code": 5500,
+    "industry_name": "Truyền thông"
+  },
+  {
+    "industry_code": 5700,
+    "industry_name": "Du lịch và Giải trí"
+  },
+  {
+    "industry_code": 6500,
+    "industry_name": "Viễn thông"
+  },
+  {
+    "industry_code": 7500,
+    "industry_name": "Điện, nước & xăng dầu khí đốt"
+  },
+  {
+    "industry_code": 8300,
+    "industry_name": "Ngân hàng"
+  },
+  {
+    "industry_code": 8500,
+    "industry_name": "Bảo hiểm"
+  },
+  {
+    "industry_code": 8600,
+    "industry_name": "Bất động sản"
+  },
+  {
+    "industry_code": 8700,
+    "industry_name": "Dịch vụ tài chính"
+  },
+  {
+    "industry_code": 9500,
+    "industry_name": "Công nghệ Thông tin"
+  }
+]
