@@ -1,8 +1,8 @@
 ## 1. Schema and validation foundations
 
-- [ ] 1.1 Add stock company domain schemas for section-specific response envelopes and item payloads under `app/domain/schemas/`
-- [ ] 1.2 Extend the stock symbol repository with a symbol existence lookup used to validate requested company symbols before upstream reads
-- [ ] 1.3 Define request-query schemas for section filters that are required in v1, including `officers.filter_by` and `subsidiaries.filter_by`
+- [x] 1.1 Add stock company domain schemas for section-specific response envelopes and item payloads under `app/domain/schemas/`
+- [x] 1.2 Extend the stock symbol repository with a symbol existence lookup used to validate requested company symbols before upstream reads
+- [x] 1.3 Define request-query schemas for section filters that are required in v1, including `officers.filter_by` and `subsidiaries.filter_by`
 
 ## 2. Upstream company integration
 
