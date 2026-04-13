@@ -97,6 +97,16 @@ class StockSymbolRepository:
             )
         )
 
+    async def exists_by_symbol(self, symbol: str) -> bool:
+        """Return whether one symbol exists in the active stock catalog snapshot."""
+        normalized_symbol = symbol.strip().upper()
+        if not normalized_symbol:
+            return False
+
+        query = await self._build_active_query()
+        query["symbol"] = normalized_symbol
+        return await self.collection.count_documents(query) > 0
+
     async def replace_snapshot(
         self,
         snapshot: list[StockSymbol],

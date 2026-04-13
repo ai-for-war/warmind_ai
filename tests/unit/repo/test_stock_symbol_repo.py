@@ -346,6 +346,26 @@ async def test_find_filtered_supports_industry_code_filter() -> None:
 
 
 @pytest.mark.asyncio
+async def test_exists_by_symbol_checks_active_snapshot_only() -> None:
+    repository = StockSymbolRepository(
+        _FakeDB(
+            [
+                _stock_document(symbol="AAA", organ_name="AAA", exchange="HOSE"),
+                {
+                    **_stock_document(symbol="FPT", organ_name="FPT", exchange="HOSE"),
+                    "snapshot_at": _utc(2026, 4, 13),
+                    "updated_at": _utc(2026, 4, 13, 1),
+                },
+            ],
+            active_snapshot_at=_utc(2026, 4, 13),
+        )
+    )
+
+    assert await repository.exists_by_symbol(" fpt ") is True
+    assert await repository.exists_by_symbol("aaa") is False
+
+
+@pytest.mark.asyncio
 async def test_upsert_replaces_existing_symbol_document() -> None:
     repository = StockSymbolRepository(
         _FakeDB(

@@ -7,6 +7,11 @@ import pytest
 
 from app.domain.models.stock import StockSymbol
 from app.domain.schemas.stock import StockListQuery
+from app.domain.schemas.stock_company import (
+    StockCompanyOfficersQuery,
+    StockCompanyOverviewResponse,
+    StockCompanySubsidiariesQuery,
+)
 
 
 def _utc(year: int, month: int, day: int, hour: int = 0) -> datetime:
@@ -120,3 +125,30 @@ def test_stock_symbol_accepts_float_industry_code_from_pandas() -> None:
     )
 
     assert stock.industry_code == 8300
+
+
+def test_stock_company_officers_query_normalizes_filter() -> None:
+    query = StockCompanyOfficersQuery(filter_by=" Resigned ")
+
+    assert query.filter_by == "resigned"
+
+
+def test_stock_company_subsidiaries_query_defaults_filter() -> None:
+    query = StockCompanySubsidiariesQuery(filter_by=" ")
+
+    assert query.filter_by == "all"
+
+
+def test_stock_company_response_normalizes_symbol_and_defaults_source() -> None:
+    response = StockCompanyOverviewResponse(
+        symbol=" fpt ",
+        fetched_at=_utc(2026, 4, 13),
+        item={
+            "symbol": "FPT",
+            "company_profile": "Cong ty Co phan FPT",
+        },
+    )
+
+    assert response.symbol == "FPT"
+    assert response.source == "VCI"
+    assert response.cache_hit is False
