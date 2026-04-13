@@ -120,6 +120,7 @@ class _FakeStockCollection:
         *,
         upsert: bool = False,
         return_document: ReturnDocument | bool | None = None,
+        session: object | None = None,
     ) -> dict[str, object] | None:
         for index, document in enumerate(self._documents):
             if not _matches_query(document, query):
@@ -140,7 +141,12 @@ class _FakeStockCollection:
         self._documents.append(created)
         return deepcopy(created)
 
-    async def bulk_write(self, operations: list[object], ordered: bool = True) -> None:
+    async def bulk_write(
+        self,
+        operations: list[object],
+        ordered: bool = True,
+        session: object | None = None,
+    ) -> None:
         for operation in operations:
             query = deepcopy(operation._filter)
             update = deepcopy(operation._doc)
@@ -149,9 +155,14 @@ class _FakeStockCollection:
                 update,
                 upsert=operation._upsert,
                 return_document=ReturnDocument.AFTER,
+                session=session,
             )
 
-    async def delete_many(self, query: dict[str, object]):
+    async def delete_many(
+        self,
+        query: dict[str, object],
+        session: object | None = None,
+    ):
         retained: list[dict[str, object]] = []
         deleted_count = 0
         for document in self._documents:
@@ -186,6 +197,7 @@ class _FakeMetadataCollection:
         *,
         upsert: bool = False,
         return_document: ReturnDocument | bool | None = None,
+        session: object | None = None,
     ) -> dict[str, object] | None:
         document_id = query.get("_id")
         if not isinstance(document_id, str):
@@ -204,6 +216,30 @@ class _FakeMetadataCollection:
         return deepcopy(current)
 
 
+class _FakeTransaction:
+    async def __aenter__(self) -> "_FakeTransaction":
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb) -> bool:
+        return False
+
+
+class _FakeSession:
+    async def __aenter__(self) -> "_FakeSession":
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb) -> bool:
+        return False
+
+    def start_transaction(self) -> _FakeTransaction:
+        return _FakeTransaction()
+
+
+class _FakeClient:
+    async def start_session(self) -> _FakeSession:
+        return _FakeSession()
+
+
 class _FakeDB:
     def __init__(
         self,
@@ -212,6 +248,7 @@ class _FakeDB:
         active_snapshot_at: datetime | None = None,
     ) -> None:
         self.stock_symbols = _FakeStockCollection(documents)
+        self.client = _FakeClient()
         metadata = None
         if active_snapshot_at is not None:
             metadata = {

@@ -17,6 +17,7 @@ class StockSymbolRepository:
     SNAPSHOT_META_ID = "active_snapshot"
 
     def __init__(self, db: AsyncIOMotorDatabase) -> None:
+        self.db = db
         self.collection = db.stock_symbols
         self.metadata_collection = db.stock_catalog_metadata
 
@@ -111,17 +112,27 @@ class StockSymbolRepository:
             )
             for stock_symbol in snapshot
         ]
-        if operations:
-            await self.collection.bulk_write(operations, ordered=True)
+        async with await self.db.client.start_session() as session:
+            async with session.start_transaction():
+                if operations:
+                    await self.collection.bulk_write(
+                        operations,
+                        ordered=True,
+                        session=session,
+                    )
 
-        await self.metadata_collection.find_one_and_update(
-            {"_id": self.SNAPSHOT_META_ID},
-            {"$set": {"snapshot_at": snapshot_at}},
-            upsert=True,
-            return_document=ReturnDocument.AFTER,
-        )
+                await self.metadata_collection.find_one_and_update(
+                    {"_id": self.SNAPSHOT_META_ID},
+                    {"$set": {"snapshot_at": snapshot_at}},
+                    upsert=True,
+                    return_document=ReturnDocument.AFTER,
+                    session=session,
+                )
 
-        await self.collection.delete_many({"snapshot_at": {"$ne": snapshot_at}})
+                await self.collection.delete_many(
+                    {"snapshot_at": {"$ne": snapshot_at}},
+                    session=session,
+                )
         return len(snapshot)
 
     async def _build_active_query(
