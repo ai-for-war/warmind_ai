@@ -32,13 +32,17 @@ also support skill-related runtime metadata needed to preserve skill-aware
 execution across turns, including enabled skills, active skill identity,
 loaded skill history, and skill-scoped tool availability. The runtime state
 model, including middleware-contributed state, SHALL also support planning
-metadata needed to preserve checkpoint-backed todo state across turns.
+metadata needed to preserve checkpoint-backed todo state across turns and
+delegation-related runtime metadata needed for subagent orchestration,
+including turn-scoped orchestration mode, delegation depth, and
+parent-worker execution tracking.
 
-#### Scenario: Create the lead-agent with a skill-aware and planning-aware state model
+#### Scenario: Create the lead-agent with a skill-aware, planning-aware, and delegation-aware state model
 - **WHEN** the lead-agent runtime is initialized
 - **THEN** the agent is created with a state schema that extends `AgentState`
 - **AND** the runtime state model can represent caller scope, skill-related
-  execution metadata, and planning state for the same thread
+  execution metadata, planning state, and delegation-related metadata for the
+  same thread
 
 #### Scenario: Runtime metadata is available in thread state
 - **WHEN** the system invokes the lead agent for an authenticated user
@@ -46,6 +50,8 @@ metadata needed to preserve checkpoint-backed todo state across turns.
 - **AND** the thread state includes `organization_id` when one is provided
 - **AND** the thread state can retain both skill-related execution metadata and
   planning metadata across turns for the same thread
+- **AND** the thread state can retain delegation-related metadata required for
+  subagent orchestration on that thread
 
 ### Requirement: MongoDB checkpointer is the source of truth for thread state
 The lead-agent runtime SHALL persist runtime state through a MongoDB-backed
@@ -70,9 +76,9 @@ data.
 
 ### Requirement: Lead-agent send-message endpoint uses conversation handles
 The system SHALL provide an authenticated `POST /lead-agent/messages`
-endpoint that accepts `content` and an optional `conversation_id`. The client
-MUST NOT be required to provide `thread_id` directly for normal lead-agent
-message submission.
+endpoint that accepts `content`, an optional `conversation_id`, and optional
+turn-scoped subagent orchestration input. The client MUST NOT be required to
+provide `thread_id` directly for normal lead-agent message submission.
 
 #### Scenario: First lead-agent message creates conversation and thread
 - **WHEN** an authenticated client submits a lead-agent message without a
@@ -92,6 +98,14 @@ message submission.
 - **AND** the system reuses the conversation's stored `thread_id`
 - **AND** the system persists the new user message before background runtime
   execution starts
+
+#### Scenario: Accept turn-scoped subagent mode without changing the conversation entry point
+- **WHEN** an authenticated client submits a lead-agent message with
+  turn-scoped subagent orchestration enabled
+- **THEN** the system accepts that input on the existing
+  `POST /lead-agent/messages` endpoint
+- **AND** the system applies the submitted orchestration mode only to the
+  current lead-agent turn
 
 #### Scenario: Reject non-lead-agent or unknown conversation handles
 - **WHEN** an authenticated client submits a lead-agent message with an
@@ -119,38 +133,50 @@ without managing checkpoint identifiers directly.
 
 ### Requirement: Lead-agent runtime supports skill-aware tool registration
 The lead-agent runtime SHALL register the internal tools required for skill
-discovery and skill-aware execution. The runtime MAY register additional
-domain tools, but it MUST expose only the tool subset allowed by the current
-skill context and caller scope for a given model call.
+discovery, planning-aware execution, and subagent orchestration. The runtime
+MAY register additional domain tools, but it MUST expose only the tool subset
+allowed by the current skill context, caller scope, and delegation boundary
+for a given model call.
 
-#### Scenario: Runtime includes internal skill support tools
-- **WHEN** the lead-agent runtime is initialized for skill-aware execution
+#### Scenario: Runtime includes internal coordination tools
+- **WHEN** the lead-agent runtime is initialized for skill-aware and
+  orchestration-aware execution
 - **THEN** it registers the internal tool surface required to discover or load
-  skills during a turn
+  skills, preserve planning state, and delegate work during a turn
 
 #### Scenario: Runtime exposes only the allowed tools for a model call
 - **WHEN** the lead-agent runtime prepares a model call inside a thread
 - **THEN** it exposes only the tools permitted by the current skill context and
   caller scope for that call
 
+#### Scenario: Worker runtime does not expose recursive delegation tools
+- **WHEN** the runtime prepares a model call for a delegated worker execution
+- **THEN** the tool surface does not include recursive delegation capability
+- **AND** the worker remains constrained by the configured maximum delegation
+  depth
+
 ### Requirement: Lead-agent runtime supports custom middleware for skill-aware execution
 The lead-agent runtime SHALL use custom middleware layers to support
-skill-aware execution and todo-based planning. Middleware MUST be able to
-inject available skill summaries into runtime context, attach lead-agent
-planning instructions and the planning tool surface, and apply dynamic tool
-selection before each model call.
+skill-aware execution, todo-based planning, and subagent orchestration.
+Middleware MUST be able to inject available skill summaries into runtime
+context, attach lead-agent planning instructions and the planning tool
+surface, switch the lead agent into orchestration behavior when turn-scoped
+subagent mode is enabled, and apply dynamic tool selection before each model
+call.
 
-#### Scenario: Runtime injects discoverable skill context and planning guidance before model reasoning
+#### Scenario: Runtime injects discoverable skill context and orchestration guidance before model reasoning
 - **WHEN** the lead-agent runtime prepares a model call for a caller with
-  enabled skills
+  enabled skills and turn-scoped subagent orchestration enabled
 - **THEN** middleware injects the available skill summaries into the runtime
   context before the model reasons about the turn
 - **AND** middleware also preserves the planning guidance needed for todo-based
   execution in that call
+- **AND** middleware applies orchestration guidance so the lead agent can
+  decide between answering directly or delegating work
 
-#### Scenario: Runtime re-evaluates tool exposure after skill or planning context changes
+#### Scenario: Runtime re-evaluates tool exposure after skill, planning, or delegation context changes
 - **WHEN** the current thread state changes the active skill, allowed tool set,
-  or persisted planning context during execution
+  persisted planning context, or delegation context during execution
 - **THEN** middleware applies the updated tool exposure rules before the next
   model call
 - **AND** trusted runtime coordination tools required by backend policy remain
@@ -161,7 +187,8 @@ Lead-agent message processing SHALL stream realtime progress and completion to
 the client by reusing the existing chat socket namespace keyed by
 `conversation_id`. In addition to the existing started, token, tool, completed,
 and failed events, the lead-agent runtime SHALL emit a dedicated plan update
-event when a persisted todo snapshot changes.
+event when a persisted todo snapshot changes and SHALL expose delegated tool
+activity through the existing tool event contract.
 
 #### Scenario: Lead-agent response starts after message submission returns
 - **WHEN** the system accepts a valid `POST /lead-agent/messages` request
@@ -180,6 +207,13 @@ event when a persisted todo snapshot changes.
 - **AND** the system emits the existing completed event after the final
   assistant message has been persisted
 
+#### Scenario: Delegated execution flows through existing tool events
+- **WHEN** the lead agent invokes internal delegation during a turn
+- **THEN** the system emits existing tool start and tool end events for that
+  delegated coordination step
+- **AND** delegated execution remains observable through the same
+  conversation-scoped socket stream
+
 #### Scenario: Lead-agent response emits persisted plan update events
 - **WHEN** a lead-agent turn persists a changed todo snapshot during execution
 - **THEN** the system emits a dedicated plan update event keyed by
@@ -192,6 +226,18 @@ event when a persisted todo snapshot changes.
   accepted
 - **THEN** the system emits the existing failed event keyed by
   `conversation_id`
+
+### Requirement: Lead-agent assistant metadata stores delegated execution
+The system SHALL persist delegation-related metadata together with the final
+assistant message for a lead-agent turn when subagent orchestration is
+executed.
+
+#### Scenario: Final assistant message records delegated coordination metadata
+- **WHEN** a lead-agent turn uses one or more worker agents
+- **THEN** the persisted assistant metadata records the delegated coordination
+  activity for that turn
+- **AND** that metadata remains attached to the same conversation and message
+  projection used by the frontend
 
 ### Requirement: Lead-agent conversations are browsable through conversation and message endpoints
 The system SHALL provide authenticated endpoints for listing lead-agent
