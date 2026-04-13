@@ -6,24 +6,24 @@
 
 ## 2. Upstream company integration
 
-- [ ] 2.1 Create a `VnstockCompanyGateway` that wraps `Company(symbol=..., source='VCI')` and exposes one fetch method per supported company-information section
-- [ ] 2.2 Implement DataFrame-like payload conversion helpers in the company gateway so each section can be returned as plain dictionaries or lists
-- [ ] 2.3 Document and handle the current runtime mismatch between the public `vnstock` wrapper and the installed VCI provider methods near the integration point
-- [ ] 2.4 Implement section-specific normalization that preserves canonical VCI fields without speculative cross-provider aliases
+- [x] 2.1 Create a `VnstockCompanyGateway` that wraps `Company(symbol=..., source='VCI')` and exposes one fetch method per supported company-information section
+- [x] 2.2 Implement DataFrame-like payload conversion helpers in the company gateway so each section can be returned as plain dictionaries or lists
+- [x] 2.3 Document and handle the current runtime mismatch between the public `vnstock` wrapper and the installed VCI provider methods near the integration point
+- [x] 2.4 Implement section-specific normalization that preserves canonical VCI fields without speculative cross-provider aliases
 
 ## 3. Cache and service orchestration
 
-- [ ] 3.1 Create Redis cache helpers for company-information responses keyed by stock symbol, section, and supported filter variants
-- [ ] 3.2 Implement a `StockCompanyService` that normalizes symbols, validates them against the stock catalog, and orchestrates cache lookup plus upstream fetch on miss
-- [ ] 3.3 Implement stale-cache fallback so upstream failures return the latest cached response for the same symbol and section when available
-- [ ] 3.4 Ensure section-level failures remain isolated so one failing company tab does not block later reads for other tabs
+- [x] 3.1 Create Redis cache helpers for company-information responses keyed by stock symbol, section, and supported filter variants
+- [x] 3.2 Implement a `StockCompanyService` that normalizes symbols, validates them against the stock catalog, and orchestrates cache lookup plus upstream fetch on miss
+- [x] 3.3 Implement stale-cache fallback so upstream failures return the latest cached response for the same symbol and section when available
+- [x] 3.4 Ensure section-level failures remain isolated so one failing company tab does not block later reads for other tabs
 
 ## 4. API wiring and authorization
 
-- [ ] 4.1 Extend the stock API router with authenticated tab-wise company-information endpoints under `/api/v1/stocks/{symbol}/company/*`
-- [ ] 4.2 Wire the new company gateway, cache helper, and service into shared dependency factories in `app/common/service.py`
-- [ ] 4.3 Ensure every company-information endpoint reuses the existing active-user and organization-context dependencies
-- [ ] 4.4 Ensure endpoint responses expose stable envelope metadata such as `symbol`, `source`, `fetched_at`, and `cache_hit`
+- [x] 4.1 Extend the stock API router with authenticated tab-wise company-information endpoints under `/api/v1/stocks/{symbol}/company/*`
+- [x] 4.2 Wire the new company gateway, cache helper, and service into shared dependency factories in `app/common/service.py`
+- [x] 4.3 Ensure every company-information endpoint reuses the existing active-user and organization-context dependencies
+- [x] 4.4 Ensure endpoint responses expose stable envelope metadata such as `symbol`, `source`, `fetched_at`, and `cache_hit`
 
 ## 5. Tests and verification
 

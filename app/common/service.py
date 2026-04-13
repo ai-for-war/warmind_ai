@@ -62,6 +62,9 @@ from app.services.meeting.session_manager import MeetingSessionManager
 from app.services.organization.organization_service import OrganizationService
 from app.services.sheet_crawler.crawler_service import SheetCrawlerService
 from app.services.stocks.cache import StockCatalogCache
+from app.services.stocks.company_cache import StockCompanyCache
+from app.services.stocks.company_gateway import VnstockCompanyGateway
+from app.services.stocks.company_service import StockCompanyService
 from app.services.stocks.refresh import StockCatalogSnapshotRefresher
 from app.services.stocks.stock_catalog_service import StockCatalogService
 from app.services.stocks.vnstock_gateway import VnstockListingGateway
@@ -202,9 +205,22 @@ def get_stock_catalog_cache() -> StockCatalogCache:
 
 
 @lru_cache
+def get_stock_company_cache() -> StockCompanyCache:
+    """Get singleton stock company cache helper."""
+    client = RedisClient.get_client()
+    return StockCompanyCache(client)
+
+
+@lru_cache
 def get_vnstock_listing_gateway() -> VnstockListingGateway:
     """Get singleton vnstock listing gateway."""
     return VnstockListingGateway()
+
+
+@lru_cache
+def get_vnstock_company_gateway() -> VnstockCompanyGateway:
+    """Get singleton vnstock company gateway."""
+    return VnstockCompanyGateway()
 
 
 @lru_cache
@@ -223,6 +239,16 @@ def get_stock_catalog_service() -> StockCatalogService:
         repository=get_stock_symbol_repo(),
         refresher=get_stock_catalog_refresher(),
         cache=get_stock_catalog_cache(),
+    )
+
+
+@lru_cache
+def get_stock_company_service() -> StockCompanyService:
+    """Get singleton stock company service."""
+    return StockCompanyService(
+        repository=get_stock_symbol_repo(),
+        gateway=get_vnstock_company_gateway(),
+        cache=get_stock_company_cache(),
     )
 
 

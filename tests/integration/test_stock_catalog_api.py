@@ -15,9 +15,13 @@ from app.api.deps import (
 )
 from app.api.v1.stocks.router import router as stocks_router
 from app.common.exceptions import AppException
-from app.common.service import get_stock_catalog_service
+from app.common.service import get_stock_catalog_service, get_stock_company_service
 from app.domain.models.user import User, UserRole
 from app.domain.schemas.stock import StockListItem, StockListResponse, StockRefreshResponse
+from app.domain.schemas.stock_company import (
+    StockCompanyOfficersResponse,
+    StockCompanyOverviewResponse,
+)
 
 
 def _utc(year: int, month: int, day: int, hour: int = 0) -> datetime:
@@ -73,9 +77,49 @@ class _FakeStockCatalogService:
         )
 
 
+class _FakeStockCompanyService:
+    def __init__(self) -> None:
+        self.overview_calls: list[str] = []
+        self.officers_calls: list[tuple[str, str]] = []
+
+    async def get_overview(self, symbol: str) -> StockCompanyOverviewResponse:
+        self.overview_calls.append(symbol)
+        return StockCompanyOverviewResponse(
+            symbol=symbol,
+            source="VCI",
+            fetched_at=_utc(2026, 4, 13),
+            cache_hit=False,
+            item={
+                "symbol": symbol,
+                "company_profile": "Cong ty Co phan FPT",
+            },
+        )
+
+    async def get_officers(
+        self,
+        symbol: str,
+        *,
+        filter_by: str = "working",
+    ) -> StockCompanyOfficersResponse:
+        self.officers_calls.append((symbol, filter_by))
+        return StockCompanyOfficersResponse(
+            symbol=symbol,
+            source="VCI",
+            fetched_at=_utc(2026, 4, 13),
+            cache_hit=True,
+            items=[
+                {
+                    "id": 1,
+                    "officer_name": "CEO",
+                }
+            ],
+        )
+
+
 def _build_test_app(
     *,
     service: _FakeStockCatalogService,
+    company_service: _FakeStockCompanyService | None = None,
 ) -> FastAPI:
     app = FastAPI()
 
@@ -92,6 +136,8 @@ def _build_test_app(
         lambda: OrganizationContext(organization_id="org-1")
     )
     app.dependency_overrides[get_stock_catalog_service] = lambda: service
+    if company_service is not None:
+        app.dependency_overrides[get_stock_company_service] = lambda: company_service
     return app
 
 
@@ -159,3 +205,71 @@ async def test_refresh_stock_catalog_allows_super_admin() -> None:
     assert response.status_code == 200
     assert response.json()["upserted"] == 1
     assert service.refresh_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_get_stock_company_overview_requires_org_auth_and_returns_metadata() -> None:
+    service = _FakeStockCatalogService()
+    company_service = _FakeStockCompanyService()
+    app = _build_test_app(service=service, company_service=company_service)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.get("/stocks/FPT/company/overview")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["symbol"] == "FPT"
+    assert body["source"] == "VCI"
+    assert body["cache_hit"] is False
+    assert body["item"]["company_profile"] == "Cong ty Co phan FPT"
+    assert company_service.overview_calls == ["FPT"]
+
+
+@pytest.mark.asyncio
+async def test_get_stock_company_officers_passes_filter_query() -> None:
+    service = _FakeStockCatalogService()
+    company_service = _FakeStockCompanyService()
+    app = _build_test_app(service=service, company_service=company_service)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.get(
+            "/stocks/FPT/company/officers",
+            params={"filter_by": "resigned"},
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["cache_hit"] is True
+    assert body["items"][0]["officer_name"] == "CEO"
+    assert company_service.officers_calls == [("FPT", "resigned")]
+
+
+@pytest.mark.asyncio
+async def test_get_stock_company_overview_surfaces_not_found_from_service() -> None:
+    service = _FakeStockCatalogService()
+    app = _build_test_app(service=service)
+
+    async def _missing_company(_symbol: str):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Stock symbol not found",
+        )
+
+    company_service = _FakeStockCompanyService()
+    company_service.get_overview = _missing_company  # type: ignore[method-assign]
+    app.dependency_overrides[get_stock_company_service] = lambda: company_service
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.get("/stocks/UNKNOWN/company/overview")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Stock symbol not found"
