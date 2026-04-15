@@ -1,8 +1,8 @@
 ## 1. Schema and query validation foundations
 
-- [ ] 1.1 Add stock price domain schemas for history and intraday response envelopes plus canonical raw item payloads under `app/domain/schemas/`
-- [ ] 1.2 Add request-query schemas for the public v1 contract, including `history` parameters (`start`, `end`, `interval`, `length`) and `intraday` parameters (`page_size`, `last_time`, `last_time_format`)
-- [ ] 1.3 Implement schema-level validation rules that reject unsupported query combinations such as providing both `start` and `length` or neither of them for history reads
+- [x] 1.1 Add stock price domain schemas for history and intraday response envelopes plus canonical raw item payloads under `app/domain/schemas/`
+- [x] 1.2 Add request-query schemas for the public v1 contract, including `history` parameters (`start`, `end`, `interval`, `length`) and `intraday` parameters (`page_size`, `last_time`, `last_time_format`)
+- [x] 1.3 Implement schema-level validation rules that reject unsupported query combinations such as providing both `start` and `length` or neither of them for history reads
 
 ## 2. Upstream quote integration
 
@@ -24,7 +24,7 @@
 - [ ] 4.1 Extend the stock API router with authenticated price endpoints under `/api/v1/stocks/{symbol}/prices/history` and `/api/v1/stocks/{symbol}/prices/intraday`
 - [ ] 4.2 Wire the new price gateway, cache helper, and service into shared dependency factories in `app/common/service.py`
 - [ ] 4.3 Ensure every stock price endpoint reuses the existing active-user and organization-context dependencies
-- [ ] 4.4 Ensure endpoint responses expose stable envelope metadata such as `symbol`, `source`, `fetched_at`, `cache_hit`, and `interval` for history responses
+- [ ] 4.4 Ensure endpoint responses expose stable envelope metadata such as `symbol`, `source`, `cache_hit`, and `interval` for history responses
 
 ## 5. Tests and verification
 

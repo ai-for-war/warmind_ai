@@ -93,9 +93,9 @@ Only the endpoint-specific payload is returned on each request.
 
 Recommended response envelopes:
 
-- history response: `symbol`, `source`, `fetched_at`, `cache_hit`, `interval`,
+- history response: `symbol`, `source`, `cache_hit`, `interval`,
   `items`
-- intraday response: `symbol`, `source`, `fetched_at`, `cache_hit`, `items`
+- intraday response: `symbol`, `source`, `cache_hit`, `items`
 
 **Rationale**:
 - matches the confirmed frontend consumption model
