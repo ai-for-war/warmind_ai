@@ -10,7 +10,11 @@ from app.api.deps import (
     get_current_organization_context,
     require_super_admin,
 )
-from app.common.service import get_stock_catalog_service, get_stock_company_service
+from app.common.service import (
+    get_stock_catalog_service,
+    get_stock_company_service,
+    get_stock_price_service,
+)
 from app.domain.models.user import User
 from app.domain.schemas.stock import (
     StockListQuery,
@@ -31,7 +35,14 @@ from app.domain.schemas.stock_company import (
     StockCompanySubsidiariesResponse,
     StockCompanyTradingStatsResponse,
 )
+from app.domain.schemas.stock_price import (
+    StockPriceHistoryQuery,
+    StockPriceHistoryResponse,
+    StockPriceIntradayQuery,
+    StockPriceIntradayResponse,
+)
 from app.services.stocks.company_service import StockCompanyService
+from app.services.stocks.price_service import StockPriceService
 from app.services.stocks.stock_catalog_service import StockCatalogService
 
 router = APIRouter(prefix="/stocks", tags=["stocks"])
@@ -183,3 +194,27 @@ async def get_stock_company_trading_stats(
 ) -> StockCompanyTradingStatsResponse:
     """Return the trading-stats tab for one stock symbol."""
     return await service.get_trading_stats(symbol)
+
+
+@router.get("/{symbol}/prices/history", response_model=StockPriceHistoryResponse)
+async def get_stock_price_history(
+    symbol: str,
+    query: StockPriceHistoryQuery = Depends(),
+    _: User = Depends(get_current_active_user),
+    __: OrganizationContext = Depends(get_current_organization_context),
+    service: StockPriceService = Depends(get_stock_price_service),
+) -> StockPriceHistoryResponse:
+    """Return historical OHLCV timeseries for one stock symbol."""
+    return await service.get_history(symbol, query)
+
+
+@router.get("/{symbol}/prices/intraday", response_model=StockPriceIntradayResponse)
+async def get_stock_price_intraday(
+    symbol: str,
+    query: StockPriceIntradayQuery = Depends(),
+    _: User = Depends(get_current_active_user),
+    __: OrganizationContext = Depends(get_current_organization_context),
+    service: StockPriceService = Depends(get_stock_price_service),
+) -> StockPriceIntradayResponse:
+    """Return intraday trade timeseries for one stock symbol."""
+    return await service.get_intraday(symbol, query)

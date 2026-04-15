@@ -65,6 +65,9 @@ from app.services.stocks.cache import StockCatalogCache
 from app.services.stocks.company_cache import StockCompanyCache
 from app.services.stocks.company_gateway import VnstockCompanyGateway
 from app.services.stocks.company_service import StockCompanyService
+from app.services.stocks.price_cache import StockPriceCache
+from app.services.stocks.price_gateway import VnstockPriceGateway
+from app.services.stocks.price_service import StockPriceService
 from app.services.stocks.refresh import StockCatalogSnapshotRefresher
 from app.services.stocks.stock_catalog_service import StockCatalogService
 from app.services.stocks.vnstock_gateway import VnstockListingGateway
@@ -212,6 +215,13 @@ def get_stock_company_cache() -> StockCompanyCache:
 
 
 @lru_cache
+def get_stock_price_cache() -> StockPriceCache:
+    """Get singleton stock price cache helper."""
+    client = RedisClient.get_client()
+    return StockPriceCache(client)
+
+
+@lru_cache
 def get_vnstock_listing_gateway() -> VnstockListingGateway:
     """Get singleton vnstock listing gateway."""
     return VnstockListingGateway()
@@ -221,6 +231,12 @@ def get_vnstock_listing_gateway() -> VnstockListingGateway:
 def get_vnstock_company_gateway() -> VnstockCompanyGateway:
     """Get singleton vnstock company gateway."""
     return VnstockCompanyGateway()
+
+
+@lru_cache
+def get_vnstock_price_gateway() -> VnstockPriceGateway:
+    """Get singleton vnstock price gateway."""
+    return VnstockPriceGateway()
 
 
 @lru_cache
@@ -249,6 +265,16 @@ def get_stock_company_service() -> StockCompanyService:
         repository=get_stock_symbol_repo(),
         gateway=get_vnstock_company_gateway(),
         cache=get_stock_company_cache(),
+    )
+
+
+@lru_cache
+def get_stock_price_service() -> StockPriceService:
+    """Get singleton stock price service."""
+    return StockPriceService(
+        repository=get_stock_symbol_repo(),
+        gateway=get_vnstock_price_gateway(),
+        cache=get_stock_price_cache(),
     )
 
 

@@ -21,10 +21,10 @@
 
 ## 4. API wiring and authorization
 
-- [ ] 4.1 Extend the stock API router with authenticated price endpoints under `/api/v1/stocks/{symbol}/prices/history` and `/api/v1/stocks/{symbol}/prices/intraday`
-- [ ] 4.2 Wire the new price gateway, cache helper, and service into shared dependency factories in `app/common/service.py`
-- [ ] 4.3 Ensure every stock price endpoint reuses the existing active-user and organization-context dependencies
-- [ ] 4.4 Ensure endpoint responses expose stable envelope metadata such as `symbol`, `source`, `cache_hit`, and `interval` for history responses
+- [x] 4.1 Extend the stock API router with authenticated price endpoints under `/api/v1/stocks/{symbol}/prices/history` and `/api/v1/stocks/{symbol}/prices/intraday`
+- [x] 4.2 Wire the new price gateway, cache helper, and service into shared dependency factories in `app/common/service.py`
+- [x] 4.3 Ensure every stock price endpoint reuses the existing active-user and organization-context dependencies
+- [x] 4.4 Ensure endpoint responses expose stable envelope metadata such as `symbol`, `source`, `cache_hit`, and `interval` for history responses
 
 ## 5. Tests and verification
 
