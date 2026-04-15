@@ -16,14 +16,26 @@ from app.api.deps import (
 from app.api.v1.stocks.router import router as stocks_router
 from app.common.exceptions import AppException
 from app.common.repo import get_member_repo, get_org_repo
-from app.common.service import get_stock_catalog_service, get_stock_company_service
+from app.common.service import (
+    get_stock_catalog_service,
+    get_stock_company_service,
+    get_stock_price_service,
+)
 from app.domain.models.user import User, UserRole
-from app.domain.schemas.stock import StockListItem, StockListResponse, StockRefreshResponse
+from app.domain.schemas.stock import (
+    StockListItem,
+    StockListResponse,
+    StockRefreshResponse,
+)
 from app.domain.schemas.stock_company import (
     StockCompanyNewsResponse,
     StockCompanyOfficersResponse,
     StockCompanyOverviewResponse,
     StockCompanySubsidiariesResponse,
+)
+from app.domain.schemas.stock_price import (
+    StockPriceHistoryResponse,
+    StockPriceIntradayResponse,
 )
 
 
@@ -157,6 +169,48 @@ class _FakeStockCompanyService:
         )
 
 
+class _FakeStockPriceService:
+    def __init__(self) -> None:
+        self.history_calls: list[tuple[str, object]] = []
+        self.intraday_calls: list[tuple[str, object]] = []
+
+    async def get_history(self, symbol: str, query) -> StockPriceHistoryResponse:
+        self.history_calls.append((symbol, query))
+        return StockPriceHistoryResponse(
+            symbol=symbol,
+            source="VCI",
+            cache_hit=False,
+            interval=query.interval,
+            items=[
+                {
+                    "time": "2026-04-15",
+                    "open": 100.0,
+                    "high": 102.0,
+                    "low": 99.0,
+                    "close": 101.0,
+                    "volume": 1000,
+                }
+            ],
+        )
+
+    async def get_intraday(self, symbol: str, query) -> StockPriceIntradayResponse:
+        self.intraday_calls.append((symbol, query))
+        return StockPriceIntradayResponse(
+            symbol=symbol,
+            source="VCI",
+            cache_hit=True,
+            items=[
+                {
+                    "time": "2026-04-15T09:15:00",
+                    "price": 101.2,
+                    "volume": 50,
+                    "match_type": "Buy",
+                    "id": 42,
+                }
+            ],
+        )
+
+
 class _FakeOrganization:
     def __init__(self, *, is_active: bool = True) -> None:
         self.is_active = is_active
@@ -179,9 +233,7 @@ class _FakeMembership:
 
 class _FakeMemberRepo:
     def __init__(self, memberships: set[tuple[str, str]] | None = None) -> None:
-        self.memberships = (
-            {("user-1", "org-1")} if memberships is None else memberships
-        )
+        self.memberships = {("user-1", "org-1")} if memberships is None else memberships
 
     async def find_by_user_and_org(
         self,
@@ -200,6 +252,7 @@ def _build_test_app(
     *,
     service: _FakeStockCatalogService,
     company_service: _FakeStockCompanyService | None = None,
+    price_service: _FakeStockPriceService | None = None,
     use_real_org_context: bool = False,
     org_repo: _FakeOrganizationRepo | None = None,
     member_repo: _FakeMemberRepo | None = None,
@@ -216,24 +269,28 @@ def _build_test_app(
     app.include_router(stocks_router)
     app.dependency_overrides[get_current_active_user] = lambda: _user()
     if use_real_org_context:
-        app.dependency_overrides[get_org_repo] = (
-            lambda: org_repo or _FakeOrganizationRepo()
+        app.dependency_overrides[get_org_repo] = lambda: (
+            org_repo or _FakeOrganizationRepo()
         )
-        app.dependency_overrides[get_member_repo] = (
-            lambda: member_repo or _FakeMemberRepo()
+        app.dependency_overrides[get_member_repo] = lambda: (
+            member_repo or _FakeMemberRepo()
         )
     else:
-        app.dependency_overrides[get_current_organization_context] = (
-            lambda: OrganizationContext(organization_id="org-1")
+        app.dependency_overrides[get_current_organization_context] = lambda: (
+            OrganizationContext(organization_id="org-1")
         )
     app.dependency_overrides[get_stock_catalog_service] = lambda: service
     if company_service is not None:
         app.dependency_overrides[get_stock_company_service] = lambda: company_service
+    if price_service is not None:
+        app.dependency_overrides[get_stock_price_service] = lambda: price_service
     return app
 
 
 @pytest.mark.asyncio
-async def test_list_stocks_requires_org_auth_dependencies_and_returns_response() -> None:
+async def test_list_stocks_requires_org_auth_dependencies_and_returns_response() -> (
+    None
+):
     service = _FakeStockCatalogService()
     app = _build_test_app(service=service)
 
@@ -299,7 +356,9 @@ async def test_refresh_stock_catalog_allows_super_admin() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_stock_company_overview_requires_org_auth_and_returns_metadata() -> None:
+async def test_get_stock_company_overview_requires_org_auth_and_returns_metadata() -> (
+    None
+):
     service = _FakeStockCatalogService()
     company_service = _FakeStockCompanyService()
     app = _build_test_app(service=service, company_service=company_service)
@@ -473,3 +532,169 @@ async def test_one_failing_company_endpoint_does_not_block_other_endpoints() -> 
     assert news_response.status_code == 200
     assert news_response.json()["items"][0]["news_title"] == "FPT expands"
     assert company_service.news_calls == ["FPT"]
+
+
+@pytest.mark.asyncio
+async def test_get_stock_price_history_requires_org_auth_and_returns_metadata() -> None:
+    service = _FakeStockCatalogService()
+    price_service = _FakeStockPriceService()
+    app = _build_test_app(service=service, price_service=price_service)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.get(
+            "/stocks/FPT/prices/history",
+            params={"start": "2026-04-01", "interval": "1D"},
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["symbol"] == "FPT"
+    assert body["source"] == "VCI"
+    assert body["cache_hit"] is False
+    assert body["interval"] == "1D"
+    assert body["items"][0]["close"] == 101.0
+    assert price_service.history_calls[0][0] == "FPT"
+    assert price_service.history_calls[0][1].start == "2026-04-01"
+
+
+@pytest.mark.asyncio
+async def test_get_stock_price_intraday_passes_query_params() -> None:
+    service = _FakeStockCatalogService()
+    price_service = _FakeStockPriceService()
+    app = _build_test_app(service=service, price_service=price_service)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.get(
+            "/stocks/FPT/prices/intraday",
+            params={
+                "page_size": 120,
+                "last_time": "2026-04-15 09:15:00",
+                "last_time_format": "%Y-%m-%d %H:%M:%S",
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["cache_hit"] is True
+    assert body["items"][0]["id"] == 42
+    assert price_service.intraday_calls[0][0] == "FPT"
+    assert price_service.intraday_calls[0][1].page_size == 120
+    assert price_service.intraday_calls[0][1].last_time == "2026-04-15 09:15:00"
+
+
+@pytest.mark.asyncio
+async def test_get_stock_price_history_surfaces_not_found_from_service() -> None:
+    service = _FakeStockCatalogService()
+    app = _build_test_app(service=service)
+
+    async def _missing_history(_symbol: str, _query):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Stock symbol not found",
+        )
+
+    price_service = _FakeStockPriceService()
+    price_service.get_history = _missing_history  # type: ignore[method-assign]
+    app.dependency_overrides[get_stock_price_service] = lambda: price_service
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.get(
+            "/stocks/UNKNOWN/prices/history",
+            params={"start": "2026-04-01"},
+        )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Stock symbol not found"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/stocks/FPT/prices/history?start=2026-04-01",
+        "/stocks/FPT/prices/intraday",
+    ],
+)
+async def test_price_routes_require_x_organization_id_header(path: str) -> None:
+    service = _FakeStockCatalogService()
+    price_service = _FakeStockPriceService()
+    app = _build_test_app(
+        service=service,
+        price_service=price_service,
+        use_real_org_context=True,
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.get(path)
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "X-Organization-ID header is required"
+
+
+@pytest.mark.asyncio
+async def test_price_route_rejects_user_without_org_membership() -> None:
+    service = _FakeStockCatalogService()
+    price_service = _FakeStockPriceService()
+    app = _build_test_app(
+        service=service,
+        price_service=price_service,
+        use_real_org_context=True,
+        member_repo=_FakeMemberRepo(memberships=set()),
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.get(
+            "/stocks/FPT/prices/history",
+            params={"start": "2026-04-01"},
+            headers={"X-Organization-ID": "org-1"},
+        )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Permission denied"
+
+
+@pytest.mark.asyncio
+async def test_one_failing_price_endpoint_does_not_block_other_price_endpoints() -> (
+    None
+):
+    service = _FakeStockCatalogService()
+    price_service = _FakeStockPriceService()
+    app = _build_test_app(service=service, price_service=price_service)
+
+    async def _failing_history(_symbol: str, _query):
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="history failed",
+        )
+
+    price_service.get_history = _failing_history  # type: ignore[method-assign]
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        history_response = await client.get(
+            "/stocks/FPT/prices/history",
+            params={"start": "2026-04-01"},
+        )
+        intraday_response = await client.get("/stocks/FPT/prices/intraday")
+
+    assert history_response.status_code == 502
+    assert history_response.json()["detail"] == "history failed"
+    assert intraday_response.status_code == 200
+    assert intraday_response.json()["items"][0]["match_type"] == "Buy"
