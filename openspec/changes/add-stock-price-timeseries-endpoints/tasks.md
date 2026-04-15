@@ -28,8 +28,8 @@
 
 ## 5. Tests and verification
 
-- [ ] 5.1 Add gateway tests for history and intraday fetches, canonical field preservation, empty payload handling, and runtime-specific parameter behavior
-- [ ] 5.2 Add service tests for symbol validation before upstream calls, query validation, cache hit and miss behavior, and stale-cache fallback by query variant
-- [ ] 5.3 Add service or API tests for deterministic error mapping across invalid symbol, invalid query shape, and upstream failure cases
-- [ ] 5.4 Add API tests for organization-scoped read access across the new stock price routes
-- [ ] 5.5 Run the relevant stock-service and API test suites and resolve any failures introduced by the new endpoints
+- [x] 5.1 Add gateway tests for history and intraday fetches, canonical field preservation, empty payload handling, and runtime-specific parameter behavior
+- [x] 5.2 Add service tests for symbol validation before upstream calls, query validation, cache hit and miss behavior, and stale-cache fallback by query variant
+- [x] 5.3 Add service or API tests for deterministic error mapping across invalid symbol, invalid query shape, and upstream failure cases
+- [x] 5.4 Add API tests for organization-scoped read access across the new stock price routes
+- [x] 5.5 Run the relevant stock-service and API test suites and resolve any failures introduced by the new endpoints
