@@ -13,11 +13,11 @@
 
 ## 3. Cache and service orchestration
 
-- [ ] 3.1 Create Redis cache helpers for stock price responses keyed by stock symbol, endpoint section, and normalized query variant
-- [ ] 3.2 Implement a `StockPriceService` that normalizes symbols, validates them against the stock catalog, and orchestrates cache lookup plus upstream fetch on miss
-- [ ] 3.3 Offload synchronous upstream quote reads through `run_in_threadpool` and map provider or transport failures into deterministic API-facing errors
-- [ ] 3.4 Implement stale-cache fallback so upstream failures return the latest cached response for the same symbol, endpoint section, and query variant when available
-- [ ] 3.5 Ensure endpoint-level and query-variant failures remain isolated so one failing history or intraday request does not block later reads for other sections or variants
+- [x] 3.1 Create Redis cache helpers for stock price responses keyed by stock symbol, endpoint section, and normalized query variant
+- [x] 3.2 Implement a `StockPriceService` that normalizes symbols, validates them against the stock catalog, and orchestrates cache lookup plus upstream fetch on miss
+- [x] 3.3 Offload synchronous upstream quote reads through `run_in_threadpool` and map provider or transport failures into deterministic API-facing errors
+- [x] 3.4 Implement stale-cache fallback so upstream failures return the latest cached response for the same symbol, endpoint section, and query variant when available
+- [x] 3.5 Ensure endpoint-level and query-variant failures remain isolated so one failing history or intraday request does not block later reads for other sections or variants
 
 ## 4. API wiring and authorization
 
