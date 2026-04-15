@@ -6,10 +6,10 @@
 
 ## 2. Upstream quote integration
 
-- [ ] 2.1 Create a `VnstockPriceGateway` that wraps `Quote(symbol=..., source='VCI')` and exposes dedicated fetch methods for `history` and `intraday`
-- [ ] 2.2 Implement DataFrame-like payload conversion helpers in the price gateway so history and intraday responses are returned as plain record lists
-- [ ] 2.3 Implement endpoint-specific normalization that preserves canonical VCI raw fields for OHLCV history and intraday trade timeseries without speculative aliases
-- [ ] 2.4 Document and handle the current runtime mismatch between the public `vnstock` quote wrapper and the installed VCI provider behavior near the integration point
+- [x] 2.1 Create a `VnstockPriceGateway` that wraps `Quote(symbol=..., source='VCI')` and exposes dedicated fetch methods for `history` and `intraday`
+- [x] 2.2 Implement DataFrame-like payload conversion helpers in the price gateway so history and intraday responses are returned as plain record lists
+- [x] 2.3 Implement endpoint-specific normalization that preserves canonical VCI raw fields for OHLCV history and intraday trade timeseries without speculative aliases
+- [x] 2.4 Document and handle the current runtime mismatch between the public `vnstock` quote wrapper and the installed VCI provider behavior near the integration point
 
 ## 3. Cache and service orchestration
 
