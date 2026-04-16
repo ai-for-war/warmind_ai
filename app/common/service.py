@@ -48,6 +48,11 @@ from app.services.ai.pipeline_validator import PipelineValidator
 from app.services.analytics.analytics_service import AnalyticsService
 from app.services.analytics.cache_manager import AnalyticsCacheManager
 from app.services.auth.auth_service import AuthService
+from app.services.backtest.data_service import BacktestDataService
+from app.services.backtest.engine import BacktestEngine
+from app.services.backtest.metrics import BacktestMetricsBuilder
+from app.services.backtest.service import BacktestService
+from app.services.backtest.templates import BacktestTemplateRegistry
 from app.services.image.image_service import ImageService
 from app.services.image.image_generation_service import ImageGenerationService
 from app.services.interview.answer_service import InterviewAnswerService
@@ -275,6 +280,41 @@ def get_stock_price_service() -> StockPriceService:
         repository=get_stock_symbol_repo(),
         gateway=get_vnstock_price_gateway(),
         cache=get_stock_price_cache(),
+    )
+
+
+@lru_cache
+def get_backtest_data_service() -> BacktestDataService:
+    """Get singleton backtest data-loading service."""
+    return BacktestDataService(get_stock_price_service())
+
+
+@lru_cache
+def get_backtest_template_registry() -> BacktestTemplateRegistry:
+    """Get singleton backtest template registry."""
+    return BacktestTemplateRegistry()
+
+
+@lru_cache
+def get_backtest_engine() -> BacktestEngine:
+    """Get singleton backtest execution engine."""
+    return BacktestEngine()
+
+
+@lru_cache
+def get_backtest_metrics_builder() -> BacktestMetricsBuilder:
+    """Get singleton backtest metrics builder."""
+    return BacktestMetricsBuilder()
+
+
+@lru_cache
+def get_backtest_service() -> BacktestService:
+    """Get singleton internal backtest orchestration service."""
+    return BacktestService(
+        data_service=get_backtest_data_service(),
+        template_registry=get_backtest_template_registry(),
+        engine=get_backtest_engine(),
+        metrics_builder=get_backtest_metrics_builder(),
     )
 
 

@@ -21,9 +21,9 @@
 
 ## 4. Internal orchestration and integration boundaries
 
-- [ ] 4.1 Implement the top-level backtest service that orchestrates request validation, data loading, template execution, metrics assembly, and response shaping
-- [ ] 4.2 Wire the backtest service into shared internal dependency factories if required by the current application service layout
-- [ ] 4.3 Ensure this change does not register a selectable lead-agent tool or otherwise expose the backtest capability in the current public lead-agent tool catalog
+- [x] 4.1 Implement the top-level backtest service that orchestrates request validation, data loading, template execution, metrics assembly, and response shaping
+- [x] 4.2 Wire the backtest service into shared internal dependency factories if required by the current application service layout
+- [x] 4.3 Ensure this change does not register a selectable lead-agent tool or otherwise expose the backtest capability in the current public lead-agent tool catalog
 
 ## 5. Tests and verification
 
