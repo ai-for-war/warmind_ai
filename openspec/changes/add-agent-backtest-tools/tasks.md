@@ -6,10 +6,10 @@
 
 ## 2. Data loading and template definitions
 
-- [ ] 2.1 Implement a `BacktestDataService` that reuses the existing stock-price history capability to load canonical daily OHLCV bars for a validated symbol and date range
-- [ ] 2.2 Reject empty or insufficient history before strategy execution begins
-- [ ] 2.3 Implement the `buy_and_hold` template with no required strategy parameters
-- [ ] 2.4 Implement the `sma_crossover` template with validated `fast_window` and `slow_window` parameters and crossover signal generation rules
+- [x] 2.1 Implement a `BacktestDataService` that reuses the existing stock-price history capability to load canonical daily OHLCV bars for a validated symbol and date range
+- [x] 2.2 Reject empty or insufficient history before strategy execution begins
+- [x] 2.3 Implement the `buy_and_hold` template with no required strategy parameters
+- [x] 2.4 Implement the `sma_crossover` template with validated `fast_window` and `slow_window` parameters and crossover signal generation rules
 
 ## 3. Execution engine and metrics
 

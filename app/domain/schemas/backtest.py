@@ -170,6 +170,17 @@ class BacktestTradeLogEntry(StockSchemaBase):
     exit_reason: str = Field(..., min_length=1)
 
 
+class BacktestBar(StockSchemaBase):
+    """One canonical daily OHLCV bar used for backtest execution."""
+
+    time: str = Field(..., min_length=1)
+    open: float = Field(..., ge=0)
+    high: float = Field(..., ge=0)
+    low: float = Field(..., ge=0)
+    close: float = Field(..., ge=0)
+    volume: float = Field(..., ge=0)
+
+
 class BacktestEquityCurvePoint(StockSchemaBase):
     """One time-ordered equity snapshot from a backtest run."""
 
