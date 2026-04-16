@@ -13,11 +13,11 @@
 
 ## 3. Execution engine and metrics
 
-- [ ] 3.1 Implement the capital-based execution engine with `all_in` sizing, one open long position at a time, ignored repeated buy signals, and next-open fills
-- [ ] 3.2 Implement end-of-window close behavior so runs return completed trade and equity results
-- [ ] 3.3 Implement summary-metric and performance-metric calculation for completed runs
-- [ ] 3.4 Implement structured `trade_log` output with entry, exit, position size, invested capital, PnL, PnL percent, and exit reason
-- [ ] 3.5 Implement structured `equity_curve` output with per-bar cash, market value, total equity, drawdown percent, and position size
+- [x] 3.1 Implement the capital-based execution engine with `all_in` sizing, one open long position at a time, ignored repeated buy signals, and next-open fills
+- [x] 3.2 Implement end-of-window close behavior so runs return completed trade and equity results
+- [x] 3.3 Implement summary-metric and performance-metric calculation for completed runs
+- [x] 3.4 Implement structured `trade_log` output with entry, exit, position size, invested capital, PnL, PnL percent, and exit reason
+- [x] 3.5 Implement structured `equity_curve` output with per-bar cash, market value, total equity, drawdown percent, and position size
 
 ## 4. Internal orchestration and integration boundaries
 
@@ -28,7 +28,7 @@
 ## 5. Tests and verification
 
 - [x] 5.1 Add unit tests for request and template-parameter validation, including invalid SMA window combinations
-- [ ] 5.2 Add deterministic tests for buy-and-hold execution, SMA crossover entry and exit behavior, and ignored repeated buy signals while holding
-- [ ] 5.3 Add tests for next-open fill timing, end-of-window close behavior, and one-position long-only execution semantics
-- [ ] 5.4 Add tests for summary metrics, performance metrics, trade-log records, and equity-curve output shapes and values
+- [x] 5.2 Add deterministic tests for buy-and-hold execution, SMA crossover entry and exit behavior, and ignored repeated buy signals while holding
+- [x] 5.3 Add tests for next-open fill timing, end-of-window close behavior, and one-position long-only execution semantics
+- [x] 5.4 Add tests for summary metrics, performance metrics, trade-log records, and equity-curve output shapes and values
 - [ ] 5.5 Run the relevant backtest and stock-price test suites and resolve any failures introduced by the new capability
