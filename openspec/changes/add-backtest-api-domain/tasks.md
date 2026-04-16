@@ -1,8 +1,8 @@
 ## 1. Public backtest API contracts
 
-- [ ] 1.1 Add FE-facing request and response schemas for the dedicated backtest API domain
-- [ ] 1.2 Add public template-catalog response schemas that describe supported templates and parameter metadata for FE form rendering
-- [ ] 1.3 Add a public run-response contract that includes the structured backtest result plus the backend-applied execution assumptions
+- [x] 1.1 Add FE-facing request and response schemas for the dedicated backtest API domain
+- [x] 1.2 Add public template-catalog response schemas that describe supported templates and parameter metadata for FE form rendering
+- [x] 1.3 Add a public run-response contract that includes the structured backtest result plus the backend-applied execution assumptions
 
 ## 2. Router and dependency wiring
 
