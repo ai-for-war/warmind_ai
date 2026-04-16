@@ -1,8 +1,8 @@
 ## 1. Backtest contracts and module setup
 
-- [ ] 1.1 Create the `app/services/backtest` module structure for data loading, templates, engine, metrics, and orchestration
-- [ ] 1.2 Add backtest domain schemas for run requests, template parameters, summary metrics, performance metrics, trade-log entries, equity-curve entries, and run responses
-- [ ] 1.3 Implement request validation for supported scope only: one symbol, daily timeframe, long-only execution, supported template IDs, and default `initial_capital = 100_000_000`
+- [x] 1.1 Create the `app/services/backtest` module structure for data loading, templates, engine, metrics, and orchestration
+- [x] 1.2 Add backtest domain schemas for run requests, template parameters, summary metrics, performance metrics, trade-log entries, equity-curve entries, and run responses
+- [x] 1.3 Implement request validation for supported scope only: one symbol, daily timeframe, long-only execution, supported template IDs, and default `initial_capital = 100_000_000`
 
 ## 2. Data loading and template definitions
 
@@ -27,7 +27,7 @@
 
 ## 5. Tests and verification
 
-- [ ] 5.1 Add unit tests for request and template-parameter validation, including invalid SMA window combinations
+- [x] 5.1 Add unit tests for request and template-parameter validation, including invalid SMA window combinations
 - [ ] 5.2 Add deterministic tests for buy-and-hold execution, SMA crossover entry and exit behavior, and ignored repeated buy signals while holding
 - [ ] 5.3 Add tests for next-open fill timing, end-of-window close behavior, and one-position long-only execution semantics
 - [ ] 5.4 Add tests for summary metrics, performance metrics, trade-log records, and equity-curve output shapes and values
