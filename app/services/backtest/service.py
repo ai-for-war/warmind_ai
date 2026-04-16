@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from app.domain.schemas.backtest import BacktestRunRequest, BacktestRunResponse
 from app.services.backtest.data_service import BacktestDataService
 from app.services.backtest.engine import BacktestEngine
@@ -38,13 +40,20 @@ class BacktestService:
             normalized_request,
             minimum_history_bars=minimum_history_bars,
         )
-        signals = self.template_registry.generate_signals(
+        signals = await asyncio.to_thread(
+            self.template_registry.generate_signals,
             normalized_request.template_id,
             bars,
             normalized_request.template_params,
         )
-        execution_result = self.engine.run(normalized_request, bars, signals)
-        return self.metrics_builder.build_response(
+        execution_result = await asyncio.to_thread(
+            self.engine.run,
+            normalized_request,
+            bars,
+            signals,
+        )
+        return await asyncio.to_thread(
+            self.metrics_builder.build_response,
             normalized_request,
             execution_result,
         )

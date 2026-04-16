@@ -12,6 +12,7 @@ from app.domain.schemas.backtest import (
     BacktestSummaryMetrics,
 )
 from app.services.backtest.engine import BacktestEngineResult
+from app.services.backtest import service as backtest_service_module
 from app.services.backtest.service import BacktestService
 from app.services.backtest.templates import BacktestSignal
 
@@ -216,3 +217,54 @@ async def test_backtest_service_stops_before_template_engine_and_metrics_when_da
     assert template_registry.signal_calls == []
     assert engine.calls == []
     assert metrics_builder.calls == []
+
+
+@pytest.mark.asyncio
+async def test_backtest_service_offloads_cpu_bound_steps_to_threadpool(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request = _request()
+    bars = [_bar("2024-01-01"), _bar("2024-01-02")]
+    signals = [
+        BacktestSignal(
+            bar_index=0,
+            time="2024-01-01",
+            action="buy",
+            reason="entry",
+        )
+    ]
+    engine_result = BacktestEngineResult(trade_log=[], equity_curve=[])
+    expected_response = _response()
+    data_service = _FakeDataService(bars)
+    template_registry = _FakeTemplateRegistry(
+        minimum_history_bars=2,
+        signals=signals,
+    )
+    engine = _FakeEngine(engine_result)
+    metrics_builder = _FakeMetricsBuilder(expected_response)
+    service = BacktestService(
+        data_service=data_service,
+        template_registry=template_registry,
+        engine=engine,
+        metrics_builder=metrics_builder,
+    )
+    threadpool_calls: list[tuple[str, tuple[object, ...]]] = []
+
+    async def _fake_to_thread(func, /, *args, **kwargs):
+        assert kwargs == {}
+        threadpool_calls.append((func.__qualname__, args))
+        return func(*args)
+
+    monkeypatch.setattr(backtest_service_module.asyncio, "to_thread", _fake_to_thread)
+
+    response = await service.run_backtest(request)
+
+    assert response == expected_response
+    assert [name for name, _ in threadpool_calls] == [
+        _FakeTemplateRegistry.generate_signals.__qualname__,
+        _FakeEngine.run.__qualname__,
+        _FakeMetricsBuilder.build_response.__qualname__,
+    ]
+    assert threadpool_calls[0][1] == ("sma_crossover", bars, request.template_params)
+    assert threadpool_calls[1][1] == (request, bars, signals)
+    assert threadpool_calls[2][1] == (request, engine_result)
