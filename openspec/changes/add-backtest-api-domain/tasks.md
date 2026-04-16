@@ -12,9 +12,9 @@
 
 ## 3. Endpoint implementation
 
-- [ ] 3.1 Implement `GET /api/v1/backtests/templates` to return the current v1 template catalog with FE-oriented metadata
-- [ ] 3.2 Implement `POST /api/v1/backtests/run` to validate FE input, map it into the internal backtest request, and return the completed synchronous run result
-- [ ] 3.3 Ensure the public run request accepts the stock symbol in the request body and does not expose fixed engine assumptions as FE-configurable inputs
+- [x] 3.1 Implement `GET /api/v1/backtests/templates` to return the current v1 template catalog with FE-oriented metadata
+- [x] 3.2 Implement `POST /api/v1/backtests/run` to validate FE input, map it into the internal backtest request, and return the completed synchronous run result
+- [x] 3.3 Ensure the public run request accepts the stock symbol in the request body and does not expose fixed engine assumptions as FE-configurable inputs
 
 ## 4. Tests and verification
 

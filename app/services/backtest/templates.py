@@ -149,6 +149,10 @@ class BacktestTemplateRegistry:
         """Return one registered template by its stable ID."""
         return self._templates[template_id]
 
+    def supported_template_ids(self) -> tuple[BacktestTemplateId, ...]:
+        """Return the currently registered template IDs in stable order."""
+        return tuple(self._templates.keys())
+
     def required_history_bars(
         self,
         template_id: BacktestTemplateId,
