@@ -18,7 +18,7 @@
 
 ## 4. Tests and verification
 
-- [ ] 4.1 Add integration tests for template discovery and synchronous backtest execution through the new `/api/v1/backtests/*` surface
-- [ ] 4.2 Add integration tests for organization-scoped access and request-validation failures on the new backtest endpoints
-- [ ] 4.3 Add regression coverage showing the new public backtest API remains separate from the `stocks` router surface
-- [ ] 4.4 Run the relevant backtest, router, and integration test suites and resolve any failures introduced by the new API domain
+- [x] 4.1 Add integration tests for template discovery and synchronous backtest execution through the new `/api/v1/backtests/*` surface
+- [x] 4.2 Add integration tests for organization-scoped access and request-validation failures on the new backtest endpoints
+- [x] 4.3 Add regression coverage showing the new public backtest API remains separate from the `stocks` router surface
+- [x] 4.4 Run the relevant backtest, router, and integration test suites and resolve any failures introduced by the new API domain

@@ -117,6 +117,47 @@ async def test_backtest_data_service_rejects_insufficient_history() -> None:
         await service.load_bars(_build_request(), minimum_history_bars=2)
 
 
+@pytest.mark.asyncio
+async def test_backtest_data_service_rejects_empty_history() -> None:
+    service = BacktestDataService(_FakeStockPriceService([]))  # type: ignore[arg-type]
+
+    with pytest.raises(
+        ValueError,
+        match="Not enough daily history to execute the selected backtest template",
+    ):
+        await service.load_bars(_build_request(), minimum_history_bars=1)
+
+
+@pytest.mark.asyncio
+async def test_backtest_data_service_rejects_invalid_history_bar_payload() -> None:
+    stock_price_service = _FakeStockPriceService(
+        [
+            {
+                "time": "2024-01-02",
+                "high": 11.0,
+                "low": 9.5,
+                "close": 10.5,
+                "volume": 900,
+            }
+        ]
+    )
+    service = BacktestDataService(stock_price_service)  # type: ignore[arg-type]
+
+    with pytest.raises(
+        ValueError,
+        match="Stock price history contains invalid backtest bars",
+    ):
+        await service.load_bars(_build_request(), minimum_history_bars=1)
+
+
+@pytest.mark.asyncio
+async def test_backtest_data_service_rejects_non_positive_minimum_history_bars() -> None:
+    service = BacktestDataService(_FakeStockPriceService([]))  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="minimum_history_bars must be greater than zero"):
+        await service.load_bars(_build_request(), minimum_history_bars=0)
+
+
 def test_buy_and_hold_template_generates_one_initial_buy_signal() -> None:
     registry = BacktestTemplateRegistry()
     bars = [
@@ -141,6 +182,15 @@ def test_buy_and_hold_template_generates_one_initial_buy_signal() -> None:
     assert signals[0].reason == "buy_and_hold_entry"
 
 
+def test_buy_and_hold_template_requires_one_bar_and_returns_no_signal_without_bars() -> None:
+    registry = BacktestTemplateRegistry()
+
+    assert registry.required_history_bars("buy_and_hold", BuyAndHoldTemplateParams()) == 1
+    assert (
+        registry.generate_signals("buy_and_hold", [], BuyAndHoldTemplateParams()) == []
+    )
+
+
 def test_sma_crossover_template_generates_buy_and_sell_cross_signals() -> None:
     registry = BacktestTemplateRegistry()
     params = SmaCrossoverTemplateParams(fast_window=2, slow_window=3)
@@ -163,6 +213,18 @@ def test_sma_crossover_template_generates_buy_and_sell_cross_signals() -> None:
     assert signals[1].reason == "sma_fast_crosses_below_sma_slow"
 
 
+def test_sma_crossover_returns_no_signal_when_history_is_shorter_than_required() -> None:
+    registry = BacktestTemplateRegistry()
+    params = SmaCrossoverTemplateParams(fast_window=2, slow_window=3)
+    bars = [
+        _bar("2024-01-01", open=10, high=10, low=10, close=10),
+        _bar("2024-01-02", open=9, high=9, low=9, close=9),
+        _bar("2024-01-03", open=8, high=8, low=8, close=8),
+    ]
+
+    assert registry.generate_signals("sma_crossover", bars, params) == []
+
+
 def test_sma_crossover_required_history_uses_slow_window_plus_one() -> None:
     registry = BacktestTemplateRegistry()
 
@@ -172,3 +234,9 @@ def test_sma_crossover_required_history_uses_slow_window_plus_one() -> None:
     )
 
     assert required == 51
+
+
+def test_template_registry_reports_supported_template_ids_in_stable_order() -> None:
+    registry = BacktestTemplateRegistry()
+
+    assert registry.supported_template_ids() == ("buy_and_hold", "sma_crossover")

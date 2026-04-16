@@ -17,8 +17,9 @@ from app.services.backtest.templates import BacktestSignal
 
 
 class _FakeDataService:
-    def __init__(self, bars: list[BacktestBar]) -> None:
+    def __init__(self, bars: list[BacktestBar], *, error: Exception | None = None) -> None:
         self.bars = bars
+        self.error = error
         self.calls: list[tuple[BacktestRunRequest, int]] = []
 
     async def load_bars(
@@ -28,6 +29,8 @@ class _FakeDataService:
         minimum_history_bars: int = 1,
     ) -> list[BacktestBar]:
         self.calls.append((request, minimum_history_bars))
+        if self.error is not None:
+            raise self.error
         return self.bars
 
 
@@ -189,3 +192,27 @@ async def test_backtest_service_accepts_mapping_request_and_normalizes_it() -> N
 
     assert data_service.calls[0][0].symbol == "FPT"
     assert data_service.calls[0][0].template_id == "buy_and_hold"
+
+
+@pytest.mark.asyncio
+async def test_backtest_service_stops_before_template_engine_and_metrics_when_data_loading_fails() -> (
+    None
+):
+    data_service = _FakeDataService([], error=ValueError("history failed"))
+    template_registry = _FakeTemplateRegistry(minimum_history_bars=1, signals=[])
+    engine = _FakeEngine(BacktestEngineResult(trade_log=[], equity_curve=[]))
+    metrics_builder = _FakeMetricsBuilder(_response())
+    service = BacktestService(
+        data_service=data_service,
+        template_registry=template_registry,
+        engine=engine,
+        metrics_builder=metrics_builder,
+    )
+
+    with pytest.raises(ValueError, match="history failed"):
+        await service.run_backtest(_request())
+
+    assert len(data_service.calls) == 1
+    assert template_registry.signal_calls == []
+    assert engine.calls == []
+    assert metrics_builder.calls == []

@@ -31,4 +31,4 @@
 - [x] 5.2 Add deterministic tests for buy-and-hold execution, SMA crossover entry and exit behavior, and ignored repeated buy signals while holding
 - [x] 5.3 Add tests for next-open fill timing, end-of-window close behavior, and one-position long-only execution semantics
 - [x] 5.4 Add tests for summary metrics, performance metrics, trade-log records, and equity-curve output shapes and values
-- [ ] 5.5 Run the relevant backtest and stock-price test suites and resolve any failures introduced by the new capability
+- [x] 5.5 Run the relevant backtest and stock-price test suites and resolve any failures introduced by the new capability
