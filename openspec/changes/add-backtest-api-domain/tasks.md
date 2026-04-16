@@ -6,9 +6,9 @@
 
 ## 2. Router and dependency wiring
 
-- [ ] 2.1 Add a dedicated router under `app/api/v1/backtests/` with prefix `/backtests` and tag `backtests`
-- [ ] 2.2 Register the new backtest router in the aggregate v1 router without attaching public backtest endpoints to the `stocks` router
-- [ ] 2.3 Wire the public handlers to the existing org-auth dependencies and to the internal `BacktestService`
+- [x] 2.1 Add a dedicated router under `app/api/v1/backtests/` with prefix `/backtests` and tag `backtests`
+- [x] 2.2 Register the new backtest router in the aggregate v1 router without attaching public backtest endpoints to the `stocks` router
+- [x] 2.3 Wire the public handlers to the existing org-auth dependencies and to the internal `BacktestService`
 
 ## 3. Endpoint implementation
 

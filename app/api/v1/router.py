@@ -6,6 +6,7 @@ from app.api.v1.analytics.router import router as analytics_router
 from app.api.v1.ai.chat import router as chat_router
 from app.api.v1.ai.lead_agent import router as lead_agent_router
 from app.api.v1.auth.routes import router as auth_router
+from app.api.v1.backtests.router import router as backtests_router
 from app.api.v1.health import router as health_router
 from app.api.v1.image_generations.router import router as image_generations_router
 from app.api.v1.images.router import router as images_router
@@ -29,6 +30,7 @@ router.include_router(internal_router)
 router.include_router(meetings_router)
 router.include_router(sheet_crawler_router)
 router.include_router(stocks_router)
+router.include_router(backtests_router)
 router.include_router(analytics_router)
 router.include_router(chat_router)
 router.include_router(lead_agent_router)
