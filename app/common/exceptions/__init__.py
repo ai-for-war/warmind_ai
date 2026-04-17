@@ -311,3 +311,12 @@ class InterviewAITriggerError(AppException):
 
     default_message = "Interview AI trigger failed"
     status_code = 502
+
+
+from app.common.exceptions.stock_watchlist_exceptions import (  # noqa: E402
+    DuplicateStockWatchlistItemError,
+    DuplicateStockWatchlistNameError,
+    StockSymbolNotFoundError,
+    StockWatchlistItemNotFoundError,
+    StockWatchlistNotFoundError,
+)

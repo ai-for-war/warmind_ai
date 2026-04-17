@@ -250,6 +250,48 @@ class MongoDB:
         )
         logger.info("Created index: idx_stock_symbols_snapshot_at")
 
+        # Indexes for stock_watchlists collection
+        await cls.db.stock_watchlists.create_index(
+            [
+                ("user_id", ASCENDING),
+                ("organization_id", ASCENDING),
+                ("normalized_name", ASCENDING),
+            ],
+            name="idx_stock_watchlists_user_org_name_unique",
+            unique=True,
+            background=True,
+        )
+        logger.info("Created index: idx_stock_watchlists_user_org_name_unique")
+
+        # Additive index for scoped watchlist listing ordered by most recent update.
+        await cls.db.stock_watchlists.create_index(
+            [
+                ("user_id", ASCENDING),
+                ("organization_id", ASCENDING),
+                ("updated_at", DESCENDING),
+            ],
+            name="idx_stock_watchlists_user_org_updated",
+            background=True,
+        )
+        logger.info("Created index: idx_stock_watchlists_user_org_updated")
+
+        # Indexes for stock_watchlist_items collection
+        await cls.db.stock_watchlist_items.create_index(
+            [("watchlist_id", ASCENDING), ("normalized_symbol", ASCENDING)],
+            name="idx_stock_watchlist_items_watchlist_symbol_unique",
+            unique=True,
+            background=True,
+        )
+        logger.info("Created index: idx_stock_watchlist_items_watchlist_symbol_unique")
+
+        # Additive index for newest-first item reads within one watchlist.
+        await cls.db.stock_watchlist_items.create_index(
+            [("watchlist_id", ASCENDING), ("saved_at", DESCENDING)],
+            name="idx_stock_watchlist_items_watchlist_saved_desc",
+            background=True,
+        )
+        logger.info("Created index: idx_stock_watchlist_items_watchlist_saved_desc")
+
         # Index for messages collection
         # Supports: get_by_conversation() with chronological ordering
         # Requirements: 2.2 (retrieve by conversation_id in chronological order)

@@ -56,6 +56,7 @@ from app.domain.models.sheet_connection import (
     SheetSyncState,
 )
 from app.domain.models.stock import StockSymbol
+from app.domain.models.stock_watchlist import StockWatchlist, StockWatchlistItem
 from app.domain.models.user import User, UserRole
 from app.domain.models.voice import Voice, VoiceType
 
@@ -103,6 +104,8 @@ __all__ = [
     "SheetRawData",
     "SheetSyncState",
     "StockSymbol",
+    "StockWatchlist",
+    "StockWatchlistItem",
     # User models
     "User",
     "UserRole",
