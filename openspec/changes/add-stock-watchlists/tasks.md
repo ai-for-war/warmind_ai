@@ -31,7 +31,7 @@
 
 ## 5. Tests and verification
 
-- [ ] 5.1 Add repository tests for watchlist-name uniqueness, per-watchlist symbol uniqueness, newest-first item listing, and delete cascades
-- [ ] 5.2 Add service tests for ownership enforcement, stock-catalog validation, rename behavior, add/remove item behavior, and latest-catalog merge behavior
-- [ ] 5.3 Add API tests for organization-auth access control and full watchlist CRUD plus item add/remove flows
-- [ ] 5.4 Add API or service tests that verify the same symbol can exist in different watchlists for the same user and organization
+- [x] 5.1 Add repository tests for watchlist-name uniqueness, per-watchlist symbol uniqueness, newest-first item listing, and delete cascades
+- [x] 5.2 Add service tests for ownership enforcement, stock-catalog validation, rename behavior, add/remove item behavior, and latest-catalog merge behavior
+- [x] 5.3 Add API tests for organization-auth access control and full watchlist CRUD plus item add/remove flows
+- [x] 5.4 Add API or service tests that verify the same symbol can exist in different watchlists for the same user and organization
