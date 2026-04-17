@@ -14,13 +14,13 @@
 
 ## 3. Watchlist service behavior
 
-- [ ] 3.1 Add a dedicated stock watchlist service under `app/services/stocks/` for watchlist CRUD and item operations
-- [ ] 3.2 Implement ownership enforcement for all watchlist reads and writes using `current_user + organization` scope
-- [ ] 3.3 Implement watchlist-name normalization and uniqueness handling for create and rename flows
-- [ ] 3.4 Implement symbol normalization, stock-catalog validation, and per-watchlist duplicate rejection for add-item flows
-- [ ] 3.5 Implement watchlist item reads that merge saved items with the latest persisted stock catalog data without save-time stock snapshots
-- [ ] 3.6 Implement cascading delete behavior so removing a watchlist also removes its watchlist items
-- [ ] 3.7 Wire the watchlist service into `app/common/service.py`
+- [x] 3.1 Add a dedicated stock watchlist service under `app/services/stocks/` for watchlist CRUD and item operations
+- [x] 3.2 Implement ownership enforcement for all watchlist reads and writes using `current_user + organization` scope
+- [x] 3.3 Implement watchlist-name normalization and uniqueness handling for create and rename flows
+- [x] 3.4 Implement symbol normalization, stock-catalog validation, and per-watchlist duplicate rejection for add-item flows
+- [x] 3.5 Implement watchlist item reads that merge saved items with the latest persisted stock catalog data without save-time stock snapshots
+- [x] 3.6 Implement cascading delete behavior so removing a watchlist also removes its watchlist items
+- [x] 3.7 Wire the watchlist service into `app/common/service.py`
 
 ## 4. API wiring
 

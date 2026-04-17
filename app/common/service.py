@@ -23,6 +23,8 @@ from app.common.repo import (
     get_sheet_data_repo,
     get_sheet_sync_state_repo,
     get_stock_symbol_repo,
+    get_stock_watchlist_item_repo,
+    get_stock_watchlist_repo,
     get_user_repo,
     get_voice_repo,
 )
@@ -75,6 +77,7 @@ from app.services.stocks.price_gateway import VnstockPriceGateway
 from app.services.stocks.price_service import StockPriceService
 from app.services.stocks.refresh import StockCatalogSnapshotRefresher
 from app.services.stocks.stock_catalog_service import StockCatalogService
+from app.services.stocks.watchlist_service import StockWatchlistService
 from app.services.stocks.vnstock_gateway import VnstockListingGateway
 from app.services.stt.context_store import RedisInterviewContextStore
 from app.services.stt.interview_session_manager import InterviewSessionManager
@@ -280,6 +283,16 @@ def get_stock_price_service() -> StockPriceService:
         repository=get_stock_symbol_repo(),
         gateway=get_vnstock_price_gateway(),
         cache=get_stock_price_cache(),
+    )
+
+
+@lru_cache
+def get_stock_watchlist_service() -> StockWatchlistService:
+    """Get singleton stock watchlist service."""
+    return StockWatchlistService(
+        watchlist_repo=get_stock_watchlist_repo(),
+        item_repo=get_stock_watchlist_item_repo(),
+        stock_repo=get_stock_symbol_repo(),
     )
 
 
