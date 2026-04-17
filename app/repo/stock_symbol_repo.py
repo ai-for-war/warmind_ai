@@ -107,6 +107,22 @@ class StockSymbolRepository:
         query["symbol"] = normalized_symbol
         return await self.collection.count_documents(query) > 0
 
+    async def find_active_by_symbols(self, symbols: list[str]) -> list[StockSymbol]:
+        """Return active stock-catalog entries for the supplied symbol list."""
+        normalized_symbols = {
+            symbol.strip().upper()
+            for symbol in symbols
+            if isinstance(symbol, str) and symbol.strip()
+        }
+        if not normalized_symbols:
+            return []
+
+        query = await self._build_active_query()
+        query["symbol"] = {"$in": list(normalized_symbols)}
+        cursor = self.collection.find(query).sort([("symbol", ASCENDING)])
+        documents = [document async for document in cursor]
+        return [StockSymbol(**document) for document in documents]
+
     async def replace_snapshot(
         self,
         snapshot: list[StockSymbol],

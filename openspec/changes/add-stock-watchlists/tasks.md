@@ -6,11 +6,11 @@
 
 ## 2. Persistence and catalog integration
 
-- [ ] 2.1 Add a `stock_watchlists` repository with create, list-by-user-and-organization, find-owned-watchlist, rename, delete, and duplicate-name checks
-- [ ] 2.2 Add a `stock_watchlist_items` repository with add, list-by-watchlist newest-first, remove-by-symbol, duplicate-symbol checks, and delete-by-watchlist behavior
-- [ ] 2.3 Create MongoDB indexes for unique watchlist names per `user + organization` and unique symbols per watchlist
-- [ ] 2.4 Extend the stock catalog repository with bulk active-symbol lookup support for watchlist item response composition
-- [ ] 2.5 Wire the new repositories into `app/common/repo.py`
+- [x] 2.1 Add a `stock_watchlists` repository with create, list-by-user-and-organization, find-owned-watchlist, rename, delete, and duplicate-name checks
+- [x] 2.2 Add a `stock_watchlist_items` repository with add, list-by-watchlist newest-first, remove-by-symbol, duplicate-symbol checks, and delete-by-watchlist behavior
+- [x] 2.3 Create MongoDB indexes for unique watchlist names per `user + organization` and unique symbols per watchlist
+- [x] 2.4 Extend the stock catalog repository with bulk active-symbol lookup support for watchlist item response composition
+- [x] 2.5 Wire the new repositories into `app/common/repo.py`
 
 ## 3. Watchlist service behavior
 

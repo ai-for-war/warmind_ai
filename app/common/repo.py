@@ -21,6 +21,8 @@ from app.repo.sheet_connection_repo import SheetConnectionRepository
 from app.repo.sheet_data_repo import SheetDataRepository
 from app.repo.sheet_sync_state_repo import SheetSyncStateRepository
 from app.repo.stock_symbol_repo import StockSymbolRepository
+from app.repo.stock_watchlist_item_repo import StockWatchlistItemRepository
+from app.repo.stock_watchlist_repo import StockWatchlistRepository
 from app.repo.user_repo import UserRepository
 from app.repo.voice_repo import VoiceRepository
 
@@ -207,3 +209,17 @@ def get_stock_symbol_repo() -> StockSymbolRepository:
     """Get singleton stock symbol repository instance."""
     db = MongoDB.get_db()
     return StockSymbolRepository(db)
+
+
+@lru_cache
+def get_stock_watchlist_repo() -> StockWatchlistRepository:
+    """Get singleton stock watchlist repository instance."""
+    db = MongoDB.get_db()
+    return StockWatchlistRepository(db)
+
+
+@lru_cache
+def get_stock_watchlist_item_repo() -> StockWatchlistItemRepository:
+    """Get singleton stock watchlist-item repository instance."""
+    db = MongoDB.get_db()
+    return StockWatchlistItemRepository(db)
