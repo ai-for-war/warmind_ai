@@ -24,10 +24,10 @@
 
 ## 4. API wiring
 
-- [ ] 4.1 Add authenticated watchlist endpoints under `app/api/v1/stocks/` for create, list, rename, delete, list items, add item, and remove item operations
-- [ ] 4.2 Apply `get_current_active_user` and `get_current_organization_context` to all watchlist endpoints
-- [ ] 4.3 Register the watchlist router in the v1 router aggregation
-- [ ] 4.4 Ensure API responses expose newest-first watchlist items with merged latest stock catalog metadata
+- [x] 4.1 Add authenticated watchlist endpoints under `app/api/v1/stocks/` for create, list, rename, delete, list items, add item, and remove item operations
+- [x] 4.2 Apply `get_current_active_user` and `get_current_organization_context` to all watchlist endpoints
+- [x] 4.3 Register the watchlist router in the v1 router aggregation
+- [x] 4.4 Ensure API responses expose newest-first watchlist items with merged latest stock catalog metadata
 
 ## 5. Tests and verification
 
