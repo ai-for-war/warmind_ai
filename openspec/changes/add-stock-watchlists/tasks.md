@@ -1,8 +1,8 @@
 ## 1. Domain and schema foundations
 
-- [ ] 1.1 Add stock watchlist and stock watchlist item domain models under `app/domain/models/`
-- [ ] 1.2 Add request and response schemas for watchlist create, list, rename, delete, list items, add item, and remove item flows under `app/domain/schemas/`
-- [ ] 1.3 Define schema fields for watchlist ownership, watchlist identity, item identity, saved timestamps, and merged stock metadata response blocks
+- [x] 1.1 Add stock watchlist and stock watchlist item domain models under `app/domain/models/`
+- [x] 1.2 Add request and response schemas for watchlist create, list, rename, delete, list items, add item, and remove item flows under `app/domain/schemas/`
+- [x] 1.3 Define schema fields for watchlist ownership, watchlist identity, item identity, saved timestamps, and merged stock metadata response blocks
 
 ## 2. Persistence and catalog integration
 
