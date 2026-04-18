@@ -36,15 +36,18 @@ class BacktestService:
             normalized_request.template_id,
             normalized_request.template_params,
         )
-        bars = await self.data_service.load_bars(
+        bar_window = await self.data_service.load_bars(
             normalized_request,
             minimum_history_bars=minimum_history_bars,
+            minimum_tradable_bars=1,
         )
+        bars = bar_window.tradable_bars
         signals = await asyncio.to_thread(
             self.template_registry.generate_signals,
             normalized_request.template_id,
-            bars,
+            bar_window.all_bars,
             normalized_request.template_params,
+            tradable_start_index=len(bar_window.warmup_bars),
         )
         execution_result = await asyncio.to_thread(
             self.engine.run,

@@ -58,6 +58,45 @@ def test_backtest_api_run_request_validates_template_params() -> None:
         )
 
 
+def test_backtest_api_run_request_accepts_valid_ichimoku_params() -> None:
+    request = BacktestApiRunRequest(
+        symbol="FPT",
+        date_from=date(2024, 1, 1),
+        date_to=date(2024, 12, 31),
+        template_id="ichimoku_cloud",
+        template_params={
+            "tenkan_window": 9,
+            "kijun_window": 26,
+            "senkou_b_window": 52,
+            "displacement": 26,
+            "warmup_bars": 100,
+        },
+    )
+
+    assert request.template_id == "ichimoku_cloud"
+    assert request.template_params.warmup_bars == 100
+
+
+def test_backtest_api_run_request_rejects_invalid_ichimoku_params() -> None:
+    with pytest.raises(
+        ValidationError,
+        match="ichimoku windows must satisfy tenkan_window < kijun_window < senkou_b_window",
+    ):
+        BacktestApiRunRequest(
+            symbol="FPT",
+            date_from=date(2024, 1, 1),
+            date_to=date(2024, 12, 31),
+            template_id="ichimoku_cloud",
+            template_params={
+                "tenkan_window": 26,
+                "kijun_window": 9,
+                "senkou_b_window": 52,
+                "displacement": 26,
+                "warmup_bars": 100,
+            },
+        )
+
+
 def test_backtest_api_template_catalog_supports_parameter_metadata() -> None:
     response = BacktestApiTemplateListResponse(
         items=[

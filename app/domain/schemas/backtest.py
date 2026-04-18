@@ -10,7 +10,7 @@ from pydantic import Field, field_validator, model_validator
 from app.domain.schemas.stock import StockSchemaBase
 
 BacktestTimeframe = Literal["1D"]
-BacktestTemplateId = Literal["buy_and_hold", "sma_crossover"]
+BacktestTemplateId = Literal["buy_and_hold", "sma_crossover", "ichimoku_cloud"]
 BacktestExposure = Literal["long_only"]
 BacktestPositionSizing = Literal["all_in"]
 BacktestExecutionModel = Literal["next_open"]
@@ -21,6 +21,11 @@ DEFAULT_BACKTEST_EXPOSURE: BacktestExposure = "long_only"
 DEFAULT_BACKTEST_POSITION_SIZING: BacktestPositionSizing = "all_in"
 DEFAULT_BACKTEST_EXECUTION_MODEL: BacktestExecutionModel = "next_open"
 DEFAULT_BACKTEST_INITIAL_CAPITAL = 100_000_000
+DEFAULT_ICHIMOKU_TENKAN_WINDOW = 9
+DEFAULT_ICHIMOKU_KIJUN_WINDOW = 26
+DEFAULT_ICHIMOKU_SENKOU_B_WINDOW = 52
+DEFAULT_ICHIMOKU_DISPLACEMENT = 26
+DEFAULT_ICHIMOKU_WARMUP_BARS = 100
 
 
 class BacktestTemplateParamsBase(StockSchemaBase):
@@ -45,7 +50,71 @@ class SmaCrossoverTemplateParams(BacktestTemplateParamsBase):
         return self
 
 
-BacktestTemplateParams = BuyAndHoldTemplateParams | SmaCrossoverTemplateParams
+class IchimokuCloudTemplateParams(BacktestTemplateParamsBase):
+    """Template parameters for the Ichimoku cloud strategy."""
+
+    tenkan_window: int = Field(..., ge=1)
+    kijun_window: int = Field(..., ge=1)
+    senkou_b_window: int = Field(..., ge=1)
+    displacement: int = Field(..., ge=1)
+    warmup_bars: int = Field(..., ge=1)
+
+    @model_validator(mode="after")
+    def validate_ichimoku_contract(self) -> "IchimokuCloudTemplateParams":
+        """Require positive ordered windows and enough warmup history."""
+        if not (
+            self.tenkan_window < self.kijun_window < self.senkou_b_window
+        ):
+            raise ValueError(
+                "ichimoku windows must satisfy tenkan_window < kijun_window < senkou_b_window"
+            )
+        minimum_warmup = self.senkou_b_window + self.displacement
+        if self.warmup_bars < minimum_warmup:
+            raise ValueError(
+                "warmup_bars must be at least senkou_b_window + displacement"
+            )
+        return self
+
+
+BacktestTemplateParams = (
+    BuyAndHoldTemplateParams
+    | SmaCrossoverTemplateParams
+    | IchimokuCloudTemplateParams
+)
+
+
+def _coerce_template_params_for_template(
+    template_id: object,
+    template_params: object,
+) -> BacktestTemplateParams:
+    """Resolve raw template params into the model required by one template."""
+    normalized_template_id = (
+        template_id.strip().lower()
+        if isinstance(template_id, str)
+        else DEFAULT_BACKTEST_TEMPLATE_ID
+    )
+    normalized_template_params = (
+        {} if template_params is None or template_params == "" else template_params
+    )
+
+    if normalized_template_id == "buy_and_hold":
+        if isinstance(normalized_template_params, BuyAndHoldTemplateParams):
+            return normalized_template_params
+        if normalized_template_params not in ({}, BuyAndHoldTemplateParams()):
+            return normalized_template_params  # type: ignore[return-value]
+        return BuyAndHoldTemplateParams.model_validate(normalized_template_params)
+
+    if normalized_template_id == "sma_crossover":
+        if isinstance(normalized_template_params, SmaCrossoverTemplateParams):
+            return normalized_template_params
+        return SmaCrossoverTemplateParams.model_validate(normalized_template_params)
+
+    if normalized_template_id == "ichimoku_cloud":
+        if isinstance(normalized_template_params, IchimokuCloudTemplateParams):
+            return normalized_template_params
+        return IchimokuCloudTemplateParams.model_validate(normalized_template_params)
+
+    return BuyAndHoldTemplateParams.model_validate(normalized_template_params)
 
 
 class BacktestRunRequest(StockSchemaBase):
@@ -63,6 +132,26 @@ class BacktestRunRequest(StockSchemaBase):
         default_factory=BuyAndHoldTemplateParams
     )
     initial_capital: int = Field(default=DEFAULT_BACKTEST_INITIAL_CAPITAL, gt=0)
+
+    @model_validator(mode="before")
+    @classmethod
+    def coerce_template_params_for_template(
+        cls,
+        value: object,
+    ) -> object:
+        """Validate template params against the model selected by template_id."""
+        if not isinstance(value, dict):
+            return value
+
+        data = dict(value)
+        if "template_params" not in data:
+            return data
+
+        data["template_params"] = _coerce_template_params_for_template(
+            data.get("template_id"),
+            data.get("template_params"),
+        )
+        return data
 
     @field_validator("symbol", mode="before")
     @classmethod
@@ -123,9 +212,16 @@ class BacktestRunRequest(StockSchemaBase):
                 raise ValueError("buy_and_hold does not accept template parameters")
             return self
 
-        if not isinstance(self.template_params, SmaCrossoverTemplateParams):
+        if self.template_id == "sma_crossover":
+            if not isinstance(self.template_params, SmaCrossoverTemplateParams):
+                raise ValueError(
+                    "sma_crossover requires template_params with fast_window and slow_window"
+                )
+            return self
+
+        if not isinstance(self.template_params, IchimokuCloudTemplateParams):
             raise ValueError(
-                "sma_crossover requires template_params with fast_window and slow_window"
+                "ichimoku_cloud requires template_params with tenkan_window, kijun_window, senkou_b_window, displacement, and warmup_bars"
             )
         return self
 

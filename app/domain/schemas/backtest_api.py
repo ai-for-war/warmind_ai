@@ -22,7 +22,9 @@ from app.domain.schemas.backtest import (
     DEFAULT_BACKTEST_INITIAL_CAPITAL,
     DEFAULT_BACKTEST_POSITION_SIZING,
     DEFAULT_BACKTEST_TIMEFRAME,
+    IchimokuCloudTemplateParams,
     SmaCrossoverTemplateParams,
+    _coerce_template_params_for_template,
 )
 
 BacktestTemplateParameterType = Literal["integer"]
@@ -45,6 +47,26 @@ class BacktestApiRunRequest(BacktestApiSchema):
         default_factory=BuyAndHoldTemplateParams
     )
     initial_capital: int = Field(default=DEFAULT_BACKTEST_INITIAL_CAPITAL, gt=0)
+
+    @model_validator(mode="before")
+    @classmethod
+    def coerce_template_params_for_template(
+        cls,
+        value: object,
+    ) -> object:
+        """Validate template params against the model selected by template_id."""
+        if not isinstance(value, dict):
+            return value
+
+        data = dict(value)
+        if "template_params" not in data:
+            return data
+
+        data["template_params"] = _coerce_template_params_for_template(
+            data.get("template_id"),
+            data.get("template_params"),
+        )
+        return data
 
     @field_validator("symbol", mode="before")
     @classmethod
@@ -87,9 +109,16 @@ class BacktestApiRunRequest(BacktestApiSchema):
                 raise ValueError("buy_and_hold does not accept template parameters")
             return self
 
-        if not isinstance(self.template_params, SmaCrossoverTemplateParams):
+        if self.template_id == "sma_crossover":
+            if not isinstance(self.template_params, SmaCrossoverTemplateParams):
+                raise ValueError(
+                    "sma_crossover requires template_params with fast_window and slow_window"
+                )
+            return self
+
+        if not isinstance(self.template_params, IchimokuCloudTemplateParams):
             raise ValueError(
-                "sma_crossover requires template_params with fast_window and slow_window"
+                "ichimoku_cloud requires template_params with tenkan_window, kijun_window, senkou_b_window, displacement, and warmup_bars"
             )
         return self
 
