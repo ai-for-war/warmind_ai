@@ -25,6 +25,7 @@ def test_build_template_catalog_returns_current_v1_templates() -> None:
     assert [item.template_id for item in response.items] == [
         "buy_and_hold",
         "sma_crossover",
+        "ichimoku_cloud",
     ]
     assert response.items[0].parameters == []
     assert [parameter.name for parameter in response.items[1].parameters] == [
@@ -33,6 +34,13 @@ def test_build_template_catalog_returns_current_v1_templates() -> None:
     ]
     assert response.items[1].parameters[0].default == 20
     assert response.items[1].parameters[1].default == 50
+    assert [parameter.name for parameter in response.items[2].parameters] == [
+        "tenkan_window",
+        "kijun_window",
+        "senkou_b_window",
+        "displacement",
+        "warmup_bars",
+    ]
 
 
 def test_build_run_response_wraps_result_and_backend_assumptions() -> None:

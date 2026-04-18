@@ -210,11 +210,19 @@ async def test_list_backtest_templates_returns_current_template_catalog(
     assert [item["template_id"] for item in body["items"]] == [
         "buy_and_hold",
         "sma_crossover",
+        "ichimoku_cloud",
     ]
     assert body["items"][0]["parameters"] == []
     assert [parameter["name"] for parameter in body["items"][1]["parameters"]] == [
         "fast_window",
         "slow_window",
+    ]
+    assert [parameter["name"] for parameter in body["items"][2]["parameters"]] == [
+        "tenkan_window",
+        "kijun_window",
+        "senkou_b_window",
+        "displacement",
+        "warmup_bars",
     ]
 
 
@@ -264,6 +272,74 @@ async def test_run_backtest_maps_request_body_to_internal_request_and_returns_re
         "execution_model": "next_open",
         "initial_capital": 100000000,
     }
+
+
+@pytest.mark.asyncio
+async def test_run_backtest_accepts_valid_ichimoku_public_request(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    test_deps = _load_test_dependencies(monkeypatch)
+    service = _FakeBacktestService(test_deps)
+    app = _build_test_app(test_deps, service=service)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.post(
+            "/backtests/run",
+            json={
+                "symbol": "fpt",
+                "date_from": "2024-01-01",
+                "date_to": "2024-12-31",
+                "template_id": "ichimoku_cloud",
+                "template_params": {
+                    "tenkan_window": 9,
+                    "kijun_window": 26,
+                    "senkou_b_window": 52,
+                    "displacement": 26,
+                    "warmup_bars": 100,
+                },
+            },
+        )
+
+    assert response.status_code == 200
+    assert len(service.calls) == 1
+    request = service.calls[0]
+    assert request.template_id == "ichimoku_cloud"
+    assert request.template_params.warmup_bars == 100
+
+
+@pytest.mark.asyncio
+async def test_run_backtest_rejects_invalid_ichimoku_public_request(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    test_deps = _load_test_dependencies(monkeypatch)
+    app = _build_test_app(test_deps, service=_FakeBacktestService(test_deps))
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.post(
+            "/backtests/run",
+            json={
+                "symbol": "fpt",
+                "date_from": "2024-01-01",
+                "date_to": "2024-12-31",
+                "template_id": "ichimoku_cloud",
+                "template_params": {
+                    "tenkan_window": 26,
+                    "kijun_window": 9,
+                    "senkou_b_window": 52,
+                    "displacement": 26,
+                    "warmup_bars": 100,
+                },
+            },
+        )
+
+    assert response.status_code == 422
+    assert "ichimoku windows must satisfy tenkan_window < kijun_window < senkou_b_window" in response.text
 
 
 @pytest.mark.asyncio
