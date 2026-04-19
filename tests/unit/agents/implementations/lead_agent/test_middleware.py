@@ -8,6 +8,7 @@ import pytest
 from langchain.agents.middleware import (
     ModelRequest,
     ModelResponse,
+    SummarizationMiddleware,
     TodoListMiddleware,
 )
 from langchain_core.messages import AIMessage, ToolMessage
@@ -15,18 +16,24 @@ from langchain_core.tools import ToolException, tool
 from langgraph.prebuilt.tool_node import ToolCallRequest
 
 from app.agents.implementations.lead_agent.middleware import (
-    LEAD_AGENT_MIDDLEWARE,
+    LEAD_AGENT_SUMMARIZATION_FRACTION_TRIGGER,
+    LEAD_AGENT_SUMMARIZATION_KEEP,
+    LEAD_AGENT_SUMMARIZATION_MESSAGE_TRIGGER,
+    LEAD_AGENT_SUMMARIZATION_TOKEN_TRIGGER,
+    LEAD_AGENT_SUMMARIZATION_TRIM_TOKENS,
     LeadAgentDelegationLimitMiddleware,
     LeadAgentOrchestrationPromptMiddleware,
     LeadAgentToolErrorMiddleware,
     LeadAgentSkillPromptMiddleware,
     LeadAgentToolSelectionMiddleware,
+    build_lead_agent_middleware,
 )
 from app.agents.implementations.lead_agent.state import LeadAgentState
 from app.agents.implementations.lead_agent.tools import load_skill
 from app.domain.models.lead_agent_skill import LeadAgentSkill
 from app.prompts.system.lead_agent import (
     get_lead_agent_orchestration_system_prompt,
+    get_lead_agent_summarization_prompt,
     get_lead_agent_system_prompt,
     get_lead_agent_todo_system_prompt,
     get_lead_agent_todo_tool_description,
@@ -74,6 +81,22 @@ def _request(
         state=state,
         runtime=None,
     )
+
+
+def _build_runtime_middleware(
+    *,
+    profile: dict[str, object] | None = None,
+) -> list[object]:
+    return build_lead_agent_middleware(
+        SimpleNamespace(_llm_type="test-chat-model", profile=profile)
+    )
+
+
+def _todo_middleware() -> TodoListMiddleware:
+    middleware = next(
+        item for item in _build_runtime_middleware() if isinstance(item, TodoListMiddleware)
+    )
+    return middleware
 
 
 async def _run_middleware_chain(
@@ -297,7 +320,7 @@ async def test_orchestration_prompt_middleware_injects_worker_guidance_for_worke
 async def test_tool_selection_middleware_filters_to_base_skill_and_delegation_surface() -> None:
     middleware = LeadAgentToolSelectionMiddleware()
     handler_requests: list[ModelRequest[None]] = []
-    todo_tool = LEAD_AGENT_MIDDLEWARE[2].tools[0]
+    todo_tool = _todo_middleware().tools[0]
 
     async def _handler(updated_request: ModelRequest[None]) -> ModelResponse[object]:
         handler_requests.append(updated_request)
@@ -451,7 +474,7 @@ async def test_middleware_chain_preserves_skill_prompt_todo_guidance_and_filtere
     )
     skill_prompt = LeadAgentSkillPromptMiddleware(skill_access_resolver=resolver)
     orchestration_prompt = LeadAgentOrchestrationPromptMiddleware()
-    todo_middleware = LEAD_AGENT_MIDDLEWARE[2]
+    todo_middleware = _todo_middleware()
     tool_selection = LeadAgentToolSelectionMiddleware()
     request = _request(
         state={
@@ -501,7 +524,7 @@ async def test_middleware_chain_preserves_skill_prompt_todo_guidance_and_filtere
 
 @pytest.mark.asyncio
 async def test_simple_turn_can_finish_without_todo_creation_while_complex_turn_keeps_planning_tool() -> None:
-    todo_middleware = LEAD_AGENT_MIDDLEWARE[2]
+    todo_middleware = _todo_middleware()
     tool_selection = LeadAgentToolSelectionMiddleware()
 
     simple_turn_result = await todo_middleware.aafter_model(
@@ -534,15 +557,37 @@ async def test_simple_turn_can_finish_without_todo_creation_while_complex_turn_k
 
 
 def test_lead_agent_runtime_registers_todo_middleware_with_complex_task_guidance() -> None:
-    assert len(LEAD_AGENT_MIDDLEWARE) == 6
-    assert isinstance(LEAD_AGENT_MIDDLEWARE[0], LeadAgentOrchestrationPromptMiddleware)
-    assert isinstance(LEAD_AGENT_MIDDLEWARE[1], LeadAgentSkillPromptMiddleware)
-    assert isinstance(LEAD_AGENT_MIDDLEWARE[2], TodoListMiddleware)
-    assert isinstance(LEAD_AGENT_MIDDLEWARE[3], LeadAgentDelegationLimitMiddleware)
-    assert isinstance(LEAD_AGENT_MIDDLEWARE[4], LeadAgentToolSelectionMiddleware)
-    assert isinstance(LEAD_AGENT_MIDDLEWARE[5], LeadAgentToolErrorMiddleware)
+    middlewares = _build_runtime_middleware(profile={"max_input_tokens": 100000})
+    assert len(middlewares) == 7
+    assert isinstance(middlewares[0], SummarizationMiddleware)
+    assert isinstance(middlewares[1], LeadAgentOrchestrationPromptMiddleware)
+    assert isinstance(middlewares[2], LeadAgentSkillPromptMiddleware)
+    assert isinstance(middlewares[3], TodoListMiddleware)
+    assert isinstance(middlewares[4], LeadAgentDelegationLimitMiddleware)
+    assert isinstance(middlewares[5], LeadAgentToolSelectionMiddleware)
+    assert isinstance(middlewares[6], LeadAgentToolErrorMiddleware)
 
-    todo_middleware = LEAD_AGENT_MIDDLEWARE[2]
+    summarization_middleware = middlewares[0]
+    assert summarization_middleware.trigger == [
+        LEAD_AGENT_SUMMARIZATION_FRACTION_TRIGGER,
+        LEAD_AGENT_SUMMARIZATION_MESSAGE_TRIGGER,
+        LEAD_AGENT_SUMMARIZATION_TOKEN_TRIGGER,
+    ]
+    assert summarization_middleware.keep == LEAD_AGENT_SUMMARIZATION_KEEP
+    assert (
+        summarization_middleware.trim_tokens_to_summarize
+        == LEAD_AGENT_SUMMARIZATION_TRIM_TOKENS
+    )
+    assert (
+        summarization_middleware.summary_prompt
+        == get_lead_agent_summarization_prompt()
+    )
+    assert "## SESSION INTENT" in summarization_middleware.summary_prompt
+    assert "## KEY DECISIONS" in summarization_middleware.summary_prompt
+    assert "## CONSTRAINTS" in summarization_middleware.summary_prompt
+    assert "## NEXT STEPS" in summarization_middleware.summary_prompt
+
+    todo_middleware = middlewares[3]
     todo_system_prompt = get_lead_agent_todo_system_prompt()
     todo_tool_description = get_lead_agent_todo_tool_description()
     assert todo_middleware.system_prompt == todo_system_prompt
@@ -550,6 +595,17 @@ def test_lead_agent_runtime_registers_todo_middleware_with_complex_task_guidance
     assert "complex" in todo_system_prompt.lower()
     assert "simple" in todo_system_prompt.lower()
     assert "structured task list" in todo_tool_description.lower()
+
+
+def test_lead_agent_runtime_skips_fraction_trigger_when_model_profile_is_unavailable() -> None:
+    middlewares = _build_runtime_middleware()
+    summarization_middleware = middlewares[0]
+
+    assert isinstance(summarization_middleware, SummarizationMiddleware)
+    assert summarization_middleware.trigger == [
+        LEAD_AGENT_SUMMARIZATION_MESSAGE_TRIGGER,
+        LEAD_AGENT_SUMMARIZATION_TOKEN_TRIGGER,
+    ]
 
 
 def test_lead_agent_state_keeps_todos_in_middleware_backed_runtime_state() -> None:

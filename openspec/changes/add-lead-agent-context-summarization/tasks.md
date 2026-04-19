@@ -1,8 +1,8 @@
 ## 1. Runtime middleware wiring
 
-- [ ] 1.1 Replace the static lead-agent middleware list with a middleware factory that can build the stack from the resolved runtime model
-- [ ] 1.2 Attach LangChain `SummarizationMiddleware` to the lead-agent runtime with bounded trigger, keep, and summarization-input settings
-- [ ] 1.3 Add lead-agent-specific summarization prompt configuration so compacted summaries retain session intent, key decisions, constraints, and next-step context
+- [x] 1.1 Replace the static lead-agent middleware list with a middleware factory that can build the stack from the resolved runtime model
+- [x] 1.2 Attach LangChain `SummarizationMiddleware` to the lead-agent runtime with bounded trigger, keep, and summarization-input settings
+- [x] 1.3 Add lead-agent-specific summarization prompt configuration so compacted summaries retain session intent, key decisions, constraints, and next-step context
 
 ## 2. Todo-state continuity
 

@@ -9,9 +9,11 @@ from langchain.agents.middleware import (
     AgentMiddleware,
     ModelRequest,
     ModelResponse,
+    SummarizationMiddleware,
     TodoListMiddleware,
     ToolCallRequest,
 )
+from langchain.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
 from langchain_core.tools import BaseTool, ToolException
 
@@ -20,6 +22,7 @@ from app.config.settings import get_settings
 from app.infrastructure.mcp.research_tools import RESEARCH_TOOL_NAMES
 from app.prompts.system.lead_agent import (
     get_lead_agent_orchestration_system_prompt,
+    get_lead_agent_summarization_prompt,
     get_lead_agent_todo_system_prompt,
     get_lead_agent_todo_tool_description,
     get_lead_agent_worker_system_prompt,
@@ -30,6 +33,11 @@ from app.services.ai.lead_agent_skill_access_resolver import (
 
 _BASE_SKILL_TOOL_NAMES = {"load_skill", "write_todos", *RESEARCH_TOOL_NAMES}
 _DELEGATION_TOOL_NAME = "delegate_tasks"
+LEAD_AGENT_SUMMARIZATION_MESSAGE_TRIGGER = ("messages", 40)
+LEAD_AGENT_SUMMARIZATION_TOKEN_TRIGGER = ("tokens", 80000)
+LEAD_AGENT_SUMMARIZATION_FRACTION_TRIGGER = ("fraction", 0.8)
+LEAD_AGENT_SUMMARIZATION_KEEP = ("messages", 12)
+LEAD_AGENT_SUMMARIZATION_TRIM_TOKENS = 6000
 
 
 class LeadAgentSkillPromptMiddleware(AgentMiddleware[LeadAgentState, None, Any]):
@@ -382,14 +390,39 @@ def _get_lead_agent_skill_access_resolver() -> LeadAgentSkillAccessResolver:
     return get_lead_agent_skill_access_resolver()
 
 
-LEAD_AGENT_MIDDLEWARE: list[AgentMiddleware[Any, None, Any]] = [
-    LeadAgentOrchestrationPromptMiddleware(),
-    LeadAgentSkillPromptMiddleware(),
-    TodoListMiddleware(
-        system_prompt=get_lead_agent_todo_system_prompt(),
-        tool_description=get_lead_agent_todo_tool_description(),
-    ),
-    LeadAgentDelegationLimitMiddleware(),
-    LeadAgentToolSelectionMiddleware(),
-    LeadAgentToolErrorMiddleware(),
-]
+def _build_lead_agent_summarization_triggers(
+    model: BaseChatModel,
+) -> list[tuple[str, int | float]]:
+    """Build safe trigger thresholds for one resolved model profile."""
+    triggers: list[tuple[str, int | float]] = [
+        LEAD_AGENT_SUMMARIZATION_MESSAGE_TRIGGER,
+        LEAD_AGENT_SUMMARIZATION_TOKEN_TRIGGER,
+    ]
+    profile = getattr(model, "profile", None)
+    if isinstance(profile, dict) and isinstance(profile.get("max_input_tokens"), int):
+        triggers.insert(0, LEAD_AGENT_SUMMARIZATION_FRACTION_TRIGGER)
+    return triggers
+
+
+def build_lead_agent_middleware(
+    model: BaseChatModel,
+) -> list[AgentMiddleware[Any, None, Any]]:
+    """Build the ordered lead-agent middleware stack for one resolved model."""
+    return [
+        SummarizationMiddleware(
+            model=model,
+            trigger=_build_lead_agent_summarization_triggers(model),
+            keep=LEAD_AGENT_SUMMARIZATION_KEEP,
+            summary_prompt=get_lead_agent_summarization_prompt(),
+            trim_tokens_to_summarize=LEAD_AGENT_SUMMARIZATION_TRIM_TOKENS,
+        ),
+        LeadAgentOrchestrationPromptMiddleware(),
+        LeadAgentSkillPromptMiddleware(),
+        TodoListMiddleware(
+            system_prompt=get_lead_agent_todo_system_prompt(),
+            tool_description=get_lead_agent_todo_tool_description(),
+        ),
+        LeadAgentDelegationLimitMiddleware(),
+        LeadAgentToolSelectionMiddleware(),
+        LeadAgentToolErrorMiddleware(),
+    ]

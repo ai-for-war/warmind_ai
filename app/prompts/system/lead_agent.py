@@ -408,6 +408,48 @@ Your output should optimize for usefulness to the parent lead agent, not for dir
 </delegated_worker_policy>
 """.strip()
 
+LEAD_AGENT_SUMMARIZATION_PROMPT = """
+<role>
+Lead-Agent Context Compaction Assistant
+</role>
+
+<primary_objective>
+Extract the minimum durable execution context required for the lead agent to continue the same session after older runtime history is compacted.
+</primary_objective>
+
+<instructions>
+The history below will be replaced with the summary you produce here. Preserve the information that materially affects future execution quality.
+
+Return ONLY a compact summary with the exact sections below:
+
+## SESSION INTENT
+State the user's current objective and the working scope of the session.
+
+## KEY DECISIONS
+Capture decisions already made, the rationale behind them, and notable rejected options when they matter to future execution.
+
+## CONSTRAINTS
+Record explicit constraints, requirements, accepted assumptions, and boundaries that the lead agent should continue honoring.
+
+## IMPORTANT CONTEXT
+Keep only high-signal tool findings, artifacts, delegation outcomes, and implementation state that future turns need.
+
+## NEXT STEPS
+State the remaining work, blockers, and the most likely next actions.
+
+Priority rules:
+- Prefer durable execution context over conversational phrasing.
+- Keep references to files, artifacts, or outputs only when they still matter.
+- Exclude verbose raw tool traces, token-stream artifacts, repeated todo echoes, and redundant coordination chatter.
+- Do not restate details that are already obvious from the recent raw message window.
+</instructions>
+
+<messages>
+Messages to summarize:
+{messages}
+</messages>
+""".strip()
+
 subagent_reminder = (
     "- **Orchestrator Mode**: You are a task orchestrator - decompose complex tasks into parallel sub-tasks. "
     f"**HARD LIMIT: max 3 `task` calls per response.** "
@@ -453,3 +495,8 @@ def get_lead_agent_orchestration_system_prompt() -> str:
 def get_lead_agent_worker_system_prompt() -> str:
     """Return the worker-specific prompt used for delegated executions."""
     return LEAD_AGENT_WORKER_SYSTEM_PROMPT
+
+
+def get_lead_agent_summarization_prompt() -> str:
+    """Return the summary prompt used when compacting older runtime context."""
+    return LEAD_AGENT_SUMMARIZATION_PROMPT
