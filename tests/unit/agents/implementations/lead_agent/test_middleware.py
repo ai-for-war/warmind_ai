@@ -9,7 +9,6 @@ from langchain.agents.middleware import (
     ModelRequest,
     ModelResponse,
     SummarizationMiddleware,
-    TodoListMiddleware,
 )
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import ToolException, tool
@@ -23,6 +22,7 @@ from app.agents.implementations.lead_agent.middleware import (
     LEAD_AGENT_SUMMARIZATION_TRIM_TOKENS,
     LeadAgentDelegationLimitMiddleware,
     LeadAgentOrchestrationPromptMiddleware,
+    LeadAgentTodoMiddleware,
     LeadAgentToolErrorMiddleware,
     LeadAgentSkillPromptMiddleware,
     LeadAgentToolSelectionMiddleware,
@@ -92,9 +92,11 @@ def _build_runtime_middleware(
     )
 
 
-def _todo_middleware() -> TodoListMiddleware:
+def _todo_middleware() -> LeadAgentTodoMiddleware:
     middleware = next(
-        item for item in _build_runtime_middleware() if isinstance(item, TodoListMiddleware)
+        item
+        for item in _build_runtime_middleware()
+        if isinstance(item, LeadAgentTodoMiddleware)
     )
     return middleware
 
@@ -459,6 +461,89 @@ async def test_delegation_limit_middleware_rejects_more_than_three_parallel_dele
 
 
 @pytest.mark.asyncio
+async def test_todo_middleware_injects_checkpoint_backed_todos_when_current_revision_is_not_visible() -> None:
+    middleware = _todo_middleware()
+    request = _request(
+        state={
+            "messages": [
+                ToolMessage(
+                    content="Updated todo list to [{'content': 'stale todo', 'status': 'pending'}]",
+                    tool_call_id="tool-1",
+                )
+            ],
+            "todos": [
+                {"content": "Inspect current runtime state", "status": "completed"},
+                {"content": "Inject authoritative todo snapshot", "status": "in_progress"},
+                {"content": "Verify prompt continuity after compaction", "status": "pending"},
+            ],
+            "todos_revision": 2,
+        },
+        system_prompt="Base system prompt.",
+    )
+    captured: dict[str, ModelRequest[None]] = {}
+
+    async def _handler(updated_request: ModelRequest[None]) -> ModelResponse[object]:
+        captured["request"] = updated_request
+        return ModelResponse(result=[AIMessage(content="ok")])
+
+    await middleware.awrap_model_call(request, _handler)
+
+    updated_request = captured["request"]
+    assert updated_request.system_prompt is not None
+    assert "Base system prompt." in updated_request.system_prompt
+    assert "<Todo_state>" in updated_request.system_prompt
+    assert "Current checkpoint-backed todo state for this thread." in updated_request.system_prompt
+    assert "- total: 3" in updated_request.system_prompt
+    assert "- completed: 1" in updated_request.system_prompt
+    assert "- in_progress: 1" in updated_request.system_prompt
+    assert "- pending: 1" in updated_request.system_prompt
+    assert "[completed] Inspect current runtime state" in updated_request.system_prompt
+    assert "[in_progress] Inject authoritative todo snapshot" in updated_request.system_prompt
+    assert "[pending] Verify prompt continuity after compaction" in updated_request.system_prompt
+    assert "stale todo" not in updated_request.system_prompt
+    assert "Prefer this todo snapshot over older transcript references" in updated_request.system_prompt
+
+
+@pytest.mark.asyncio
+async def test_todo_middleware_skips_prompt_injection_when_current_revision_is_still_visible() -> None:
+    middleware = _todo_middleware()
+    request = _request(
+        state={
+            "messages": [
+                ToolMessage(
+                    content=(
+                        "Updated todo list to [{'content': 'Track prompt visibility', 'status': 'in_progress'}]\n"
+                        "[todos_revision=3]"
+                    ),
+                    tool_call_id="tool-1",
+                    additional_kwargs={
+                        "lc_source": "write_todos",
+                        "todos_revision": 3,
+                    },
+                )
+            ],
+            "todos": [
+                {"content": "Track prompt visibility", "status": "in_progress"},
+            ],
+            "todos_revision": 3,
+        },
+        system_prompt="Base system prompt.",
+    )
+    captured: dict[str, ModelRequest[None]] = {}
+
+    async def _handler(updated_request: ModelRequest[None]) -> ModelResponse[object]:
+        captured["request"] = updated_request
+        return ModelResponse(result=[AIMessage(content="ok")])
+
+    await middleware.awrap_model_call(request, _handler)
+
+    updated_request = captured["request"]
+    assert updated_request.system_prompt is not None
+    assert "write_todos" in updated_request.system_prompt
+    assert "<Todo_state>" not in updated_request.system_prompt
+
+
+@pytest.mark.asyncio
 async def test_middleware_chain_preserves_skill_prompt_todo_guidance_and_filtered_tools() -> None:
     resolver = SimpleNamespace(
         resolve_skill_definitions=AsyncMock(
@@ -487,6 +572,17 @@ async def test_middleware_chain_preserves_skill_prompt_todo_guidance_and_filtere
             "allowed_tool_names": ["search_docs"],
             "subagent_enabled": True,
             "delegation_depth": 0,
+            "todos": [
+                {
+                    "content": "Design prompt-visible todo state injection",
+                    "status": "in_progress",
+                },
+                {
+                    "content": "Validate middleware ordering",
+                    "status": "pending",
+                },
+            ],
+            "todos_revision": 4,
         },
         system_prompt="Base system prompt.",
         tools=[
@@ -502,7 +598,12 @@ async def test_middleware_chain_preserves_skill_prompt_todo_guidance_and_filtere
 
     final_request = await _run_middleware_chain(
         request,
-        [skill_prompt, orchestration_prompt, todo_middleware, tool_selection],
+        [
+            skill_prompt,
+            orchestration_prompt,
+            todo_middleware,
+            tool_selection,
+        ],
     )
 
     assert final_request.system_prompt is not None
@@ -512,6 +613,9 @@ async def test_middleware_chain_preserves_skill_prompt_todo_guidance_and_filtere
     assert get_lead_agent_orchestration_system_prompt() in final_request.system_prompt
     assert "write_todos" in final_request.system_prompt
     assert "simple tasks (< 3 steps)" in final_request.system_prompt
+    assert "<Todo_state>" in final_request.system_prompt
+    assert "[in_progress] Design prompt-visible todo state injection" in final_request.system_prompt
+    assert "[pending] Validate middleware ordering" in final_request.system_prompt
     assert [tool.name for tool in final_request.tools] == [
         "load_skill",
         "write_todos",
@@ -562,7 +666,7 @@ def test_lead_agent_runtime_registers_todo_middleware_with_complex_task_guidance
     assert isinstance(middlewares[0], SummarizationMiddleware)
     assert isinstance(middlewares[1], LeadAgentOrchestrationPromptMiddleware)
     assert isinstance(middlewares[2], LeadAgentSkillPromptMiddleware)
-    assert isinstance(middlewares[3], TodoListMiddleware)
+    assert isinstance(middlewares[3], LeadAgentTodoMiddleware)
     assert isinstance(middlewares[4], LeadAgentDelegationLimitMiddleware)
     assert isinstance(middlewares[5], LeadAgentToolSelectionMiddleware)
     assert isinstance(middlewares[6], LeadAgentToolErrorMiddleware)
@@ -610,3 +714,4 @@ def test_lead_agent_runtime_skips_fraction_trigger_when_model_profile_is_unavail
 
 def test_lead_agent_state_keeps_todos_in_middleware_backed_runtime_state() -> None:
     assert "todos" not in LeadAgentState.__annotations__
+    assert "todos_revision" in LeadAgentState.__annotations__

@@ -6,9 +6,9 @@
 
 ## 2. Todo-state continuity
 
-- [ ] 2.1 Add a lead-agent middleware that renders the current checkpoint-backed todo snapshot into a bounded authoritative prompt section before each model call
-- [ ] 2.2 Integrate the todo-state injection middleware into the lead-agent middleware order so it composes correctly with planning, skill, orchestration, and tool-selection behavior
-- [ ] 2.3 Ensure the injected todo context is derived from persisted runtime state rather than reconstructed from prior tool-message history
+- [x] 2.1 Add a lead-agent middleware that renders the current checkpoint-backed todo snapshot into a bounded authoritative prompt section before each model call
+- [x] 2.2 Integrate the todo-state injection middleware into the lead-agent middleware order so it composes correctly with planning, skill, orchestration, and tool-selection behavior
+- [x] 2.3 Ensure the injected todo context is derived from persisted runtime state rather than reconstructed from prior tool-message history
 
 ## 3. Verification and regression coverage
 
