@@ -3,7 +3,9 @@
 from langchain.agents import create_agent
 from langgraph.graph.state import CompiledStateGraph
 
-from app.agents.implementations.lead_agent.middleware import LEAD_AGENT_MIDDLEWARE
+from app.agents.implementations.lead_agent.middleware import (
+    build_lead_agent_middleware,
+)
 from app.agents.implementations.lead_agent.runtime import (
     LeadAgentRuntimeConfig,
     build_lead_agent_model,
@@ -28,7 +30,7 @@ def create_lead_agent(
         system_prompt=get_lead_agent_system_prompt(
             subagent_enabled=subagent_enabled
         ),
-        middleware=LEAD_AGENT_MIDDLEWARE,
+        middleware=build_lead_agent_middleware(llm),
         state_schema=LeadAgentState,
         checkpointer=get_langgraph_checkpointer(),
     )

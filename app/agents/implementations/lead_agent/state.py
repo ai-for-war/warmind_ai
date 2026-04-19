@@ -24,3 +24,4 @@ class LeadAgentState(AgentState):
     loaded_skills: NotRequired[list[str]]
     allowed_tool_names: NotRequired[list[str]]
     active_skill_version: NotRequired[str | None]
+    todos_revision: NotRequired[int]
