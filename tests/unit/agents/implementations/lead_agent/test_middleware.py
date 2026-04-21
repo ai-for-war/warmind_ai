@@ -14,19 +14,33 @@ from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import ToolException, tool
 from langgraph.prebuilt.tool_node import ToolCallRequest
 
-from app.agents.implementations.lead_agent.middleware import (
+from app.agents.implementations.lead_agent.middleware.builder import (
+    build_lead_agent_middleware,
+)
+from app.agents.implementations.lead_agent.middleware.constants import (
     LEAD_AGENT_SUMMARIZATION_FRACTION_TRIGGER,
     LEAD_AGENT_SUMMARIZATION_KEEP,
     LEAD_AGENT_SUMMARIZATION_MESSAGE_TRIGGER,
     LEAD_AGENT_SUMMARIZATION_TOKEN_TRIGGER,
     LEAD_AGENT_SUMMARIZATION_TRIM_TOKENS,
+)
+from app.agents.implementations.lead_agent.middleware.delegation_limit import (
     LeadAgentDelegationLimitMiddleware,
+)
+from app.agents.implementations.lead_agent.middleware.orchestration import (
     LeadAgentOrchestrationPromptMiddleware,
-    LeadAgentTodoMiddleware,
-    LeadAgentToolErrorMiddleware,
+)
+from app.agents.implementations.lead_agent.middleware.skill_prompt import (
     LeadAgentSkillPromptMiddleware,
+)
+from app.agents.implementations.lead_agent.middleware.todo import (
+    LeadAgentTodoMiddleware,
+)
+from app.agents.implementations.lead_agent.middleware.tool_error import (
+    LeadAgentToolErrorMiddleware,
+)
+from app.agents.implementations.lead_agent.middleware.tool_selection import (
     LeadAgentToolSelectionMiddleware,
-    build_lead_agent_middleware,
 )
 from app.agents.implementations.lead_agent.state import LeadAgentState
 from app.agents.implementations.lead_agent.tools import load_skill

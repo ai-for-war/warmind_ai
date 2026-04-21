@@ -3,7 +3,7 @@
 from langchain.agents import create_agent
 from langgraph.graph.state import CompiledStateGraph
 
-from app.agents.implementations.lead_agent.middleware import (
+from app.agents.implementations.lead_agent.middleware.builder import (
     build_lead_agent_middleware,
 )
 from app.agents.implementations.lead_agent.runtime import (
