@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="doc/images/recapai-banner.png" alt="RecapAI - AI Agent for Vietnam Stock Trading" width="100%">
+</p>
+
 # RECAPAI
 
 Backend service built with FastAPI, Socket.IO, MongoDB, Redis, LangChain, and LangGraph.
