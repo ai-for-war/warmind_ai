@@ -62,6 +62,10 @@ class Settings(BaseSettings):
     MINIMAX_API_KEY: str
     MINIMAX_API_BASE: str = "https://api.minimax.io/v1"
 
+    # ZAI
+    ZAI_API_KEY: str | None = None
+    ZAI_API_BASE: str = "https://api.z.ai/api/paas/v4"
+
     # Deepgram
     DEEPGRAM_API_KEY: str
     DEEPGRAM_MODEL: str = "nova-3"
@@ -101,6 +105,7 @@ class Settings(BaseSettings):
 
     # VNStock
     VNSTOCK_API_KEY: str
+
 
 @lru_cache
 def get_settings() -> Settings:

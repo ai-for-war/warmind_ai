@@ -9,6 +9,7 @@ from app.agents.runtime import (
     AGENT_PROVIDER_AZURA as STOCK_RESEARCH_PROVIDER_AZURA,
     AGENT_PROVIDER_MINIMAX as STOCK_RESEARCH_PROVIDER_MINIMAX,
     AGENT_PROVIDER_OPENAI as STOCK_RESEARCH_PROVIDER_OPENAI,
+    AGENT_PROVIDER_ZAI as STOCK_RESEARCH_PROVIDER_ZAI,
     AgentModelCatalogEntry as StockResearchAgentModelCatalogEntry,
     AgentProviderCatalogEntry as StockResearchAgentProviderCatalogEntry,
     AgentRuntimeConfig as StockResearchAgentRuntimeConfig,
@@ -37,6 +38,12 @@ def get_stock_research_runtime_catalog() -> (
             ),
             StockResearchAgentModelCatalogEntry(
                 model="MiniMax-M2.7",
+                is_default=False,
+            ),
+        ),
+        zai_models=(
+            StockResearchAgentModelCatalogEntry(
+                model="glm-5.1",
                 is_default=False,
             ),
         ),

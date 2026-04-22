@@ -13,11 +13,13 @@ from app.infrastructure.llm.factory import (
     get_chat_minimax,
     get_chat_openai,
     get_chat_openai_legacy,
+    get_chat_zai,
 )
 
 AGENT_PROVIDER_OPENAI = "openai"
 AGENT_PROVIDER_AZURA = "azura"
 AGENT_PROVIDER_MINIMAX = "minimax"
+AGENT_PROVIDER_ZAI = "zai"
 AGENT_OPENAI_REASONING_OPTIONS = ("low", "medium", "high")
 
 
@@ -55,13 +57,25 @@ def build_runtime_catalog(
     openai_models: tuple[AgentModelCatalogEntry, ...] = (),
     azure_models: tuple[AgentModelCatalogEntry, ...] = (),
     minimax_models: tuple[AgentModelCatalogEntry, ...] = (),
+    zai_models: tuple[AgentModelCatalogEntry, ...] = (),
     openai_display_name: str = "OpenAI",
     azure_display_name: str = "Azure OpenAI (Legacy)",
     minimax_display_name: str = "MiniMax",
+    zai_display_name: str = "Z.AI",
 ) -> tuple[AgentProviderCatalogEntry, ...]:
     """Build one provider catalog from the currently configured backends."""
     settings = get_settings()
     providers: list[AgentProviderCatalogEntry] = []
+
+    if settings.ZAI_API_KEY and zai_models:
+        providers.append(
+            AgentProviderCatalogEntry(
+                provider=AGENT_PROVIDER_ZAI,
+                display_name=zai_display_name,
+                models=zai_models,
+                is_default=True,
+            )
+        )
 
     if settings.MINIMAX_API_KEY and minimax_models:
         providers.append(
@@ -69,7 +83,7 @@ def build_runtime_catalog(
                 provider=AGENT_PROVIDER_MINIMAX,
                 display_name=minimax_display_name,
                 models=minimax_models,
-                is_default=True,
+                is_default=not providers,
             )
         )
 
@@ -174,6 +188,14 @@ def build_chat_model(
 
     if runtime_config.provider == AGENT_PROVIDER_MINIMAX:
         return get_chat_minimax(
+            model=runtime_config.model,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            streaming=streaming,
+        )
+
+    if runtime_config.provider == AGENT_PROVIDER_ZAI:
+        return get_chat_zai(
             model=runtime_config.model,
             max_tokens=max_tokens,
             temperature=temperature,

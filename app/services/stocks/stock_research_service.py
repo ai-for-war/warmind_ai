@@ -68,7 +68,7 @@ class StockResearchService:
     ) -> StockResearchReportCreateResponse:
         """Validate one symbol and persist a queued report request."""
         symbol = request.symbol.strip().upper()
-        self._resolve_request_runtime_config(request)
+        self.resolve_request_runtime_config(request)
         if not await self.stock_repo.exists_by_symbol(symbol):
             raise StockSymbolNotFoundError()
 
@@ -179,7 +179,7 @@ class StockResearchService:
         return StockResearchReportFailure(code=code, message=message)
 
     @staticmethod
-    def _resolve_request_runtime_config(
+    def resolve_request_runtime_config(
         request: StockResearchReportCreateRequest,
     ) -> StockResearchAgentRuntimeConfig | None:
         """Resolve an optional runtime override embedded in the create request."""

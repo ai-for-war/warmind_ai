@@ -24,6 +24,33 @@ class StockResearchReportRuntimeConfigRequest(StockResearchReportSchemaBase):
     reasoning: str | None = Field(default=None, min_length=1, max_length=50)
 
 
+class StockResearchCatalogModelResponse(StockResearchReportSchemaBase):
+    """One supported stock-research runtime model option."""
+
+    model: str
+    reasoning_options: list[str] = Field(default_factory=list)
+    default_reasoning: str | None = None
+    is_default: bool = False
+
+
+class StockResearchCatalogProviderResponse(StockResearchReportSchemaBase):
+    """One supported stock-research runtime provider option."""
+
+    provider: str
+    display_name: str
+    models: list[StockResearchCatalogModelResponse] = Field(default_factory=list)
+    is_default: bool = False
+
+
+class StockResearchCatalogResponse(StockResearchReportSchemaBase):
+    """Supported stock-research runtime catalog returned by the API."""
+
+    default_provider: str
+    default_model: str
+    default_reasoning: str | None = None
+    providers: list[StockResearchCatalogProviderResponse] = Field(default_factory=list)
+
+
 class StockResearchReportCreateRequest(StockResearchReportSchemaBase):
     """Request payload for creating one stock research report."""
 

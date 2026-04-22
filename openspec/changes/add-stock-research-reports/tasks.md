@@ -15,20 +15,20 @@
 
 ## 3. Stock research service lifecycle
 
-- [ ] 3.1 Add a stock research service under `app/services/` for symbol validation, report creation, lifecycle transitions, and report reads
-- [ ] 3.2 Reuse the persisted stock catalog only for symbol validation before creating a report request
-- [ ] 3.3 Implement `202 Accepted` create behavior that persists a queued report and schedules background processing
-- [ ] 3.4 Implement background execution that advances reports through `queued`, `running`, `completed`, `partial`, and `failed`
-- [ ] 3.5 Persist final markdown content and web-only `sources[]` on successful or partial runs
-- [ ] 3.6 Persist failure details for unsuccessful runs without publishing broken report artifacts
-- [ ] 3.7 Wire the stock research service into `app/common/service.py`
+- [x] 3.1 Add a stock research service under `app/services/` for symbol validation, report creation, lifecycle transitions, and report reads
+- [x] 3.2 Reuse the persisted stock catalog only for symbol validation before creating a report request
+- [x] 3.3 Implement `202 Accepted` create behavior that persists a queued report and schedules background processing
+- [x] 3.4 Implement background execution that advances reports through `queued`, `running`, `completed`, `partial`, and `failed`
+- [x] 3.5 Persist final markdown content and web-only `sources[]` on successful or partial runs
+- [x] 3.6 Persist failure details for unsuccessful runs without publishing broken report artifacts
+- [x] 3.7 Wire the stock research service into `app/common/service.py`
 
 ## 4. API integration
 
-- [ ] 4.1 Add authenticated stock research report endpoints under `app/api/v1/stock_research/` for create, get, and list operations
-- [ ] 4.2 Apply `get_current_active_user` and `get_current_organization_context` to all stock research report endpoints
-- [ ] 4.3 Register the stock research router in the v1 router aggregation
-- [ ] 4.4 Ensure get and list responses expose persisted lifecycle state and, when available, stored markdown content plus `sources[]`
+- [x] 4.1 Add authenticated stock research report endpoints under `app/api/v1/stock_research/` for create, get, and list operations
+- [x] 4.2 Apply `get_current_active_user` and `get_current_organization_context` to all stock research report endpoints
+- [x] 4.3 Register the stock research router in the v1 router aggregation
+- [x] 4.4 Ensure get and list responses expose persisted lifecycle state and, when available, stored markdown content plus `sources[]`
 
 ## 5. Tests and verification
 

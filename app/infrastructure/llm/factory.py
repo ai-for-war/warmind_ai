@@ -118,6 +118,35 @@ def get_chat_minimax(
     )
 
 
+def get_chat_zai(
+    model: str = "glm-5.1",
+    temperature: float = 0.7,
+    streaming: bool = True,
+    max_tokens: int = 2048,
+    base_url: str | None = None,
+) -> ChatOpenAI:
+    """Create ChatOpenAI instance targeting the official Z.AI OpenAI-compatible API.
+
+    Official Z.AI docs currently use the OpenAI SDK with the general chat endpoint
+    base URL `https://api.z.ai/api/paas/v4` and model ids such as `glm-5.1`.
+    """
+    settings = get_settings()
+    api_base = base_url or settings.ZAI_API_BASE
+    if not settings.ZAI_API_KEY:
+        raise ValueError("ZAI_API_KEY is required")
+
+    return ChatOpenAI(
+        store=False,
+        api_key=settings.ZAI_API_KEY,
+        stream_usage=streaming,
+        base_url=api_base,
+        model=model,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        streaming=streaming,
+    )
+
+
 def get_chat_azure_openai_legacy(
     model: str | None = None,
     temperature: float = 0.7,

@@ -9,6 +9,7 @@ from app.agents.runtime import (
     AGENT_PROVIDER_AZURA as LEAD_AGENT_PROVIDER_AZURA,
     AGENT_PROVIDER_MINIMAX as LEAD_AGENT_PROVIDER_MINIMAX,
     AGENT_PROVIDER_OPENAI as LEAD_AGENT_PROVIDER_OPENAI,
+    AGENT_PROVIDER_ZAI as LEAD_AGENT_PROVIDER_ZAI,
     AgentModelCatalogEntry as LeadAgentModelCatalogEntry,
     AgentProviderCatalogEntry as LeadAgentProviderCatalogEntry,
     AgentRuntimeConfig as LeadAgentRuntimeConfig,
@@ -32,6 +33,12 @@ def get_lead_agent_runtime_catalog() -> tuple[LeadAgentProviderCatalogEntry, ...
             ),
             LeadAgentModelCatalogEntry(
                 model="MiniMax-M2.7",
+                is_default=False,
+            ),
+        ),
+        zai_models=(
+            LeadAgentModelCatalogEntry(
+                model="glm-5.1",
                 is_default=False,
             ),
         ),
