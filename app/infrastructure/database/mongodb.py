@@ -250,6 +250,42 @@ class MongoDB:
         )
         logger.info("Created index: idx_stock_symbols_snapshot_at")
 
+        # Indexes for stock_research_reports collection
+        await cls.db.stock_research_reports.create_index(
+            [
+                ("user_id", ASCENDING),
+                ("organization_id", ASCENDING),
+                ("created_at", DESCENDING),
+            ],
+            name="idx_stock_research_reports_user_org_created_desc",
+            background=True,
+        )
+        logger.info("Created index: idx_stock_research_reports_user_org_created_desc")
+
+        await cls.db.stock_research_reports.create_index(
+            [
+                ("user_id", ASCENDING),
+                ("organization_id", ASCENDING),
+                ("symbol", ASCENDING),
+                ("created_at", DESCENDING),
+            ],
+            name="idx_stock_research_reports_user_org_symbol_created_desc",
+            background=True,
+        )
+        logger.info(
+            "Created index: idx_stock_research_reports_user_org_symbol_created_desc"
+        )
+
+        await cls.db.stock_research_reports.create_index(
+            [
+                ("status", ASCENDING),
+                ("updated_at", DESCENDING),
+            ],
+            name="idx_stock_research_reports_status_updated_desc",
+            background=True,
+        )
+        logger.info("Created index: idx_stock_research_reports_status_updated_desc")
+
         # Indexes for stock_watchlists collection
         await cls.db.stock_watchlists.create_index(
             [
