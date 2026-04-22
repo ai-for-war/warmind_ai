@@ -9,6 +9,16 @@ from typing import Any, Mapping
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 CITATION_TOKEN_PATTERN = re.compile(r"\[(S\d+)\]")
+THINK_BLOCK_PATTERN = re.compile(r"<think>.*?</think>", re.IGNORECASE | re.DOTALL)
+SOURCES_SECTION_PATTERN = re.compile(r"^##+\s+Sources\s*$", re.IGNORECASE | re.MULTILINE)
+MARKDOWN_REPORT_START_PATTERN = re.compile(
+    r"^(#{1,6}\s|\*\*|> |\d+\.\s|[-*]\s)",
+    re.MULTILINE,
+)
+MARKDOWN_SOURCE_LINE_PATTERN = re.compile(
+    r"^\s*[-*]\s*\[(S\d+)\]\s+(.+?)\s+\((https?://[^)\s]+)\)\s*$",
+    re.MULTILINE,
+)
 
 
 class StockResearchAgentOutputSource(BaseModel):
@@ -100,10 +110,48 @@ def parse_stock_research_output(payload: str | Mapping[str, Any]) -> StockResear
 
     try:
         parsed_payload = json.loads(normalized_payload)
-    except json.JSONDecodeError as exc:
-        raise ValueError("stock research output must be valid JSON") from exc
+    except json.JSONDecodeError:
+        return _parse_markdown_output(normalized_payload)
 
     return StockResearchAgentOutput.model_validate(parsed_payload)
+
+
+def _parse_markdown_output(payload: str) -> StockResearchAgentOutput:
+    """Parse one markdown stock-research report with an optional sources section."""
+    normalized_payload = _strip_leading_model_preamble(payload)
+    content, sources_block = _split_sources_section(normalized_payload)
+    sources = [
+        {
+            "source_id": source_id,
+            "title": title,
+            "url": url,
+        }
+        for source_id, title, url in MARKDOWN_SOURCE_LINE_PATTERN.findall(sources_block)
+    ]
+    return StockResearchAgentOutput(
+        content=content,
+        sources=sources,
+    )
+
+
+def _strip_leading_model_preamble(payload: str) -> str:
+    """Remove hidden-reasoning blocks and obvious non-report lead-in text."""
+    normalized_payload = THINK_BLOCK_PATTERN.sub("", payload).strip()
+    report_start = MARKDOWN_REPORT_START_PATTERN.search(normalized_payload)
+    if report_start is not None and report_start.start() > 0:
+        normalized_payload = normalized_payload[report_start.start() :].strip()
+    return normalized_payload
+
+
+def _split_sources_section(payload: str) -> tuple[str, str]:
+    """Split one markdown report into body content and trailing sources block."""
+    sources_match = SOURCES_SECTION_PATTERN.search(payload)
+    if sources_match is None:
+        return payload.strip(), ""
+    return (
+        payload[: sources_match.start()].strip(),
+        payload[sources_match.end() :].strip(),
+    )
 
 
 def _strip_code_fence(value: str) -> str:

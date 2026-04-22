@@ -265,3 +265,31 @@ def test_extract_agent_output_rejects_missing_citation_source() -> None:
                 }
             }
         )
+
+
+def test_extract_agent_output_accepts_markdown_fallback_from_messages() -> None:
+    output = StockResearchService._extract_agent_output(
+        {
+            "messages": [
+                {
+                    "role": "assistant",
+                    "content": """
+<think>
+internal reasoning
+</think>
+
+## Thesis
+
+FPT remains resilient [S1].
+
+## Sources
+
+- [S1] Example Source (https://example.com/fpt)
+""".strip(),
+                }
+            ]
+        }
+    )
+
+    assert output.content.startswith("## Thesis")
+    assert output.sources[0].source_id == "S1"

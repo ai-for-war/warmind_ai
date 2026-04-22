@@ -55,3 +55,23 @@ FPT remains resilient [S2].
 
     with pytest.raises(ValueError, match="missing source_id values: S2"):
         parse_stock_research_output(payload)
+
+
+def test_parse_stock_research_output_accepts_json_string_payload() -> None:
+    payload = """
+{
+  "content": "## Thesis\\n\\nFPT remains resilient [S1].",
+  "sources": [
+    {
+      "source_id": "S1",
+      "url": "https://example.com/fpt",
+      "title": "Example Source"
+    }
+  ]
+}
+""".strip()
+
+    output = parse_stock_research_output(payload)
+
+    assert output.content.startswith("## Thesis")
+    assert output.sources[0].source_id == "S1"
