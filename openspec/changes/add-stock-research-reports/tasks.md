@@ -32,7 +32,7 @@
 
 ## 5. Tests and verification
 
-- [ ] 5.1 Add repository tests for report creation, ownership-scoped lookup, lifecycle updates, and history listing behavior
-- [ ] 5.2 Add service tests for catalog-based symbol validation, `202` create behavior, background lifecycle transitions, partial/failure handling, and citation-reference validation
-- [ ] 5.3 Add API tests for organization-auth access control, unknown-symbol rejection, accepted create responses, and owned report reads/listing
-- [ ] 5.4 Add agent or service tests that verify reports may include current-price text without citations while web citations still map correctly to stored `sources[]`
+- [x] 5.1 Add repository tests for report creation, ownership-scoped lookup, lifecycle updates, and history listing behavior
+- [x] 5.2 Add service tests for catalog-based symbol validation, `202` create behavior, background lifecycle transitions, partial/failure handling, and citation-reference validation
+- [x] 5.3 Add API tests for organization-auth access control, unknown-symbol rejection, accepted create responses, and owned report reads/listing
+- [x] 5.4 Add agent or service tests that verify reports may include current-price text without citations while web citations still map correctly to stored `sources[]`
