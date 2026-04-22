@@ -28,7 +28,11 @@ contract.
 
 #### Scenario: Template catalog reflects the current v1 template scope
 - **WHEN** the backend responds to the template catalog request
-- **THEN** the response includes `buy_and_hold` and `sma_crossover`
+- **THEN** the response includes `buy_and_hold`, `sma_crossover`, and
+  `ichimoku_cloud`
+- **AND** the `ichimoku_cloud` entry includes parameter metadata for
+  `tenkan_window`, `kijun_window`, `senkou_b_window`, `displacement`, and
+  `warmup_bars`
 - **AND** the response does not advertise unsupported templates outside the
   current v1 capability
 
@@ -65,6 +69,12 @@ fields in v1.
 - **THEN** the request contract accepts the allowed v1 fields only
 - **AND** the caller cannot override fixed engine assumptions such as daily
   timeframe, long-only execution, all-in sizing, or next-open fills
+
+#### Scenario: Public run request accepts valid Ichimoku parameters
+- **WHEN** an authenticated caller submits a public backtest run request with
+  template `ichimoku_cloud` and valid Ichimoku template parameters
+- **THEN** the public request validates successfully
+- **AND** the request maps those parameters to the internal backtest contract
 
 #### Scenario: Response exposes the applied assumptions
 - **WHEN** the system returns a successful public backtest response
