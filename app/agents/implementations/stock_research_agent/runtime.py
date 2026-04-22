@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Any, Mapping
-
-from langgraph.graph.state import CompiledStateGraph
 
 from app.agents.runtime import (
     AGENT_OPENAI_REASONING_OPTIONS as STOCK_RESEARCH_OPENAI_REASONING_OPTIONS,
@@ -19,10 +16,6 @@ from app.agents.runtime import (
     build_runtime_catalog,
     get_default_runtime_config,
     resolve_runtime_config,
-)
-from app.agents.implementations.stock_research_agent.validation import (
-    StockResearchAgentOutput,
-    parse_stock_research_output,
 )
 from app.config.settings import get_settings
 

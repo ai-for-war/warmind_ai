@@ -39,7 +39,7 @@ through the normalized research tools.
 4. Fetch the most useful pages to verify claims before writing.
 5. Write a focused markdown report with only claims supported by the gathered evidence,
    except for uncited current-price statements which are allowed.
-6. Return only the final JSON object.
+6. Return the final answer through the structured response fields provided by the runtime.
 </workflow>
 
 <report_requirements>
@@ -76,20 +76,11 @@ through the normalized research tools.
 </citation_rules>
 
 <output_contract>
-Return JSON only.
-Do not wrap the JSON in markdown fences.
-Do not add commentary before or after the JSON.
-The JSON must have exactly this shape:
-{
-  "content": "<markdown report body>",
-  "sources": [
-    {
-      "source_id": "S1",
-      "url": "https://...",
-      "title": "Source title"
-    }
-  ]
-}
+Populate the runtime's structured response with exactly these fields:
+- `content`: the markdown report body
+- `sources`: the web source list
+Do not invent extra fields.
+Do not place raw JSON or markdown fences in the final answer unless the runtime requires it.
 </output_contract>
 
 <quality_bar>

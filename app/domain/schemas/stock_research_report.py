@@ -16,10 +16,19 @@ class StockResearchReportSchemaBase(StockSchemaBase):
     """Base schema for stock research report transport payloads."""
 
 
+class StockResearchReportRuntimeConfigRequest(StockResearchReportSchemaBase):
+    """Requested runtime configuration for one stock research report run."""
+
+    provider: str = Field(..., min_length=1, max_length=100)
+    model: str = Field(..., min_length=1, max_length=200)
+    reasoning: str | None = Field(default=None, min_length=1, max_length=50)
+
+
 class StockResearchReportCreateRequest(StockResearchReportSchemaBase):
     """Request payload for creating one stock research report."""
 
     symbol: str = Field(..., min_length=1, max_length=MAX_STOCK_RESEARCH_SYMBOL_LENGTH)
+    runtime_config: StockResearchReportRuntimeConfigRequest | None = None
 
     @field_validator("symbol", mode="before")
     @classmethod

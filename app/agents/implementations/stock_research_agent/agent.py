@@ -12,6 +12,9 @@ from app.agents.implementations.stock_research_agent.runtime import (
 from app.agents.implementations.stock_research_agent.tools import (
     get_stock_research_tool_surface,
 )
+from app.agents.implementations.stock_research_agent.validation import (
+    StockResearchAgentOutput,
+)
 from app.prompts.system.stock_research_agent import (
     STOCK_RESEARCH_AGENT_SYSTEM_PROMPT,
 )
@@ -28,4 +31,5 @@ def create_stock_research_agent(
         model=llm,
         tools=list(tool_surface.tools),
         system_prompt=STOCK_RESEARCH_AGENT_SYSTEM_PROMPT,
+        response_format=StockResearchAgentOutput,
     )
