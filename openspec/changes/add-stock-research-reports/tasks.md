@@ -1,10 +1,10 @@
 ## 1. Domain and persistence foundations
 
-- [ ] 1.1 Add stock research report domain models under `app/domain/models/` for report status, ownership, timestamps, markdown content, source metadata, and failure details
-- [ ] 1.2 Add request and response schemas under `app/domain/schemas/` for create, get, and list stock research report flows
-- [ ] 1.3 Add a stock research report repository under `app/repo/` with create, update lifecycle state, find-owned report, and list-by-user-and-organization behavior
-- [ ] 1.4 Create MongoDB indexes for report history reads by `user + organization`, symbol-scoped history, and operational status lookups
-- [ ] 1.5 Wire the new repository into `app/common/repo.py`
+- [x] 1.1 Add stock research report domain models under `app/domain/models/` for report status, ownership, timestamps, markdown content, source metadata, and failure details
+- [x] 1.2 Add request and response schemas under `app/domain/schemas/` for create, get, and list stock research report flows
+- [x] 1.3 Add a stock research report repository under `app/repo/` with create, update lifecycle state, find-owned report, and list-by-user-and-organization behavior
+- [x] 1.4 Create MongoDB indexes for report history reads by `user + organization`, symbol-scoped history, and operational status lookups
+- [x] 1.5 Wire the new repository into `app/common/repo.py`
 
 ## 2. Research runtime and validation behavior
 
