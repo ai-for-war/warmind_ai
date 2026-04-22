@@ -8,10 +8,10 @@
 
 ## 2. Research runtime and validation behavior
 
-- [ ] 2.1 Add a dedicated stock research agent/runtime module under `app/agents/implementations/` that is separate from the existing lead-agent runtime
-- [ ] 2.2 Implement web-research tool usage through the normalized `search` and `fetch_content` contract for company, industry, and macro/news evidence gathering
-- [ ] 2.3 Define the research-agent output contract as markdown `content` plus `sources[]` with `source_id`, `url`, and `title`
-- [ ] 2.4 Implement lightweight output validation for non-empty markdown, unique source IDs, complete source fields, and `[Sx]` reference integrity
+- [x] 2.1 Add a dedicated stock research agent/runtime module under `app/agents/implementations/` that is separate from the existing lead-agent runtime
+- [x] 2.2 Implement web-research tool usage through the normalized `search` and `fetch_content` contract for company, industry, and macro/news evidence gathering
+- [x] 2.3 Define the research-agent output contract as markdown `content` plus `sources[]` with `source_id`, `url`, and `title`
+- [x] 2.4 Implement lightweight output validation for non-empty markdown, unique source IDs, complete source fields, and `[Sx]` reference integrity
 
 ## 3. Stock research service lifecycle
 
