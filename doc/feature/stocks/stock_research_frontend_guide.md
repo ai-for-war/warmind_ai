@@ -10,6 +10,7 @@ Phạm vi tài liệu chỉ gồm:
 - endpoint nào hiện có
 - request schema của từng endpoint
 - response schema của từng endpoint
+- socket event nào backend sẽ bắn về frontend
 - lifecycle state, nullable semantics, và error semantics
 
 Tài liệu này không hướng dẫn frontend cách code.
@@ -53,8 +54,40 @@ Luồng backend hiện tại:
 2. FE gọi `POST /api/v1/stock-research/reports` để tạo một report request.
 3. Backend trả `202 Accepted` ngay, kèm summary của report vừa tạo.
 4. Backend xử lý report ở background.
-5. FE poll `GET /api/v1/stock-research/reports/{report_id}` để lấy trạng thái mới nhất.
-6. FE có thể gọi `GET /api/v1/stock-research/reports` để hiển thị lịch sử report.
+5. Khi report kết thúc, backend sẽ emit socket event terminal về room của user.
+6. FE có thể dùng socket event đó như tín hiệu refresh.
+7. FE poll hoặc refetch `GET /api/v1/stock-research/reports/{report_id}` để lấy dữ liệu detail mới nhất.
+8. FE có thể gọi `GET /api/v1/stock-research/reports` để hiển thị lịch sử report.
+
+## 4.1 Socket event terminal
+
+Stock research hiện tại chỉ bắn 2 socket event terminal:
+
+- `stock-research:completed`
+- `stock-research:failed`
+
+Không có event:
+
+- `stock-research:started`
+- `stock-research:running`
+
+Semantics:
+
+- event được emit vào room `user:{user_id}`
+- backend dùng cùng Socket.IO connection chung của app
+- event chỉ là tín hiệu terminal lifecycle
+- FE nên coi event như trigger để refetch REST resource, thay vì coi socket payload là nguồn dữ liệu đầy đủ duy nhất
+
+## 4.2 Điều kiện để nhận socket event
+
+Frontend cần mở Socket.IO connection với access token hợp lệ.
+
+Backend hiện hỗ trợ token theo 2 cách:
+
+- qua auth object: `{"token": "<jwt>"}`
+- hoặc query param fallback: `?token=<jwt>`
+
+Backend sẽ tự join socket connection vào room riêng của user sau khi authenticate thành công.
 
 ## 5. Định danh và normalization frontend cần hiểu
 
@@ -188,6 +221,60 @@ Semantics:
 - list hiện tại là history của current user trong current organization
 
 ## 7. Response schema chung
+
+## 7.0 Socket terminal payload
+
+```ts
+type StockResearchSocketTerminalPayload = {
+  report_id: string;
+  symbol: string;
+  status: "completed" | "failed";
+  completed_at: string | null;
+  error: {
+    code: string;
+    message: string;
+  } | null;
+  organization_id: string;
+}
+```
+
+Semantics:
+
+- `report_id`: id của report vừa kết thúc
+- `symbol`: stock symbol đã được normalize uppercase
+- `status`: chỉ có thể là `completed` hoặc `failed`
+- `completed_at`: timestamp backend đánh dấu terminal state
+- `error`: chỉ có giá trị khi `status = "failed"`
+- `organization_id`: được thêm ở socket gateway để FE có thể filter đúng organization context nếu cần
+
+Ví dụ payload completed:
+
+```json
+{
+  "report_id": "6808769a3d3b1c9d9bb2d501",
+  "symbol": "FPT",
+  "status": "completed",
+  "completed_at": "2026-04-23T09:15:30.123000Z",
+  "error": null,
+  "organization_id": "org-1"
+}
+```
+
+Ví dụ payload failed:
+
+```json
+{
+  "report_id": "6808769a3d3b1c9d9bb2d501",
+  "symbol": "FPT",
+  "status": "failed",
+  "completed_at": "2026-04-23T09:15:30.123000Z",
+  "error": {
+    "code": "RuntimeError",
+    "message": "Stock research report generation failed"
+  },
+  "organization_id": "org-1"
+}
+```
 
 ## 7.1 Runtime catalog model
 
