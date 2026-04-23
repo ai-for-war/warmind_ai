@@ -20,9 +20,9 @@
 
 ## 4. Authenticated notification API surface
 
-- [ ] 4.1 Add an authenticated notification router under `app/api/v1/` for unread count, notification listing, mark-one-read, and mark-all-read endpoints
-- [ ] 4.2 Apply `get_current_active_user` and `get_current_organization_context` so all notification reads and mutations stay scoped to the authenticated user and organization
-- [ ] 4.3 Register the notification router in the v1 API aggregation
+- [x] 4.1 Add an authenticated notification router under `app/api/v1/` for unread count, notification listing, mark-one-read, and mark-all-read endpoints
+- [x] 4.2 Apply `get_current_active_user` and `get_current_organization_context` so all notification reads and mutations stay scoped to the authenticated user and organization
+- [x] 4.3 Register the notification router in the v1 API aggregation
 
 ## 5. Producer integration and verification
 
