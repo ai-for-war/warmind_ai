@@ -28,6 +28,7 @@ from app.common.notification_types import NotificationTargetTypes, NotificationT
 from app.domain.models.stock_research_report import (
     StockResearchReport,
     StockResearchReportFailure,
+    StockResearchReportRuntimeConfig,
     StockResearchReportSource,
     StockResearchReportStatus,
 )
@@ -38,6 +39,7 @@ from app.domain.schemas.stock_research_report import (
     StockResearchReportFailureResponse,
     StockResearchReportListResponse,
     StockResearchReportResponse,
+    StockResearchReportRuntimeConfigResponse,
     StockResearchReportSourceResponse,
     StockResearchReportSummary,
 )
@@ -72,7 +74,7 @@ class StockResearchService:
     ) -> StockResearchReportCreateResponse:
         """Validate one symbol and persist a queued report request."""
         symbol = request.symbol.strip().upper()
-        self.resolve_request_runtime_config(request)
+        runtime_config = self.resolve_request_runtime_config(request)
         if not await self.stock_repo.exists_by_symbol(symbol):
             raise StockSymbolNotFoundError()
 
@@ -81,6 +83,7 @@ class StockResearchService:
             organization_id=organization_id,
             symbol=symbol,
             status=StockResearchReportStatus.QUEUED,
+            runtime_config=self._to_runtime_config_model(runtime_config),
         )
 
         return self._to_create_response(report)
@@ -134,6 +137,9 @@ class StockResearchService:
         runtime_config: StockResearchAgentRuntimeConfig | None = None,
     ) -> None:
         """Advance one report through running and terminal lifecycle states."""
+        if runtime_config is None:
+            raise ValueError("stock research runtime_config is required")
+
         started_at = datetime.now(timezone.utc)
         running_report = await self.report_repo.update_lifecycle_state(
             report_id=report_id,
@@ -200,15 +206,25 @@ class StockResearchService:
     @staticmethod
     def resolve_request_runtime_config(
         request: StockResearchReportCreateRequest,
-    ) -> StockResearchAgentRuntimeConfig | None:
-        """Resolve an optional runtime override embedded in the create request."""
-        if request.runtime_config is None:
-            return None
-
+    ) -> StockResearchAgentRuntimeConfig:
+        """Resolve the required runtime configuration embedded in the request."""
         return resolve_stock_research_runtime_config(
             provider=request.runtime_config.provider,
             model=request.runtime_config.model,
             reasoning=request.runtime_config.reasoning,
+        )
+
+    @staticmethod
+    def runtime_config_from_response(
+        runtime_config: StockResearchReportRuntimeConfigResponse | None,
+    ) -> StockResearchAgentRuntimeConfig:
+        """Convert a persisted API runtime snapshot into an agent runtime config."""
+        if runtime_config is None:
+            raise ValueError("stock research runtime_config is required")
+        return StockResearchAgentRuntimeConfig(
+            provider=runtime_config.provider,
+            model=runtime_config.model,
+            reasoning=runtime_config.reasoning,
         )
 
     async def _run_stock_research_agent(
@@ -219,6 +235,9 @@ class StockResearchService:
         runtime_config: StockResearchAgentRuntimeConfig | None = None,
     ) -> StockResearchAgentOutput:
         """Run the dedicated stock research runtime from the service layer."""
+        if runtime_config is None:
+            raise ValueError("stock research runtime_config is required")
+
         result = await self._get_agent(runtime_config).ainvoke(
             {
                 "messages": [
@@ -378,6 +397,9 @@ class StockResearchService:
             started_at=report.started_at,
             completed_at=report.completed_at,
             updated_at=report.updated_at,
+            runtime_config=StockResearchService._to_runtime_config_response(
+                report.runtime_config
+            ),
         )
 
     @classmethod
@@ -413,4 +435,26 @@ class StockResearchService:
                     message=report.error.message,
                 )
             ),
+        )
+
+    @staticmethod
+    def _to_runtime_config_model(
+        runtime_config: StockResearchAgentRuntimeConfig,
+    ) -> StockResearchReportRuntimeConfig:
+        return StockResearchReportRuntimeConfig(
+            provider=runtime_config.provider,
+            model=runtime_config.model,
+            reasoning=runtime_config.reasoning,
+        )
+
+    @staticmethod
+    def _to_runtime_config_response(
+        runtime_config: StockResearchReportRuntimeConfig | None,
+    ) -> StockResearchReportRuntimeConfigResponse | None:
+        if runtime_config is None:
+            return None
+        return StockResearchReportRuntimeConfigResponse(
+            provider=runtime_config.provider,
+            model=runtime_config.model,
+            reasoning=runtime_config.reasoning,
         )

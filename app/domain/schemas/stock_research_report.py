@@ -28,6 +28,14 @@ class StockResearchReportRuntimeConfigRequest(StockResearchReportSchemaBase):
     reasoning: str | None = Field(default=None, min_length=1, max_length=50)
 
 
+class StockResearchReportRuntimeConfigResponse(StockResearchReportSchemaBase):
+    """Resolved runtime configuration returned with one stock research report."""
+
+    provider: str = Field(..., min_length=1, max_length=100)
+    model: str = Field(..., min_length=1, max_length=200)
+    reasoning: str | None = Field(default=None, min_length=1, max_length=50)
+
+
 class StockResearchCatalogModelResponse(StockResearchReportSchemaBase):
     """One supported stock-research runtime model option."""
 
@@ -59,7 +67,7 @@ class StockResearchReportCreateRequest(StockResearchReportSchemaBase):
     """Request payload for creating one stock research report."""
 
     symbol: str = Field(..., min_length=1, max_length=MAX_STOCK_RESEARCH_SYMBOL_LENGTH)
-    runtime_config: StockResearchReportRuntimeConfigRequest | None = None
+    runtime_config: StockResearchReportRuntimeConfigRequest
 
     @field_validator("symbol", mode="before")
     @classmethod
@@ -98,6 +106,7 @@ class StockResearchReportSummary(StockResearchReportSchemaBase):
     started_at: datetime | None = None
     completed_at: datetime | None = None
     updated_at: datetime
+    runtime_config: StockResearchReportRuntimeConfigResponse | None = None
 
     @field_validator("symbol", mode="before")
     @classmethod
