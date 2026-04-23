@@ -285,6 +285,7 @@ The `doc/feature` directory contains integration notes for consumers of this bac
 - [Stocks frontend guide](doc/feature/stocks/frontend_integration_guide.md)
 - [Stock company guide](doc/feature/stocks/stock_company_frontend_guide.md)
 - [Stock price guide](doc/feature/stocks/stock_price_frontend_guide.md)
+- [Stock research runtime metadata guide](doc/feature/stocks/stock_research_runtime_metadata_frontend_guide.md)
 - [Stock watchlist guide](doc/feature/stocks/stock_watchlist_frontend_guide.md)
 - [Lead-agent skill guide](doc/feature/skill/lead_agent_skill_frontend_guide.md)
 - [Lead-agent catalog guide](doc/feature/skill/lead_agent_catalog_frontend_guide.md)
