@@ -87,6 +87,7 @@ async def test_delegation_executor_builds_isolated_worker_payload() -> None:
     assert first_payload["delegation_depth"] == 1
     assert first_payload["delegation_parent_run_id"] == "tool-parent-1"
     assert first_payload["loaded_skills"] == []
+    assert first_payload["todos_revision"] == 0
     assert len(first_payload["messages"]) == 1
     assert "Parent request" not in str(first_payload["messages"][0]["content"])
 

@@ -461,6 +461,24 @@ class _FakeDelegationStreamingAgent(_FakeStreamingAgent):
 
 
 @pytest.mark.asyncio
+async def test_create_thread_seeds_default_todos_revision() -> None:
+    conversation_service = _conversation_service()
+    service = LeadAgentService(conversation_service=conversation_service)
+    seeded_agent = SimpleNamespace(aupdate_state=AsyncMock())
+    service._agent = seeded_agent
+
+    thread_id = await service._create_thread(
+        user_id="user-1",
+        organization_id="org-1",
+    )
+
+    assert thread_id
+    seeded_agent.aupdate_state.assert_awaited_once()
+    update_call = seeded_agent.aupdate_state.await_args
+    assert update_call.kwargs["values"]["todos_revision"] == 0
+
+
+@pytest.mark.asyncio
 async def test_send_message_creates_conversation_projection_and_thread() -> None:
     conversation_service = _conversation_service()
     service = LeadAgentService(conversation_service=conversation_service)
@@ -612,6 +630,7 @@ async def test_build_runtime_payload_resets_active_skill_state_for_new_user_turn
     assert payload["active_skill_version"] is None
     assert payload["allowed_tool_names"] == []
     assert payload["loaded_skills"] == []
+    assert payload["todos_revision"] == 0
 
 
 def test_service_builds_distinct_agent_variants_for_direct_and_subagent_turns(

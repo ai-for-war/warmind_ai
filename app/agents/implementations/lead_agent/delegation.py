@@ -217,6 +217,7 @@ class LeadAgentDelegationExecutor:
             "loaded_skills": [],
             "allowed_tool_names": [],
             "active_skill_version": None,
+            "todos_revision": 0,
         }
 
     def _get_worker_agent(self) -> CompiledStateGraph:

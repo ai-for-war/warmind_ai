@@ -414,6 +414,7 @@ class LeadAgentService:
             "allowed_tool_names": [],
             "active_skill_id": None,
             "active_skill_version": None,
+            "todos_revision": 0,
         }
 
         await self.agent.aupdate_state(
@@ -937,6 +938,7 @@ class LeadAgentService:
             "loaded_skills": [],
             "allowed_tool_names": [],
             "active_skill_version": None,
+            "todos_revision": 0,
         }
 
     async def _resolve_skill_access_for_turn(
