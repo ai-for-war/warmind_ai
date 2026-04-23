@@ -120,6 +120,19 @@ class NotificationRepository:
         )
         return self._to_model(document)
 
+    async def find_by_id(
+        self,
+        *,
+        notification_id: str,
+    ) -> Notification | None:
+        """Find one notification by id without caller-scope filtering."""
+        object_id = _parse_object_id(notification_id)
+        if object_id is None:
+            return None
+
+        document = await self.collection.find_one({"_id": object_id})
+        return self._to_model(document)
+
     async def find_by_dedupe_key(
         self,
         *,

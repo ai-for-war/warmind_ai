@@ -18,6 +18,7 @@ from app.common.repo import (
     get_meeting_utterance_repo,
     get_member_repo,
     get_message_repo,
+    get_notification_repo,
     get_org_repo,
     get_sheet_connection_repo,
     get_sheet_data_repo,
@@ -67,6 +68,7 @@ from app.services.meeting.note_generation_service import MeetingNoteGenerationSe
 from app.services.meeting.note_processing_service import MeetingNoteProcessingService
 from app.services.meeting.note_state_store import RedisMeetingNoteStateStore
 from app.services.meeting.session_manager import MeetingSessionManager
+from app.services.notification_service import NotificationService
 from app.services.organization.organization_service import OrganizationService
 from app.services.sheet_crawler.crawler_service import SheetCrawlerService
 from app.services.stocks.cache import StockCatalogCache
@@ -304,6 +306,14 @@ def get_stock_research_service() -> StockResearchService:
     return StockResearchService(
         report_repo=get_stock_research_report_repo(),
         stock_repo=get_stock_symbol_repo(),
+    )
+
+
+@lru_cache
+def get_notification_service() -> NotificationService:
+    """Get singleton notification service."""
+    return NotificationService(
+        notification_repo=get_notification_repo(),
     )
 
 

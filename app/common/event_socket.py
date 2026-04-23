@@ -92,3 +92,9 @@ class StockResearchEvents:
 
     COMPLETED = "stock-research:completed"
     FAILED = "stock-research:failed"
+
+
+class NotificationEvents:
+    """Socket events for in-app notification lifecycle updates."""
+
+    CREATED = "notification:created"

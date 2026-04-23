@@ -12,11 +12,11 @@
 
 ## 3. Notification service and realtime delivery
 
-- [ ] 3.1 Add a dedicated notification service under `app/services/` for create/list/count/read-state orchestration
-- [ ] 3.2 Implement notification normalization so creation persists `target_type`, `target_id`, optional `link`, unread defaults, and stable timestamps
-- [ ] 3.3 Implement optional dedupe-key suppression so duplicate create attempts reuse the existing logical notification instead of creating a second record
-- [ ] 3.4 Add a dedicated notification socket event constant and emit newly created notifications through the existing Socket.IO gateway or worker gateway after persistence succeeds
-- [ ] 3.5 Wire the notification service into `app/common/service.py`
+- [x] 3.1 Add a dedicated notification service under `app/services/` for create/list/count/read-state orchestration
+- [x] 3.2 Implement notification normalization so creation persists `target_type`, `target_id`, optional `link`, unread defaults, and stable timestamps
+- [x] 3.3 Implement optional dedupe-key suppression so duplicate create attempts reuse the existing logical notification instead of creating a second record
+- [x] 3.4 Add a dedicated notification socket event constant and emit newly created notifications through the existing Socket.IO gateway or worker gateway after persistence succeeds
+- [x] 3.5 Wire the notification service into `app/common/service.py`
 
 ## 4. Authenticated notification API surface
 
