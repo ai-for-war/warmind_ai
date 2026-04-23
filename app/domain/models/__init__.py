@@ -45,6 +45,7 @@ from app.domain.models.message import (
     TokenUsage,
     ToolCall,
 )
+from app.domain.models.notification import Notification
 from app.domain.models.organization import (
     Organization,
     OrganizationMember,
@@ -101,6 +102,7 @@ __all__ = [
     "MessageRole",
     "TokenUsage",
     "ToolCall",
+    "Notification",
     # Organization models
     "Organization",
     "OrganizationMember",

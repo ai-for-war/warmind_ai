@@ -1,8 +1,8 @@
 ## 1. Notification domain foundations
 
-- [ ] 1.1 Add notification domain models under `app/domain/models/` for one persisted inbox record with scope, target metadata, read state, optional actor metadata, and optional `dedupe_key`
-- [ ] 1.2 Add notification request and response schemas under `app/domain/schemas/` for unread count, notification list items, list responses, mark-one-read, and mark-all-read flows
-- [ ] 1.3 Add notification-specific error types for not-found or invalid ownership access when mutating read state
+- [x] 1.1 Add notification domain models under `app/domain/models/` for one persisted inbox record with scope, target metadata, read state, optional actor metadata, and optional `dedupe_key`
+- [x] 1.2 Add notification request and response schemas under `app/domain/schemas/` for unread count, notification list items, list responses, mark-one-read, and mark-all-read flows
+- [x] 1.3 Add notification-specific error types for not-found or invalid ownership access when mutating read state
 
 ## 2. Persistence and indexing
 
