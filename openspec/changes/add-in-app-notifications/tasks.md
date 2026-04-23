@@ -26,7 +26,7 @@
 
 ## 5. Producer integration and verification
 
-- [ ] 5.1 Integrate at least one confirmed business flow with `NotificationService.create_notification(...)` so the inbox is exercised end to end
-- [ ] 5.2 Add repository tests for scoped reads, unread counts, dedupe-key suppression, and read-state updates
-- [ ] 5.3 Add service tests for ownership enforcement, default unread behavior, target/link persistence, and realtime emit behavior
-- [ ] 5.4 Add API tests for list, unread count, mark-one-read, and mark-all-read behavior under organization-scoped authentication
+- [x] 5.1 Integrate at least one confirmed business flow with `NotificationService.create_notification(...)` so the inbox is exercised end to end
+- [x] 5.2 Add repository tests for scoped reads, unread counts, dedupe-key suppression, and read-state updates
+- [x] 5.3 Add service tests for ownership enforcement, default unread behavior, target/link persistence, and realtime emit behavior
+- [x] 5.4 Add API tests for list, unread count, mark-one-read, and mark-all-read behavior under organization-scoped authentication

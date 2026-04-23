@@ -306,6 +306,7 @@ def get_stock_research_service() -> StockResearchService:
     return StockResearchService(
         report_repo=get_stock_research_report_repo(),
         stock_repo=get_stock_symbol_repo(),
+        notification_service=get_notification_service(),
     )
 
 
