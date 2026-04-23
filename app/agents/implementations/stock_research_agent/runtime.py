@@ -46,6 +46,18 @@ def get_stock_research_runtime_catalog() -> (
                 model="glm-5.1",
                 is_default=False,
             ),
+            StockResearchAgentModelCatalogEntry(
+                model="glm-5-turbo",
+                is_default=False,
+            ),
+            StockResearchAgentModelCatalogEntry(
+                model="glm-5v-turbo",
+                is_default=False,
+            ),
+            StockResearchAgentModelCatalogEntry(
+                model="glm-5",
+                is_default=False,
+            ),
         ),
         azure_models=(
             StockResearchAgentModelCatalogEntry(
