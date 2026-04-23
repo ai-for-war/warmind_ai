@@ -328,6 +328,43 @@ class MongoDB:
         )
         logger.info("Created index: idx_stock_watchlist_items_watchlist_saved_desc")
 
+        # Indexes for notifications collection
+        await cls.db.notifications.create_index(
+            [
+                ("user_id", ASCENDING),
+                ("organization_id", ASCENDING),
+                ("created_at", DESCENDING),
+            ],
+            name="idx_notifications_user_org_created_desc",
+            background=True,
+        )
+        logger.info("Created index: idx_notifications_user_org_created_desc")
+
+        await cls.db.notifications.create_index(
+            [
+                ("user_id", ASCENDING),
+                ("organization_id", ASCENDING),
+                ("is_read", ASCENDING),
+                ("created_at", DESCENDING),
+            ],
+            name="idx_notifications_user_org_read_created_desc",
+            background=True,
+        )
+        logger.info("Created index: idx_notifications_user_org_read_created_desc")
+
+        await cls.db.notifications.create_index(
+            [
+                ("user_id", ASCENDING),
+                ("organization_id", ASCENDING),
+                ("dedupe_key", ASCENDING),
+            ],
+            name="idx_notifications_user_org_dedupe_unique",
+            unique=True,
+            background=True,
+            partialFilterExpression={"dedupe_key": {"$type": "string"}},
+        )
+        logger.info("Created index: idx_notifications_user_org_dedupe_unique")
+
         # Index for messages collection
         # Supports: get_by_conversation() with chronological ordering
         # Requirements: 2.2 (retrieve by conversation_id in chronological order)

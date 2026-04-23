@@ -320,6 +320,10 @@ from app.common.exceptions.stock_watchlist_exceptions import (  # noqa: E402
     StockWatchlistItemNotFoundError,
     StockWatchlistNotFoundError,
 )
+from app.common.exceptions.notification_exceptions import (  # noqa: E402
+    NotificationNotFoundError,
+    NotificationOwnershipError,
+)
 from app.common.exceptions.stock_research_report_exceptions import (  # noqa: E402
     StockResearchReportNotFoundError,
 )

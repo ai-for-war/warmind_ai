@@ -20,12 +20,11 @@ from app.agents.implementations.stock_research_agent.validation import (
     StockResearchAgentOutput,
     parse_stock_research_output,
 )
-from app.common.event_socket import StockResearchEvents
 from app.common.exceptions import (
     StockResearchReportNotFoundError,
     StockSymbolNotFoundError,
 )
-from app.common.stock_research_socket import build_stock_research_terminal_payload
+from app.common.notification_types import NotificationTargetTypes, NotificationTypes
 from app.domain.models.stock_research_report import (
     StockResearchReport,
     StockResearchReportFailure,
@@ -44,6 +43,7 @@ from app.domain.schemas.stock_research_report import (
 )
 from app.repo.stock_research_report_repo import StockResearchReportRepository
 from app.repo.stock_symbol_repo import StockSymbolRepository
+from app.services.notification_service import NotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -56,9 +56,11 @@ class StockResearchService:
         *,
         report_repo: StockResearchReportRepository,
         stock_repo: StockSymbolRepository,
+        notification_service: NotificationService,
     ) -> None:
         self.report_repo = report_repo
         self.stock_repo = stock_repo
+        self.notification_service = notification_service
         self._default_agent: CompiledStateGraph | None = None
 
     async def create_report_request(
@@ -146,6 +148,7 @@ class StockResearchService:
             )
             return
 
+        terminal_report: StockResearchReport | None = None
         try:
             output = await self._run_stock_research_agent(
                 company_name=symbol,
@@ -168,10 +171,7 @@ class StockResearchService:
                 error=None,
             )
             if completed_report is not None:
-                await self._emit_terminal_event(
-                    report=completed_report,
-                    event=StockResearchEvents.COMPLETED,
-                )
+                terminal_report = completed_report
         except Exception as exc:  # noqa: BLE001
             logger.exception(
                 "Stock research report %s failed during processing", report_id
@@ -185,10 +185,10 @@ class StockResearchService:
                 error=self._to_failure_model(exc),
             )
             if failed_report is not None:
-                await self._emit_terminal_event(
-                    report=failed_report,
-                    event=StockResearchEvents.FAILED,
-                )
+                terminal_report = failed_report
+
+        if terminal_report is not None:
+            await self._create_terminal_notification_best_effort(report=terminal_report)
 
     @staticmethod
     def _to_failure_model(exc: Exception) -> StockResearchReportFailure:
@@ -246,20 +246,64 @@ class StockResearchService:
 
         return create_stock_research_agent(runtime_config)
 
-    @staticmethod
-    async def _emit_terminal_event(
+    async def _create_terminal_notification_best_effort(
+        self,
         *,
         report: StockResearchReport,
-        event: str,
     ) -> None:
-        """Emit one terminal report lifecycle event to the owning user room."""
-        from app.socket_gateway import gateway
+        """Best-effort notification creation that must not mutate report state."""
+        try:
+            await self._create_terminal_notification(report=report)
+        except Exception:  # noqa: BLE001
+            logger.exception(
+                "Failed to create stock research notification for report %s",
+                report.id,
+            )
 
-        await gateway.emit_to_user(
+    async def _create_terminal_notification(
+        self,
+        *,
+        report: StockResearchReport,
+    ) -> None:
+        """Create one inbox notification for terminal stock research states."""
+        report_id = report.id
+        if report_id is None:
+            logger.warning(
+                "Skipping stock research notification because report id is missing"
+            )
+            return
+
+        if report.status == StockResearchReportStatus.COMPLETED:
+            notification_type = NotificationTypes.STOCK_RESEARCH_REPORT_COMPLETED
+            title = f"{report.symbol} research report is ready"
+            body = (
+                f"Open the {report.symbol} research report to review the completed "
+                "analysis."
+            )
+        elif report.status == StockResearchReportStatus.FAILED:
+            notification_type = NotificationTypes.STOCK_RESEARCH_REPORT_FAILED
+            title = f"{report.symbol} research report failed"
+            body = (
+                f"Open the {report.symbol} research report to review the failure "
+                "details."
+            )
+        else:
+            return
+
+        await self.notification_service.create_notification(
             user_id=report.user_id,
-            event=event,
-            data=build_stock_research_terminal_payload(report=report),
             organization_id=report.organization_id,
+            type=notification_type,
+            title=title,
+            body=body,
+            target_type=NotificationTargetTypes.STOCK_RESEARCH_REPORT,
+            target_id=report_id,
+            link=f"/stock-research/reports/{report_id}",
+            dedupe_key=f"{notification_type}:{report_id}",
+            metadata={
+                "symbol": report.symbol,
+                "report_status": report.status.value,
+            },
         )
 
     @staticmethod

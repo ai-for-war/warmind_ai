@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
+from app.common.notification_types import NotificationTargetTypes, NotificationTypes
 from app.common.exceptions import StockSymbolNotFoundError
 from app.domain.models.stock_research_report import (
     StockResearchReport,
@@ -21,7 +22,6 @@ from app.domain.schemas.stock_research_report import (
 )
 from app.services.stocks.stock_research_service import StockResearchService
 import app.services.stocks.stock_research_service as stock_research_service_module
-from app.common.event_socket import StockResearchEvents
 
 
 def _utc(year: int, month: int, day: int, hour: int = 0) -> datetime:
@@ -71,7 +71,12 @@ def _report(
     )
 
 
-def _service() -> tuple[StockResearchService, SimpleNamespace, SimpleNamespace]:
+def _service() -> tuple[
+    StockResearchService,
+    SimpleNamespace,
+    SimpleNamespace,
+    SimpleNamespace,
+]:
     report_repo = SimpleNamespace(
         create=AsyncMock(),
         find_owned_report=AsyncMock(),
@@ -79,16 +84,22 @@ def _service() -> tuple[StockResearchService, SimpleNamespace, SimpleNamespace]:
         update_lifecycle_state=AsyncMock(),
     )
     stock_repo = SimpleNamespace(exists_by_symbol=AsyncMock())
+    notification_service = SimpleNamespace(create_notification=AsyncMock())
     return (
-        StockResearchService(report_repo=report_repo, stock_repo=stock_repo),
+        StockResearchService(
+            report_repo=report_repo,
+            stock_repo=stock_repo,
+            notification_service=notification_service,
+        ),
         report_repo,
         stock_repo,
+        notification_service,
     )
 
 
 @pytest.mark.asyncio
 async def test_create_report_request_validates_symbol_against_catalog_and_persists_queued_report() -> None:
-    service, report_repo, stock_repo = _service()
+    service, report_repo, stock_repo, _ = _service()
     current_user = _user()
     queued_report = _report(status=StockResearchReportStatus.QUEUED, symbol="FPT")
     stock_repo.exists_by_symbol.return_value = True
@@ -110,7 +121,7 @@ async def test_create_report_request_validates_symbol_against_catalog_and_persis
 
 @pytest.mark.asyncio
 async def test_create_report_request_rejects_unknown_symbol() -> None:
-    service, report_repo, stock_repo = _service()
+    service, report_repo, stock_repo, _ = _service()
     stock_repo.exists_by_symbol.return_value = False
 
     with pytest.raises(StockSymbolNotFoundError):
@@ -127,7 +138,7 @@ async def test_create_report_request_rejects_unknown_symbol() -> None:
 async def test_create_report_request_validates_runtime_override_against_runtime_catalog(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    service, report_repo, stock_repo = _service()
+    service, report_repo, stock_repo, _ = _service()
     stock_repo.exists_by_symbol.return_value = True
     report_repo.create.return_value = _report()
     resolve_runtime = Mock(
@@ -161,7 +172,7 @@ async def test_create_report_request_validates_runtime_override_against_runtime_
 
 @pytest.mark.asyncio
 async def test_list_reports_returns_paginated_response() -> None:
-    service, report_repo, _ = _service()
+    service, report_repo, _, _ = _service()
     current_user = _user()
     reports = [
         _report(report_id="report-2", symbol="VCB"),
@@ -193,7 +204,7 @@ async def test_list_reports_returns_paginated_response() -> None:
 
 @pytest.mark.asyncio
 async def test_process_report_marks_completed_and_persists_markdown_and_sources() -> None:
-    service, report_repo, _ = _service()
+    service, report_repo, _, notification_service = _service()
     source = StockResearchReportSource(
         source_id="S1",
         url="https://example.com/fpt",
@@ -226,8 +237,6 @@ async def test_process_report_marks_completed_and_persists_markdown_and_sources(
             ],
         )
     )
-    service._emit_terminal_event = AsyncMock()  # type: ignore[method-assign]
-
     await service.process_report(report_id="report-1", symbol="FPT")
 
     assert report_repo.update_lifecycle_state.await_count == 2
@@ -236,15 +245,26 @@ async def test_process_report_marks_completed_and_persists_markdown_and_sources(
     assert completed_kwargs["content"] == "Current price is 95,800 VND. Evidence [S1]"
     assert completed_kwargs["sources"] == [source]
     assert completed_kwargs["error"] is None
-    service._emit_terminal_event.assert_awaited_once_with(  # type: ignore[attr-defined]
-        report=completed_report,
-        event=StockResearchEvents.COMPLETED,
+    notification_service.create_notification.assert_awaited_once_with(
+        user_id="user-1",
+        organization_id="org-1",
+        type=NotificationTypes.STOCK_RESEARCH_REPORT_COMPLETED,
+        title="FPT research report is ready",
+        body="Open the FPT research report to review the completed analysis.",
+        target_type=NotificationTargetTypes.STOCK_RESEARCH_REPORT,
+        target_id="report-1",
+        link="/stock-research/reports/report-1",
+        dedupe_key=f"{NotificationTypes.STOCK_RESEARCH_REPORT_COMPLETED}:report-1",
+        metadata={
+            "symbol": "FPT",
+            "report_status": StockResearchReportStatus.COMPLETED.value,
+        },
     )
 
 
 @pytest.mark.asyncio
 async def test_process_report_marks_failed_and_clears_broken_artifacts() -> None:
-    service, report_repo, _ = _service()
+    service, report_repo, _, notification_service = _service()
     running_report = _report(
         status=StockResearchReportStatus.RUNNING,
         started_at=_utc(2026, 4, 22, 9),
@@ -262,7 +282,6 @@ async def test_process_report_marks_failed_and_clears_broken_artifacts() -> None
     service._run_stock_research_agent = AsyncMock(  # type: ignore[method-assign]
         side_effect=RuntimeError("boom")
     )
-    service._emit_terminal_event = AsyncMock()  # type: ignore[method-assign]
 
     await service.process_report(report_id="report-1", symbol="FPT")
 
@@ -274,10 +293,61 @@ async def test_process_report_marks_failed_and_clears_broken_artifacts() -> None
         code="RuntimeError",
         message="boom",
     )
-    service._emit_terminal_event.assert_awaited_once_with(  # type: ignore[attr-defined]
-        report=failed_report,
-        event=StockResearchEvents.FAILED,
+    notification_service.create_notification.assert_awaited_once_with(
+        user_id="user-1",
+        organization_id="org-1",
+        type=NotificationTypes.STOCK_RESEARCH_REPORT_FAILED,
+        title="FPT research report failed",
+        body="Open the FPT research report to review the failure details.",
+        target_type=NotificationTargetTypes.STOCK_RESEARCH_REPORT,
+        target_id="report-1",
+        link="/stock-research/reports/report-1",
+        dedupe_key=f"{NotificationTypes.STOCK_RESEARCH_REPORT_FAILED}:report-1",
+        metadata={
+            "symbol": "FPT",
+            "report_status": StockResearchReportStatus.FAILED.value,
+        },
     )
+
+
+@pytest.mark.asyncio
+async def test_process_report_keeps_completed_state_when_notification_creation_fails() -> None:
+    service, report_repo, _, notification_service = _service()
+    completed_report = _report(
+        status=StockResearchReportStatus.COMPLETED,
+        content="Current price is 95,800 VND. Evidence [S1]",
+        started_at=_utc(2026, 4, 22, 9),
+        completed_at=_utc(2026, 4, 22, 10),
+    )
+    report_repo.update_lifecycle_state.side_effect = [
+        _report(
+            status=StockResearchReportStatus.RUNNING,
+            started_at=_utc(2026, 4, 22, 9),
+        ),
+        completed_report,
+    ]
+    service._run_stock_research_agent = AsyncMock(  # type: ignore[method-assign]
+        return_value=stock_research_service_module.StockResearchAgentOutput(
+            content="Current price is 95,800 VND. Evidence [S1]",
+            sources=[
+                {
+                    "source_id": "S1",
+                    "url": "https://example.com/fpt",
+                    "title": "FPT Source",
+                }
+            ],
+        )
+    )
+    notification_service.create_notification.side_effect = RuntimeError("db offline")
+
+    await service.process_report(report_id="report-1", symbol="FPT")
+
+    assert report_repo.update_lifecycle_state.await_count == 2
+    assert (
+        report_repo.update_lifecycle_state.await_args_list[1].kwargs["status"]
+        == StockResearchReportStatus.COMPLETED
+    )
+    notification_service.create_notification.assert_awaited_once()
 
 
 def test_extract_agent_output_accepts_uncited_current_price_text_when_web_sources_are_valid() -> None:
