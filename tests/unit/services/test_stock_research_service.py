@@ -20,6 +20,7 @@ from app.domain.schemas.stock_research_report import (
 )
 from app.services.stocks.stock_research_service import StockResearchService
 import app.services.stocks.stock_research_service as stock_research_service_module
+from app.common.event_socket import StockResearchEvents
 
 
 def _utc(year: int, month: int, day: int, hour: int = 0) -> datetime:
@@ -165,15 +166,20 @@ async def test_process_report_marks_completed_and_persists_markdown_and_sources(
         url="https://example.com/fpt",
         title="FPT Source",
     )
+    running_report = _report(
+        status=StockResearchReportStatus.RUNNING,
+        started_at=_utc(2026, 4, 22, 9),
+    )
+    completed_report = _report(
+        status=StockResearchReportStatus.COMPLETED,
+        content="Current price is 95,800 VND. Evidence [S1]",
+        sources=[source],
+        started_at=_utc(2026, 4, 22, 9),
+        completed_at=_utc(2026, 4, 22, 10),
+    )
     report_repo.update_lifecycle_state.side_effect = [
-        _report(status=StockResearchReportStatus.RUNNING, started_at=_utc(2026, 4, 22, 9)),
-        _report(
-            status=StockResearchReportStatus.COMPLETED,
-            content="Current price is 95,800 VND. Evidence [S1]",
-            sources=[source],
-            started_at=_utc(2026, 4, 22, 9),
-            completed_at=_utc(2026, 4, 22, 10),
-        ),
+        running_report,
+        completed_report,
     ]
     service._run_stock_research_agent = AsyncMock(  # type: ignore[method-assign]
         return_value=stock_research_service_module.StockResearchAgentOutput(
@@ -187,6 +193,7 @@ async def test_process_report_marks_completed_and_persists_markdown_and_sources(
             ],
         )
     )
+    service._emit_terminal_event = AsyncMock()  # type: ignore[method-assign]
 
     await service.process_report(report_id="report-1", symbol="FPT")
 
@@ -196,23 +203,33 @@ async def test_process_report_marks_completed_and_persists_markdown_and_sources(
     assert completed_kwargs["content"] == "Current price is 95,800 VND. Evidence [S1]"
     assert completed_kwargs["sources"] == [source]
     assert completed_kwargs["error"] is None
+    service._emit_terminal_event.assert_awaited_once_with(  # type: ignore[attr-defined]
+        report=completed_report,
+        event=StockResearchEvents.COMPLETED,
+    )
 
 
 @pytest.mark.asyncio
 async def test_process_report_marks_failed_and_clears_broken_artifacts() -> None:
     service, report_repo, _ = _service()
+    running_report = _report(
+        status=StockResearchReportStatus.RUNNING,
+        started_at=_utc(2026, 4, 22, 9),
+    )
+    failed_report = _report(
+        status=StockResearchReportStatus.FAILED,
+        error=StockResearchReportFailure(code="RuntimeError", message="boom"),
+        started_at=_utc(2026, 4, 22, 9),
+        completed_at=_utc(2026, 4, 22, 10),
+    )
     report_repo.update_lifecycle_state.side_effect = [
-        _report(status=StockResearchReportStatus.RUNNING, started_at=_utc(2026, 4, 22, 9)),
-        _report(
-            status=StockResearchReportStatus.FAILED,
-            error=StockResearchReportFailure(code="RuntimeError", message="boom"),
-            started_at=_utc(2026, 4, 22, 9),
-            completed_at=_utc(2026, 4, 22, 10),
-        ),
+        running_report,
+        failed_report,
     ]
     service._run_stock_research_agent = AsyncMock(  # type: ignore[method-assign]
         side_effect=RuntimeError("boom")
     )
+    service._emit_terminal_event = AsyncMock()  # type: ignore[method-assign]
 
     await service.process_report(report_id="report-1", symbol="FPT")
 
@@ -223,6 +240,10 @@ async def test_process_report_marks_failed_and_clears_broken_artifacts() -> None
     assert failed_kwargs["error"] == StockResearchReportFailure(
         code="RuntimeError",
         message="boom",
+    )
+    service._emit_terminal_event.assert_awaited_once_with(  # type: ignore[attr-defined]
+        report=failed_report,
+        event=StockResearchEvents.FAILED,
     )
 
 

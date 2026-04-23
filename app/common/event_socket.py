@@ -85,3 +85,10 @@ class TextToImageGenerationEvents:
     SUCCEEDED = "image:generation:succeeded"
     FAILED = "image:generation:failed"
     CANCELLED = "image:generation:cancelled"
+
+
+class StockResearchEvents:
+    """Socket events for stock-research report terminal lifecycle updates."""
+
+    COMPLETED = "stock-research:completed"
+    FAILED = "stock-research:failed"

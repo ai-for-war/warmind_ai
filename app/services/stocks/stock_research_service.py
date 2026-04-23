@@ -20,10 +20,12 @@ from app.agents.implementations.stock_research_agent.validation import (
     StockResearchAgentOutput,
     parse_stock_research_output,
 )
+from app.common.event_socket import StockResearchEvents
 from app.common.exceptions import (
     StockResearchReportNotFoundError,
     StockSymbolNotFoundError,
 )
+from app.common.stock_research_socket import build_stock_research_terminal_payload
 from app.domain.models.stock_research_report import (
     StockResearchReport,
     StockResearchReportFailure,
@@ -143,7 +145,7 @@ class StockResearchService:
                 symbol=symbol,
                 runtime_config=runtime_config,
             )
-            await self.report_repo.update_lifecycle_state(
+            completed_report = await self.report_repo.update_lifecycle_state(
                 report_id=report_id,
                 status=StockResearchReportStatus.COMPLETED,
                 completed_at=datetime.now(timezone.utc),
@@ -158,11 +160,16 @@ class StockResearchService:
                 ],
                 error=None,
             )
+            if completed_report is not None:
+                await self._emit_terminal_event(
+                    report=completed_report,
+                    event=StockResearchEvents.COMPLETED,
+                )
         except Exception as exc:  # noqa: BLE001
             logger.exception(
                 "Stock research report %s failed during processing", report_id
             )
-            await self.report_repo.update_lifecycle_state(
+            failed_report = await self.report_repo.update_lifecycle_state(
                 report_id=report_id,
                 status=StockResearchReportStatus.FAILED,
                 completed_at=datetime.now(timezone.utc),
@@ -170,6 +177,11 @@ class StockResearchService:
                 sources=[],
                 error=self._to_failure_model(exc),
             )
+            if failed_report is not None:
+                await self._emit_terminal_event(
+                    report=failed_report,
+                    event=StockResearchEvents.FAILED,
+                )
 
     @staticmethod
     def _to_failure_model(exc: Exception) -> StockResearchReportFailure:
@@ -226,6 +238,22 @@ class StockResearchService:
             return self._default_agent
 
         return create_stock_research_agent(runtime_config)
+
+    @staticmethod
+    async def _emit_terminal_event(
+        *,
+        report: StockResearchReport,
+        event: str,
+    ) -> None:
+        """Emit one terminal report lifecycle event to the owning user room."""
+        from app.socket_gateway import gateway
+
+        await gateway.emit_to_user(
+            user_id=report.user_id,
+            event=event,
+            data=build_stock_research_terminal_payload(report=report),
+            organization_id=report.organization_id,
+        )
 
     @staticmethod
     def _extract_agent_output(
