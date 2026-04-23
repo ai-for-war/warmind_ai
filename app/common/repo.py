@@ -15,6 +15,7 @@ from app.repo.meeting_note_chunk_repo import MeetingNoteChunkRepository
 from app.repo.meeting_repo import MeetingRepository
 from app.repo.meeting_utterance_repo import MeetingUtteranceRepository
 from app.repo.message_repo import MessageRepository
+from app.repo.notification_repo import NotificationRepository
 from app.repo.organization_member_repo import OrganizationMemberRepository
 from app.repo.organization_repo import OrganizationRepository
 from app.repo.sheet_connection_repo import SheetConnectionRepository
@@ -128,6 +129,13 @@ def get_message_repo() -> MessageRepository:
     """
     db = MongoDB.get_db()
     return MessageRepository(db)
+
+
+@lru_cache
+def get_notification_repo() -> NotificationRepository:
+    """Get singleton notification repository instance."""
+    db = MongoDB.get_db()
+    return NotificationRepository(db)
 
 
 @lru_cache

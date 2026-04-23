@@ -6,9 +6,9 @@
 
 ## 2. Persistence and indexing
 
-- [ ] 2.1 Add a notification repository under `app/repo/` for create, list-by-user-and-organization newest-first, unread count, find-owned-notification, mark-as-read, mark-all-as-read, and dedupe-key lookup behavior
-- [ ] 2.2 Create MongoDB indexes for newest-first scoped reads, unread-count queries, and optional dedupe-key uniqueness within one `user_id + organization_id` scope
-- [ ] 2.3 Wire the notification repository into `app/common/repo.py`
+- [x] 2.1 Add a notification repository under `app/repo/` for create, list-by-user-and-organization newest-first, unread count, find-owned-notification, mark-as-read, mark-all-as-read, and dedupe-key lookup behavior
+- [x] 2.2 Create MongoDB indexes for newest-first scoped reads, unread-count queries, and optional dedupe-key uniqueness within one `user_id + organization_id` scope
+- [x] 2.3 Wire the notification repository into `app/common/repo.py`
 
 ## 3. Notification service and realtime delivery
 
