@@ -113,6 +113,8 @@ async def list_stock_research_reports(
         min_length=1,
         max_length=MAX_STOCK_RESEARCH_SYMBOL_LENGTH,
     ),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
     current_user: User = Depends(get_current_active_user),
     org_context: OrganizationContext = Depends(get_current_organization_context),
     service: StockResearchService = Depends(get_stock_research_service),
@@ -122,4 +124,6 @@ async def list_stock_research_reports(
         current_user=current_user,
         organization_id=org_context.organization_id,
         symbol=symbol,
+        page=page,
+        page_size=page_size,
     )

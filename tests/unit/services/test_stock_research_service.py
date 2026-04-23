@@ -16,6 +16,7 @@ from app.domain.models.stock_research_report import (
 from app.domain.models.user import User, UserRole
 from app.domain.schemas.stock_research_report import (
     StockResearchReportCreateRequest,
+    StockResearchReportListResponse,
     StockResearchReportRuntimeConfigRequest,
 )
 from app.services.stocks.stock_research_service import StockResearchService
@@ -156,6 +157,38 @@ async def test_create_report_request_validates_runtime_override_against_runtime_
         model="gpt-5.2",
         reasoning="high",
     )
+
+
+@pytest.mark.asyncio
+async def test_list_reports_returns_paginated_response() -> None:
+    service, report_repo, _ = _service()
+    current_user = _user()
+    reports = [
+        _report(report_id="report-2", symbol="VCB"),
+        _report(report_id="report-1", symbol="FPT"),
+    ]
+    report_repo.list_by_user_and_organization.return_value = (reports, 7)
+
+    response = await service.list_reports(
+        current_user=current_user,
+        organization_id="org-1",
+        symbol="fpt",
+        page=2,
+        page_size=3,
+    )
+
+    report_repo.list_by_user_and_organization.assert_awaited_once_with(
+        user_id=current_user.id,
+        organization_id="org-1",
+        symbol="fpt",
+        page=2,
+        page_size=3,
+    )
+    assert isinstance(response, StockResearchReportListResponse)
+    assert [item.symbol for item in response.items] == ["VCB", "FPT"]
+    assert response.total == 7
+    assert response.page == 2
+    assert response.page_size == 3
 
 
 @pytest.mark.asyncio

@@ -106,15 +106,22 @@ class StockResearchService:
         current_user: User,
         organization_id: str,
         symbol: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
     ) -> StockResearchReportListResponse:
         """List one caller's stock research report history in an organization."""
-        reports = await self.report_repo.list_by_user_and_organization(
+        reports, total = await self.report_repo.list_by_user_and_organization(
             user_id=current_user.id,
             organization_id=organization_id,
             symbol=symbol,
+            page=page,
+            page_size=page_size,
         )
         return StockResearchReportListResponse(
-            items=[self._to_summary(report) for report in reports]
+            items=[self._to_summary(report) for report in reports],
+            total=total,
+            page=page,
+            page_size=page_size,
         )
 
     async def process_report(

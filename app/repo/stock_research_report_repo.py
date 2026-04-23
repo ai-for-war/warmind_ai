@@ -126,7 +126,9 @@ class StockResearchReportRepository:
         user_id: str,
         organization_id: str,
         symbol: str | None = None,
-    ) -> list[StockResearchReport]:
+        page: int = 1,
+        page_size: int = 20,
+    ) -> tuple[list[StockResearchReport], int]:
         """List a user's stock research reports inside one organization."""
         query: dict[str, object] = {
             "user_id": user_id,
@@ -136,9 +138,19 @@ class StockResearchReportRepository:
         if normalized_symbol:
             query["symbol"] = normalized_symbol
 
-        cursor = self.collection.find(query).sort("created_at", DESCENDING)
+        skip = (page - 1) * page_size
+        total = await self.collection.count_documents(query)
+        cursor = (
+            self.collection.find(query)
+            .sort("created_at", DESCENDING)
+            .skip(skip)
+            .limit(page_size)
+        )
         documents = [document async for document in cursor]
-        return [self._to_model(document) for document in documents if document is not None]
+        return (
+            [self._to_model(document) for document in documents if document is not None],
+            total,
+        )
 
     @staticmethod
     def _to_model(document: dict[str, object] | None) -> StockResearchReport | None:

@@ -98,7 +98,10 @@ class _FakeStockResearchService:
             items=[
                 _summary(report_id="report-2", symbol="VCB"),
                 _summary(report_id="report-1", symbol="FPT"),
-            ]
+            ],
+            total=2,
+            page=1,
+            page_size=20,
         )
 
     async def create_report_request(self, **kwargs) -> StockResearchReportCreateResponse:
@@ -126,7 +129,12 @@ class _FakeStockResearchService:
 
     async def list_reports(self, **kwargs) -> StockResearchReportListResponse:
         self.list_calls.append(kwargs)
-        return self.list_response
+        return self.list_response.model_copy(
+            update={
+                "page": kwargs.get("page", self.list_response.page),
+                "page_size": kwargs.get("page_size", self.list_response.page_size),
+            }
+        )
 
 
 class _FakeOrganization:
@@ -257,15 +265,21 @@ async def test_get_and_list_routes_return_owned_reports() -> None:
         get_response = await client.get("/api/v1/stock-research/reports/report-1")
         list_response = await client.get(
             "/api/v1/stock-research/reports",
-            params={"symbol": "fpt"},
+            params={"symbol": "fpt", "page": 2, "page_size": 1},
         )
 
     assert get_response.status_code == 200
     assert get_response.json()["content"].startswith("Current price is around")
     assert list_response.status_code == 200
-    assert [item["symbol"] for item in list_response.json()["items"]] == ["VCB", "FPT"]
+    payload = list_response.json()
+    assert [item["symbol"] for item in payload["items"]] == ["VCB", "FPT"]
+    assert payload["total"] == 2
+    assert payload["page"] == 2
+    assert payload["page_size"] == 1
     assert service.get_calls[0]["report_id"] == "report-1"
     assert service.list_calls[0]["symbol"] == "fpt"
+    assert service.list_calls[0]["page"] == 2
+    assert service.list_calls[0]["page_size"] == 1
 
 
 @pytest.mark.asyncio

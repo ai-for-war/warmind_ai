@@ -76,6 +76,14 @@ class _FakeCursor:
         )
         return self
 
+    def skip(self, count: int) -> "_FakeCursor":
+        self._documents = self._documents[count:]
+        return self
+
+    def limit(self, count: int) -> "_FakeCursor":
+        self._documents = self._documents[:count]
+        return self
+
     def __aiter__(self) -> "_FakeCursor":
         self._iterator = iter(self._documents)
         return self
@@ -131,6 +139,9 @@ class _FakeCollection:
             if _matches_query(document, query)
         ]
         return _FakeCursor(matched)
+
+    async def count_documents(self, query: dict[str, object]) -> int:
+        return sum(1 for document in self._documents if _matches_query(document, query))
 
 
 class _FakeDB:
@@ -233,7 +244,7 @@ async def test_update_lifecycle_state_updates_artifacts_and_failure_metadata() -
 
 
 @pytest.mark.asyncio
-async def test_list_by_user_and_organization_filters_symbol_and_sorts_latest_first() -> None:
+async def test_list_by_user_and_organization_filters_symbol_sorts_latest_first_and_paginates() -> None:
     repository = StockResearchReportRepository(
         _FakeDB(
             [
@@ -265,14 +276,16 @@ async def test_list_by_user_and_organization_filters_symbol_and_sorts_latest_fir
         )
     )
 
-    reports = await repository.list_by_user_and_organization(
+    reports, total = await repository.list_by_user_and_organization(
         user_id="user-1",
         organization_id="org-1",
         symbol=" fpt ",
+        page=1,
+        page_size=1,
     )
 
-    assert [report.symbol for report in reports] == ["FPT", "FPT"]
+    assert total == 2
+    assert [report.symbol for report in reports] == ["FPT"]
     assert [report.created_at for report in reports] == [
         _utc(2026, 4, 22, 9),
-        _utc(2026, 4, 20, 9),
     ]

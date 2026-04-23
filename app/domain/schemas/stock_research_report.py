@@ -7,7 +7,11 @@ from datetime import datetime
 from pydantic import Field, field_validator
 
 from app.domain.models.stock_research_report import StockResearchReportStatus
-from app.domain.schemas.stock import StockSchemaBase
+from app.domain.schemas.stock import (
+    DEFAULT_STOCK_PAGE_SIZE,
+    MAX_STOCK_PAGE_SIZE,
+    StockSchemaBase,
+)
 
 MAX_STOCK_RESEARCH_SYMBOL_LENGTH = 32
 
@@ -123,3 +127,10 @@ class StockResearchReportListResponse(StockResearchReportSchemaBase):
     """Response returned by the stock research report history endpoint."""
 
     items: list[StockResearchReportSummary] = Field(default_factory=list)
+    total: int = Field(..., ge=0)
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(
+        default=DEFAULT_STOCK_PAGE_SIZE,
+        ge=1,
+        le=MAX_STOCK_PAGE_SIZE,
+    )
