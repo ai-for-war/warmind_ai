@@ -286,6 +286,45 @@ class MongoDB:
         )
         logger.info("Created index: idx_stock_research_reports_status_updated_desc")
 
+        # Indexes for stock_research_schedules collection
+        await cls.db.stock_research_schedules.create_index(
+            [
+                ("status", ASCENDING),
+                ("next_run_at", ASCENDING),
+            ],
+            name="idx_stock_research_schedules_status_next_run",
+            background=True,
+        )
+        logger.info("Created index: idx_stock_research_schedules_status_next_run")
+
+        await cls.db.stock_research_schedules.create_index(
+            [
+                ("user_id", ASCENDING),
+                ("organization_id", ASCENDING),
+                ("created_at", DESCENDING),
+            ],
+            name="idx_stock_research_schedules_user_org_created_desc",
+            background=True,
+        )
+        logger.info(
+            "Created index: idx_stock_research_schedules_user_org_created_desc"
+        )
+
+        # Indexes for stock_research_schedule_runs collection
+        await cls.db.stock_research_schedule_runs.create_index(
+            [
+                ("schedule_id", ASCENDING),
+                ("occurrence_at", ASCENDING),
+            ],
+            name="idx_stock_research_schedule_runs_schedule_occurrence_unique",
+            unique=True,
+            background=True,
+        )
+        logger.info(
+            "Created index: "
+            "idx_stock_research_schedule_runs_schedule_occurrence_unique"
+        )
+
         # Indexes for stock_watchlists collection
         await cls.db.stock_watchlists.create_index(
             [

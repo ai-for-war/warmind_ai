@@ -1,9 +1,9 @@
 ## 1. Persistence Models and Indexes
 
-- [ ] 1.1 Add stock research schedule domain models for schedule type, status, weekdays, runtime config snapshot, and UTC `next_run_at`.
-- [ ] 1.2 Add stock research schedule run domain models for occurrence idempotency with `dispatching`, `queued`, and `enqueue_failed` states.
-- [ ] 1.3 Add optional stock research report metadata fields for `trigger_type`, `schedule_id`, and `schedule_run_id` while preserving current manual report behavior.
-- [ ] 1.4 Add Mongo indexes for active due schedules, user organization schedule listing, and unique `(schedule_id, occurrence_at)` schedule runs.
+- [x] 1.1 Add stock research schedule domain models for schedule type, status, weekdays, runtime config snapshot, and UTC `next_run_at`.
+- [x] 1.2 Add stock research schedule run domain models for occurrence idempotency with `dispatching`, `queued`, and `enqueue_failed` states.
+- [x] 1.3 Add optional stock research report metadata fields for `trigger_type`, `schedule_id`, and `schedule_run_id` while preserving current manual report behavior.
+- [x] 1.4 Add Mongo indexes for active due schedules, user organization schedule listing, and unique `(schedule_id, occurrence_at)` schedule runs.
 
 ## 2. Schedule Calculation and Validation
 

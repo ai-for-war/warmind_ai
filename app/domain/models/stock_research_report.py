@@ -18,6 +18,13 @@ class StockResearchReportStatus(str, Enum):
     FAILED = "failed"
 
 
+class StockResearchReportTriggerType(str, Enum):
+    """Supported sources that can create a stock research report."""
+
+    MANUAL = "manual"
+    SCHEDULED = "scheduled"
+
+
 class StockResearchReportModelBase(BaseModel):
     """Common persistence model settings for stock research report documents."""
 
@@ -102,6 +109,9 @@ class StockResearchReport(StockResearchReportModelBase):
     organization_id: str
     symbol: str
     status: StockResearchReportStatus = StockResearchReportStatus.QUEUED
+    trigger_type: StockResearchReportTriggerType = StockResearchReportTriggerType.MANUAL
+    schedule_id: str | None = None
+    schedule_run_id: str | None = None
     runtime_config: StockResearchReportRuntimeConfig | None = None
     content: str | None = None
     sources: list[StockResearchReportSource] = Field(default_factory=list)
@@ -132,6 +142,17 @@ class StockResearchReport(StockResearchReportModelBase):
         if not normalized:
             raise ValueError("symbol must not be blank")
         return normalized
+
+    @field_validator("schedule_id", "schedule_run_id", mode="before")
+    @classmethod
+    def normalize_optional_identifier(cls, value: str | None) -> str | None:
+        """Collapse blank optional scheduler identifiers to null."""
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise TypeError("scheduler identifiers must be strings or None")
+        normalized = value.strip()
+        return normalized or None
 
     @field_validator("content", mode="before")
     @classmethod

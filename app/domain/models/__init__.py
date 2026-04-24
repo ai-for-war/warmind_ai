@@ -63,6 +63,15 @@ from app.domain.models.stock_research_report import (
     StockResearchReportRuntimeConfig,
     StockResearchReportSource,
     StockResearchReportStatus,
+    StockResearchReportTriggerType,
+)
+from app.domain.models.stock_research_schedule import (
+    StockResearchSchedule,
+    StockResearchScheduleRun,
+    StockResearchScheduleRunStatus,
+    StockResearchScheduleStatus,
+    StockResearchScheduleType,
+    StockResearchScheduleWeekday,
 )
 from app.domain.models.stock_watchlist import StockWatchlist, StockWatchlistItem
 from app.domain.models.user import User, UserRole
@@ -118,6 +127,13 @@ __all__ = [
     "StockResearchReportRuntimeConfig",
     "StockResearchReportSource",
     "StockResearchReportStatus",
+    "StockResearchReportTriggerType",
+    "StockResearchSchedule",
+    "StockResearchScheduleRun",
+    "StockResearchScheduleRunStatus",
+    "StockResearchScheduleStatus",
+    "StockResearchScheduleType",
+    "StockResearchScheduleWeekday",
     "StockWatchlist",
     "StockWatchlistItem",
     # User models

@@ -15,6 +15,7 @@ from app.domain.models.stock_research_report import (
     StockResearchReportRuntimeConfig,
     StockResearchReportSource,
     StockResearchReportStatus,
+    StockResearchReportTriggerType,
 )
 
 _UNSET = object()
@@ -33,6 +34,11 @@ class StockResearchReportRepository:
         organization_id: str,
         symbol: str,
         status: StockResearchReportStatus = StockResearchReportStatus.QUEUED,
+        trigger_type: StockResearchReportTriggerType = (
+            StockResearchReportTriggerType.MANUAL
+        ),
+        schedule_id: str | None = None,
+        schedule_run_id: str | None = None,
         runtime_config: StockResearchReportRuntimeConfig | None = None,
         content: str | None = None,
         sources: list[StockResearchReportSource] | None = None,
@@ -45,6 +51,9 @@ class StockResearchReportRepository:
             organization_id=organization_id,
             symbol=symbol,
             status=status,
+            trigger_type=trigger_type,
+            schedule_id=schedule_id,
+            schedule_run_id=schedule_run_id,
             runtime_config=runtime_config,
             content=content,
             sources=sources or [],
