@@ -64,6 +64,36 @@ class StockResearchReportFailure(StockResearchReportModelBase):
         return normalized
 
 
+class StockResearchReportRuntimeConfig(StockResearchReportModelBase):
+    """Resolved agent runtime configuration persisted with one report."""
+
+    provider: str
+    model: str
+    reasoning: str | None = None
+
+    @field_validator("provider", "model", mode="before")
+    @classmethod
+    def require_non_blank_text(cls, value: str) -> str:
+        """Require persisted runtime identity fields to be non-blank strings."""
+        if not isinstance(value, str):
+            raise TypeError("runtime config fields must be strings")
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("runtime config fields must not be blank")
+        return normalized
+
+    @field_validator("reasoning", mode="before")
+    @classmethod
+    def normalize_optional_reasoning(cls, value: str | None) -> str | None:
+        """Collapse blank optional reasoning values to null."""
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise TypeError("runtime reasoning must be a string or None")
+        normalized = value.strip()
+        return normalized or None
+
+
 class StockResearchReport(StockResearchReportModelBase):
     """One persisted stock research report document stored in MongoDB."""
 
@@ -72,6 +102,7 @@ class StockResearchReport(StockResearchReportModelBase):
     organization_id: str
     symbol: str
     status: StockResearchReportStatus = StockResearchReportStatus.QUEUED
+    runtime_config: StockResearchReportRuntimeConfig | None = None
     content: str | None = None
     sources: list[StockResearchReportSource] = Field(default_factory=list)
     error: StockResearchReportFailure | None = None

@@ -12,6 +12,7 @@ from pymongo import DESCENDING, ReturnDocument
 from app.domain.models.stock_research_report import (
     StockResearchReport,
     StockResearchReportFailure,
+    StockResearchReportRuntimeConfig,
     StockResearchReportSource,
     StockResearchReportStatus,
 )
@@ -32,6 +33,7 @@ class StockResearchReportRepository:
         organization_id: str,
         symbol: str,
         status: StockResearchReportStatus = StockResearchReportStatus.QUEUED,
+        runtime_config: StockResearchReportRuntimeConfig | None = None,
         content: str | None = None,
         sources: list[StockResearchReportSource] | None = None,
         error: StockResearchReportFailure | None = None,
@@ -43,6 +45,7 @@ class StockResearchReportRepository:
             organization_id=organization_id,
             symbol=symbol,
             status=status,
+            runtime_config=runtime_config,
             content=content,
             sources=sources or [],
             error=error,

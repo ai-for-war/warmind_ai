@@ -60,6 +60,7 @@ from app.domain.models.stock import StockSymbol
 from app.domain.models.stock_research_report import (
     StockResearchReport,
     StockResearchReportFailure,
+    StockResearchReportRuntimeConfig,
     StockResearchReportSource,
     StockResearchReportStatus,
 )
@@ -114,6 +115,7 @@ __all__ = [
     "StockSymbol",
     "StockResearchReport",
     "StockResearchReportFailure",
+    "StockResearchReportRuntimeConfig",
     "StockResearchReportSource",
     "StockResearchReportStatus",
     "StockWatchlist",

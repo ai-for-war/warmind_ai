@@ -11,6 +11,7 @@ from pymongo import DESCENDING, ReturnDocument
 from app.domain.models.stock_research_report import (
     StockResearchReport,
     StockResearchReportFailure,
+    StockResearchReportRuntimeConfig,
     StockResearchReportSource,
     StockResearchReportStatus,
 )
@@ -19,6 +20,19 @@ from app.repo.stock_research_report_repo import StockResearchReportRepository
 
 def _utc(year: int, month: int, day: int, hour: int = 0) -> datetime:
     return datetime(year, month, day, hour, tzinfo=timezone.utc)
+
+
+def _runtime_config(
+    *,
+    provider: str = "openai",
+    model: str = "gpt-5.2",
+    reasoning: str | None = "high",
+) -> StockResearchReportRuntimeConfig:
+    return StockResearchReportRuntimeConfig(
+        provider=provider,
+        model=model,
+        reasoning=reasoning,
+    )
 
 
 def _report_document(
@@ -35,6 +49,7 @@ def _report_document(
     content: str | None = None,
     sources: list[StockResearchReportSource] | None = None,
     error: StockResearchReportFailure | None = None,
+    runtime_config: StockResearchReportRuntimeConfig | None = None,
 ) -> dict[str, object]:
     now = created_at or _utc(2026, 4, 22, 8)
     report = StockResearchReport(
@@ -43,6 +58,7 @@ def _report_document(
         organization_id=organization_id,
         symbol=symbol,
         status=status,
+        runtime_config=runtime_config,
         content=content,
         sources=sources or [],
         error=error,
@@ -157,6 +173,7 @@ async def test_create_persists_queued_report_with_default_artifacts() -> None:
         user_id="user-1",
         organization_id="org-1",
         symbol="fpt",
+        runtime_config=_runtime_config(),
     )
 
     assert report.id is not None
@@ -165,6 +182,7 @@ async def test_create_persists_queued_report_with_default_artifacts() -> None:
     assert report.content is None
     assert report.sources == []
     assert report.error is None
+    assert report.runtime_config == _runtime_config()
 
 
 @pytest.mark.asyncio

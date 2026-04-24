@@ -11,6 +11,7 @@ from app.common.exceptions import StockSymbolNotFoundError
 from app.domain.models.stock_research_report import (
     StockResearchReport,
     StockResearchReportFailure,
+    StockResearchReportRuntimeConfig,
     StockResearchReportSource,
     StockResearchReportStatus,
 )
@@ -22,6 +23,19 @@ from app.domain.schemas.stock_research_report import (
 )
 from app.services.stocks.stock_research_service import StockResearchService
 import app.services.stocks.stock_research_service as stock_research_service_module
+
+
+def _runtime_config(
+    *,
+    provider: str = "openai",
+    model: str = "gpt-5.2",
+    reasoning: str | None = "high",
+) -> StockResearchReportRuntimeConfig:
+    return StockResearchReportRuntimeConfig(
+        provider=provider,
+        model=model,
+        reasoning=reasoning,
+    )
 
 
 def _utc(year: int, month: int, day: int, hour: int = 0) -> datetime:
@@ -51,6 +65,7 @@ def _report(
     content: str | None = None,
     sources: list[StockResearchReportSource] | None = None,
     error: StockResearchReportFailure | None = None,
+    runtime_config: StockResearchReportRuntimeConfig | None = None,
     started_at: datetime | None = None,
     completed_at: datetime | None = None,
 ) -> StockResearchReport:
@@ -61,6 +76,7 @@ def _report(
         organization_id=organization_id,
         symbol=symbol,
         status=status,
+        runtime_config=runtime_config or _runtime_config(),
         content=content,
         sources=sources or [],
         error=error,
@@ -98,37 +114,82 @@ def _service() -> tuple[
 
 
 @pytest.mark.asyncio
-async def test_create_report_request_validates_symbol_against_catalog_and_persists_queued_report() -> None:
+async def test_create_report_request_validates_symbol_against_catalog_and_persists_queued_report(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     service, report_repo, stock_repo, _ = _service()
     current_user = _user()
     queued_report = _report(status=StockResearchReportStatus.QUEUED, symbol="FPT")
     stock_repo.exists_by_symbol.return_value = True
     report_repo.create.return_value = queued_report
+    monkeypatch.setattr(
+        stock_research_service_module,
+        "resolve_stock_research_runtime_config",
+        Mock(
+            return_value=stock_research_service_module.StockResearchAgentRuntimeConfig(
+                provider="openai",
+                model="gpt-5.2",
+                reasoning="high",
+            )
+        ),
+    )
 
     response = await service.create_report_request(
         current_user=current_user,
         organization_id="org-1",
-        request=StockResearchReportCreateRequest(symbol=" fpt "),
+        request=StockResearchReportCreateRequest(
+            symbol=" fpt ",
+            runtime_config=StockResearchReportRuntimeConfigRequest(
+                provider="openai",
+                model="gpt-5.2",
+                reasoning="high",
+            ),
+        ),
     )
 
     stock_repo.exists_by_symbol.assert_awaited_once_with("FPT")
     report_repo.create.assert_awaited_once()
     assert report_repo.create.await_args.kwargs["status"] == StockResearchReportStatus.QUEUED
+    assert report_repo.create.await_args.kwargs["runtime_config"] == _runtime_config()
     assert response.id == queued_report.id
     assert response.symbol == "FPT"
     assert response.status == StockResearchReportStatus.QUEUED
+    assert response.runtime_config is not None
+    assert response.runtime_config.provider == "openai"
+    assert response.runtime_config.model == "gpt-5.2"
+    assert response.runtime_config.reasoning == "high"
 
 
 @pytest.mark.asyncio
-async def test_create_report_request_rejects_unknown_symbol() -> None:
+async def test_create_report_request_rejects_unknown_symbol(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     service, report_repo, stock_repo, _ = _service()
     stock_repo.exists_by_symbol.return_value = False
+    monkeypatch.setattr(
+        stock_research_service_module,
+        "resolve_stock_research_runtime_config",
+        Mock(
+            return_value=stock_research_service_module.StockResearchAgentRuntimeConfig(
+                provider="openai",
+                model="gpt-5.2",
+                reasoning="high",
+            )
+        ),
+    )
 
     with pytest.raises(StockSymbolNotFoundError):
         await service.create_report_request(
             current_user=_user(),
             organization_id="org-1",
-            request=StockResearchReportCreateRequest(symbol="unknown"),
+            request=StockResearchReportCreateRequest(
+                symbol="unknown",
+                runtime_config=StockResearchReportRuntimeConfigRequest(
+                    provider="openai",
+                    model="gpt-5.2",
+                    reasoning="high",
+                ),
+            ),
         )
 
     report_repo.create.assert_not_awaited()
@@ -237,7 +298,15 @@ async def test_process_report_marks_completed_and_persists_markdown_and_sources(
             ],
         )
     )
-    await service.process_report(report_id="report-1", symbol="FPT")
+    await service.process_report(
+        report_id="report-1",
+        symbol="FPT",
+        runtime_config=stock_research_service_module.StockResearchAgentRuntimeConfig(
+            provider="openai",
+            model="gpt-5.2",
+            reasoning="high",
+        ),
+    )
 
     assert report_repo.update_lifecycle_state.await_count == 2
     completed_kwargs = report_repo.update_lifecycle_state.await_args_list[1].kwargs
@@ -283,7 +352,15 @@ async def test_process_report_marks_failed_and_clears_broken_artifacts() -> None
         side_effect=RuntimeError("boom")
     )
 
-    await service.process_report(report_id="report-1", symbol="FPT")
+    await service.process_report(
+        report_id="report-1",
+        symbol="FPT",
+        runtime_config=stock_research_service_module.StockResearchAgentRuntimeConfig(
+            provider="openai",
+            model="gpt-5.2",
+            reasoning="high",
+        ),
+    )
 
     failed_kwargs = report_repo.update_lifecycle_state.await_args_list[1].kwargs
     assert failed_kwargs["status"] == StockResearchReportStatus.FAILED
@@ -340,7 +417,15 @@ async def test_process_report_keeps_completed_state_when_notification_creation_f
     )
     notification_service.create_notification.side_effect = RuntimeError("db offline")
 
-    await service.process_report(report_id="report-1", symbol="FPT")
+    await service.process_report(
+        report_id="report-1",
+        symbol="FPT",
+        runtime_config=stock_research_service_module.StockResearchAgentRuntimeConfig(
+            provider="openai",
+            model="gpt-5.2",
+            reasoning="high",
+        ),
+    )
 
     assert report_repo.update_lifecycle_state.await_count == 2
     assert (

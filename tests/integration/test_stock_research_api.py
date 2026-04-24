@@ -50,6 +50,19 @@ def _user(*, user_id: str = "user-1", role: UserRole = UserRole.USER) -> User:
     )
 
 
+def _runtime_config_payload(
+    *,
+    provider: str = "openai",
+    model: str = "gpt-5.2",
+    reasoning: str | None = "high",
+) -> dict[str, str | None]:
+    return {
+        "provider": provider,
+        "model": model,
+        "reasoning": reasoning,
+    }
+
+
 def _summary(
     *,
     report_id: str = "report-1",
@@ -65,6 +78,7 @@ def _summary(
         started_at=None,
         completed_at=None,
         updated_at=now,
+        runtime_config=_runtime_config_payload(),
     )
 
 
@@ -112,6 +126,15 @@ class _FakeStockResearchService:
 
     def resolve_request_runtime_config(self, request):
         runtime_config = getattr(request, "runtime_config", None)
+        if runtime_config is None:
+            return None
+        return {
+            "provider": runtime_config.provider,
+            "model": runtime_config.model,
+            "reasoning": runtime_config.reasoning,
+        }
+
+    def runtime_config_from_response(self, runtime_config):
         if runtime_config is None:
             return None
         return {
@@ -217,21 +240,44 @@ async def test_create_report_returns_202_and_schedules_background_processing() -
     ) as client:
         response = await client.post(
             "/api/v1/stock-research/reports",
-            json={"symbol": "fpt"},
+            json={
+                "symbol": "fpt",
+                "runtime_config": _runtime_config_payload(),
+            },
         )
 
     assert response.status_code == 202
     body = response.json()
     assert body["id"] == "report-1"
     assert body["symbol"] == "FPT"
+    assert body["runtime_config"] == _runtime_config_payload()
     assert service.create_calls[0]["organization_id"] == "org-1"
     assert service.process_calls == [
         {
             "report_id": "report-1",
             "symbol": "FPT",
-            "runtime_config": None,
+            "runtime_config": _runtime_config_payload(),
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_create_report_requires_runtime_config() -> None:
+    service = _FakeStockResearchService()
+    app = _build_test_app(service=service)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.post(
+            "/api/v1/stock-research/reports",
+            json={"symbol": "fpt"},
+        )
+
+    assert response.status_code == 422
+    assert service.create_calls == []
+    assert service.process_calls == []
 
 
 @pytest.mark.asyncio
@@ -246,7 +292,10 @@ async def test_create_report_surfaces_unknown_symbol_rejection() -> None:
     ) as client:
         response = await client.post(
             "/api/v1/stock-research/reports",
-            json={"symbol": "unknown"},
+            json={
+                "symbol": "unknown",
+                "runtime_config": _runtime_config_payload(),
+            },
         )
 
     assert response.status_code == 404
@@ -273,6 +322,7 @@ async def test_get_and_list_routes_return_owned_reports() -> None:
     assert list_response.status_code == 200
     payload = list_response.json()
     assert [item["symbol"] for item in payload["items"]] == ["VCB", "FPT"]
+    assert payload["items"][0]["runtime_config"] == _runtime_config_payload()
     assert payload["total"] == 2
     assert payload["page"] == 2
     assert payload["page_size"] == 1
@@ -293,7 +343,10 @@ async def test_create_route_requires_x_organization_id_header_when_real_org_auth
     ) as client:
         response = await client.post(
             "/api/v1/stock-research/reports",
-            json={"symbol": "FPT"},
+            json={
+                "symbol": "FPT",
+                "runtime_config": _runtime_config_payload(),
+            },
         )
 
     assert response.status_code == 400

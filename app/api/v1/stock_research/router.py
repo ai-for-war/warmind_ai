@@ -81,7 +81,7 @@ async def create_stock_research_report(
         organization_id=org_context.organization_id,
         request=request,
     )
-    runtime_config = service.resolve_request_runtime_config(request)
+    runtime_config = service.runtime_config_from_response(response.runtime_config)
     background_tasks.add_task(
         service.process_report,
         report_id=response.id,
