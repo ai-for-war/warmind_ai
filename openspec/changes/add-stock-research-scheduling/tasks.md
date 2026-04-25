@@ -21,11 +21,11 @@
 
 ## 4. Redis Worker Execution
 
-- [ ] 4.1 Add `STOCK_RESEARCH_QUEUE_NAME` setting and stock research task payload schema.
-- [ ] 4.2 Add stock research queue enqueue helper/service path shared by manual and scheduled report creation.
-- [ ] 4.3 Implement `app/workers/stock_research_worker.py` following the existing Redis worker pattern.
-- [ ] 4.4 Update manual `POST /stock-research/reports` to enqueue Redis work instead of using FastAPI `BackgroundTasks`.
-- [ ] 4.5 Add worker tests for processing queued reports, skipping missing reports, and preserving terminal lifecycle behavior.
+- [x] 4.1 Add `STOCK_RESEARCH_QUEUE_NAME` setting and stock research task payload schema.
+- [x] 4.2 Add stock research queue enqueue helper/service path shared by manual and scheduled report creation.
+- [x] 4.3 Implement `app/workers/stock_research_worker.py` following the existing Redis worker pattern.
+- [x] 4.4 Update manual `POST /stock-research/reports` to enqueue Redis work instead of using FastAPI `BackgroundTasks`.
+- [x] 4.5 Add worker tests for processing queued reports, skipping missing reports, and preserving terminal lifecycle behavior.
 
 ## 5. API Endpoints
 

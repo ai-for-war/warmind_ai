@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, status
 
 from app.api.deps import (
     OrganizationContext,
@@ -13,7 +13,11 @@ from app.agents.implementations.stock_research_agent.runtime import (
     get_default_stock_research_runtime_config,
     get_stock_research_runtime_catalog,
 )
-from app.common.service import get_stock_research_service
+from app.common.exceptions import StockResearchReportEnqueueError
+from app.common.service import (
+    get_stock_research_queue_service,
+    get_stock_research_service,
+)
 from app.domain.models.user import User
 from app.domain.schemas.stock_research_report import (
     MAX_STOCK_RESEARCH_SYMBOL_LENGTH,
@@ -26,6 +30,7 @@ from app.domain.schemas.stock_research_report import (
     StockResearchReportResponse,
 )
 from app.services.stocks.stock_research_service import StockResearchService
+from app.services.stocks.stock_research_queue_service import StockResearchQueueService
 
 router = APIRouter(prefix="/stock-research/reports", tags=["stock-research"])
 
@@ -70,24 +75,24 @@ async def get_stock_research_catalog(
 )
 async def create_stock_research_report(
     request: StockResearchReportCreateRequest,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
     org_context: OrganizationContext = Depends(get_current_organization_context),
     service: StockResearchService = Depends(get_stock_research_service),
+    queue_service: StockResearchQueueService = Depends(get_stock_research_queue_service),
 ) -> StockResearchReportCreateResponse:
-    """Accept one stock research report request and schedule background processing."""
+    """Accept one stock research report request and enqueue worker processing."""
     response = await service.create_report_request(
         current_user=current_user,
         organization_id=org_context.organization_id,
         request=request,
     )
     runtime_config = service.runtime_config_from_response(response.runtime_config)
-    background_tasks.add_task(
-        service.process_report,
+    if not await queue_service.enqueue_report(
         report_id=response.id,
         symbol=response.symbol,
         runtime_config=runtime_config,
-    )
+    ):
+        raise StockResearchReportEnqueueError()
     return response
 
 

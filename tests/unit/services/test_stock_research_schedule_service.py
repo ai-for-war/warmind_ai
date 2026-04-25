@@ -139,13 +139,23 @@ def _resolved_runtime_config() -> service_module.StockResearchAgentRuntimeConfig
     )
 
 
-class _Queue:
+class _QueueService:
     def __init__(self, success: bool = True) -> None:
         self.success = success
-        self.calls: list[tuple[str, dict[str, object]]] = []
+        self.calls: list[dict[str, object]] = []
 
-    async def enqueue(self, queue_name: str, data: dict[str, object]) -> bool:
-        self.calls.append((queue_name, data))
+    async def enqueue_report(self, **kwargs) -> bool:
+        self.calls.append(kwargs)
+        return self.success
+
+    async def enqueue_report_model(self, report: StockResearchReport) -> bool:
+        self.calls.append(
+            {
+                "report_id": report.id,
+                "symbol": report.symbol,
+                "runtime_config": report.runtime_config,
+            }
+        )
         return self.success
 
 
@@ -189,7 +199,7 @@ async def test_create_schedule_validates_symbol_runtime_and_persists_next_run(
 
 @pytest.mark.asyncio
 async def test_run_now_creates_report_and_enqueues_without_moving_next_run() -> None:
-    queue = _Queue()
+    queue_service = _QueueService()
     schedule = _schedule()
     schedule_repo = SimpleNamespace(
         find_owned_schedule=AsyncMock(return_value=schedule),
@@ -199,7 +209,7 @@ async def test_run_now_creates_report_and_enqueues_without_moving_next_run() -> 
         schedule_repo=schedule_repo,
         report_repo=report_repo,
         stock_repo=SimpleNamespace(),
-        queue=queue,
+        queue_service=queue_service,
     )
 
     response = await service.run_now(
@@ -212,21 +222,18 @@ async def test_run_now_creates_report_and_enqueues_without_moving_next_run() -> 
     report_repo.create.assert_awaited_once()
     assert report_repo.create.await_args.kwargs["schedule_id"] == "schedule-1"
     assert report_repo.create.await_args.kwargs["schedule_run_id"] is None
-    assert queue.calls == [
-        (
-            "stock_research_tasks",
-            {
-                "report_id": "report-1",
-                "symbol": "FPT",
-                "runtime_config": _runtime_config().model_dump(),
-            },
-        )
+    assert queue_service.calls == [
+        {
+            "report_id": "report-1",
+            "symbol": "FPT",
+            "runtime_config": _runtime_config(),
+        }
     ]
 
 
 @pytest.mark.asyncio
 async def test_dispatcher_creates_run_report_queue_and_advances_schedule() -> None:
-    queue = _Queue()
+    queue_service = _QueueService()
     schedule = _schedule(
         next_run_at=_utc(2026, 4, 24, 1),
         schedule_type=StockResearchScheduleType.DAILY,
@@ -252,7 +259,7 @@ async def test_dispatcher_creates_run_report_queue_and_advances_schedule() -> No
         schedule_repo=schedule_repo,
         run_repo=run_repo,
         report_repo=report_repo,
-        queue=queue,
+        queue_service=queue_service,
     )
 
     result = await dispatcher.dispatch_due(now=_utc(2026, 4, 24, 1), limit=10)
@@ -290,7 +297,7 @@ async def test_dispatcher_skips_duplicate_non_stale_occurrence() -> None:
         schedule_repo=schedule_repo,
         run_repo=run_repo,
         report_repo=SimpleNamespace(create=AsyncMock()),
-        queue=_Queue(),
+        queue_service=_QueueService(),
     )
 
     result = await dispatcher.dispatch_due(now=_utc(), limit=10)

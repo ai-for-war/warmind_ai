@@ -111,6 +111,40 @@ class StockResearchReportRepository:
         )
         return self._to_model(document)
 
+    async def find_by_id(self, report_id: str) -> StockResearchReport | None:
+        """Find one stock research report by id without caller scope filtering."""
+        object_id = _parse_object_id(report_id)
+        if object_id is None:
+            return None
+
+        document = await self.collection.find_one({"_id": object_id})
+        return self._to_model(document)
+
+    async def claim_queued_report(self, report_id: str) -> StockResearchReport | None:
+        """Atomically claim one queued report for worker processing."""
+        object_id = _parse_object_id(report_id)
+        if object_id is None:
+            return None
+
+        now = datetime.now(timezone.utc)
+        document = await self.collection.find_one_and_update(
+            {
+                "_id": object_id,
+                "status": StockResearchReportStatus.QUEUED.value,
+            },
+            {
+                "$set": {
+                    "status": StockResearchReportStatus.RUNNING.value,
+                    "started_at": now,
+                    "completed_at": None,
+                    "error": None,
+                    "updated_at": now,
+                }
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        return self._to_model(document)
+
     async def find_owned_report(
         self,
         *,

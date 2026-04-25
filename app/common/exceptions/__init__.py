@@ -325,6 +325,7 @@ from app.common.exceptions.notification_exceptions import (  # noqa: E402
     NotificationOwnershipError,
 )
 from app.common.exceptions.stock_research_report_exceptions import (  # noqa: E402
+    StockResearchReportEnqueueError,
     StockResearchReportNotFoundError,
 )
 from app.common.exceptions.stock_research_schedule_exceptions import (  # noqa: E402

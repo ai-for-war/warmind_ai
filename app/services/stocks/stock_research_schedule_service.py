@@ -44,8 +44,9 @@ from app.repo.stock_symbol_repo import StockSymbolRepository
 from app.services.stocks.stock_research_schedule_calculator import (
     calculate_next_stock_research_run_at,
 )
-
-DEFAULT_STOCK_RESEARCH_QUEUE_NAME = "stock_research_tasks"
+from app.services.stocks.stock_research_queue_service import (
+    StockResearchQueueService,
+)
 
 
 class StockResearchScheduleService:
@@ -57,14 +58,12 @@ class StockResearchScheduleService:
         schedule_repo: StockResearchScheduleRepository,
         report_repo: StockResearchReportRepository,
         stock_repo: StockSymbolRepository,
-        queue: Any | None = None,
-        queue_name: str = DEFAULT_STOCK_RESEARCH_QUEUE_NAME,
+        queue_service: StockResearchQueueService | None = None,
     ) -> None:
         self.schedule_repo = schedule_repo
         self.report_repo = report_repo
         self.stock_repo = stock_repo
-        self.queue = queue
-        self.queue_name = queue_name
+        self.queue_service = queue_service
 
     async def create_schedule(
         self,
@@ -305,20 +304,9 @@ class StockResearchScheduleService:
         )
 
     async def _enqueue_report(self, *, report: StockResearchReport) -> bool:
-        if self.queue is None:
+        if self.queue_service is None:
             raise StockResearchScheduleDispatchError()
-        return await self.queue.enqueue(
-            self.queue_name,
-            {
-                "report_id": report.id,
-                "symbol": report.symbol,
-                "runtime_config": (
-                    None
-                    if report.runtime_config is None
-                    else report.runtime_config.model_dump()
-                ),
-            },
-        )
+        return await self.queue_service.enqueue_report_model(report)
 
     @staticmethod
     def _resolve_runtime_config(request: Any) -> StockResearchAgentRuntimeConfig:
