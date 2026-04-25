@@ -8,6 +8,7 @@ import pytest
 
 from app.domain.models.stock_research_report import (
     StockResearchReport,
+    StockResearchReportFailure,
     StockResearchReportRuntimeConfig,
     StockResearchReportStatus,
 )
@@ -27,6 +28,7 @@ from app.domain.schemas.stock_research_schedule import (
     StockResearchScheduleCreateRequest,
     StockResearchScheduleDefinitionRequest,
 )
+from app.common.exceptions import StockResearchScheduleDispatchError
 from app.services.stocks import stock_research_schedule_service as service_module
 from app.services.stocks.stock_research_schedule_dispatcher_service import (
     StockResearchScheduleDispatcherService,
@@ -261,6 +263,44 @@ async def test_run_now_creates_report_and_enqueues_without_moving_next_run() -> 
             "runtime_config": _runtime_config(),
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_run_now_marks_report_failed_when_enqueue_fails() -> None:
+    queue_service = _QueueService(success=False)
+    schedule = _schedule()
+    report = _report()
+    schedule_repo = SimpleNamespace(
+        find_owned_schedule=AsyncMock(return_value=schedule),
+    )
+    report_repo = SimpleNamespace(
+        create=AsyncMock(return_value=report),
+        update_lifecycle_state=AsyncMock(return_value=report),
+    )
+    service = StockResearchScheduleService(
+        schedule_repo=schedule_repo,
+        report_repo=report_repo,
+        stock_repo=SimpleNamespace(),
+        queue_service=queue_service,
+    )
+
+    with pytest.raises(StockResearchScheduleDispatchError):
+        await service.run_now(
+            current_user=_user(),
+            organization_id="org-1",
+            schedule_id="schedule-1",
+        )
+
+    report_repo.update_lifecycle_state.assert_awaited_once()
+    failure_kwargs = report_repo.update_lifecycle_state.await_args.kwargs
+    assert failure_kwargs["report_id"] == "report-1"
+    assert failure_kwargs["status"] == StockResearchReportStatus.FAILED
+    assert failure_kwargs["content"] is None
+    assert failure_kwargs["sources"] == []
+    assert failure_kwargs["error"] == StockResearchReportFailure(
+        code="StockResearchScheduleDispatchError",
+        message="Stock research schedule dispatch failed",
+    )
 
 
 @pytest.mark.asyncio

@@ -89,6 +89,7 @@ def _summary(
 class _FakeStockResearchService:
     def __init__(self) -> None:
         self.create_calls: list[dict[str, object]] = []
+        self.enqueue_failed_calls: list[dict[str, object]] = []
         self.get_calls: list[dict[str, object]] = []
         self.list_calls: list[dict[str, object]] = []
         self.raise_on_create: Exception | None = None
@@ -126,6 +127,9 @@ class _FakeStockResearchService:
         if self.raise_on_create is not None:
             raise self.raise_on_create
         return self.create_response
+
+    async def mark_report_enqueue_failed(self, **kwargs) -> None:
+        self.enqueue_failed_calls.append(kwargs)
 
     def resolve_request_runtime_config(self, request):
         runtime_config = getattr(request, "runtime_config", None)
@@ -314,6 +318,7 @@ async def test_create_report_surfaces_enqueue_failure() -> None:
 
     assert response.status_code == 502
     assert response.json()["detail"] == "Stock research report could not be queued"
+    assert service.enqueue_failed_calls == [{"report_id": "report-1"}]
 
 
 @pytest.mark.asyncio

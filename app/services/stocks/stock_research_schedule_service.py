@@ -16,7 +16,9 @@ from app.common.exceptions import (
 )
 from app.domain.models.stock_research_report import (
     StockResearchReport,
+    StockResearchReportFailure,
     StockResearchReportRuntimeConfig,
+    StockResearchReportStatus,
     StockResearchReportTriggerType,
 )
 from app.domain.models.stock_research_schedule import (
@@ -270,7 +272,13 @@ class StockResearchScheduleService:
             schedule=schedule,
             schedule_run_id=None,
         )
-        if not await self._enqueue_report(report=report):
+        try:
+            enqueue_succeeded = await self._enqueue_report(report=report)
+        except StockResearchScheduleDispatchError:
+            await self._mark_report_enqueue_failed(report=report)
+            raise
+        if not enqueue_succeeded:
+            await self._mark_report_enqueue_failed(report=report)
             raise StockResearchScheduleDispatchError()
         return self._to_report_create_response(report)
 
@@ -314,6 +322,21 @@ class StockResearchScheduleService:
         if self.queue_service is None:
             raise StockResearchScheduleDispatchError()
         return await self.queue_service.enqueue_report_model(report)
+
+    async def _mark_report_enqueue_failed(self, *, report: StockResearchReport) -> None:
+        if report.id is None:
+            return
+        await self.report_repo.update_lifecycle_state(
+            report_id=report.id,
+            status=StockResearchReportStatus.FAILED,
+            completed_at=datetime.now(timezone.utc),
+            content=None,
+            sources=[],
+            error=StockResearchReportFailure(
+                code="StockResearchScheduleDispatchError",
+                message="Stock research schedule dispatch failed",
+            ),
+        )
 
     @staticmethod
     def _resolve_runtime_config(request: Any) -> StockResearchAgentRuntimeConfig:

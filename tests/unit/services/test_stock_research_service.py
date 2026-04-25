@@ -388,6 +388,25 @@ async def test_process_report_marks_failed_and_clears_broken_artifacts() -> None
 
 
 @pytest.mark.asyncio
+async def test_mark_report_enqueue_failed_marks_report_failed() -> None:
+    service, report_repo, _, _ = _service()
+
+    await service.mark_report_enqueue_failed(report_id="report-1")
+
+    report_repo.update_lifecycle_state.assert_awaited_once()
+    failure_kwargs = report_repo.update_lifecycle_state.await_args.kwargs
+    assert failure_kwargs["report_id"] == "report-1"
+    assert failure_kwargs["status"] == StockResearchReportStatus.FAILED
+    assert failure_kwargs["completed_at"].tzinfo == timezone.utc
+    assert failure_kwargs["content"] is None
+    assert failure_kwargs["sources"] == []
+    assert failure_kwargs["error"] == StockResearchReportFailure(
+        code="StockResearchReportEnqueueError",
+        message="Stock research report could not be queued",
+    )
+
+
+@pytest.mark.asyncio
 async def test_process_report_keeps_completed_state_when_notification_creation_fails() -> None:
     service, report_repo, _, notification_service = _service()
     completed_report = _report(

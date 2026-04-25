@@ -92,6 +92,7 @@ async def create_stock_research_report(
         symbol=response.symbol,
         runtime_config=runtime_config,
     ):
+        await service.mark_report_enqueue_failed(report_id=response.id)
         raise StockResearchReportEnqueueError()
     return response
 
