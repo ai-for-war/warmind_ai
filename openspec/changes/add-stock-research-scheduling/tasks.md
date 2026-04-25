@@ -7,10 +7,10 @@
 
 ## 2. Schedule Calculation and Validation
 
-- [ ] 2.1 Implement schedule request schemas for `every_15_minutes`, `daily`, and `weekly` definitions.
-- [ ] 2.2 Validate schedule definitions, including integer hours from 0 through 23 and one or more weekdays for weekly schedules.
-- [ ] 2.3 Implement `Asia/Saigon` next-run calculation for every-15-minutes, daily, and multi-weekday weekly schedules.
-- [ ] 2.4 Add unit tests for schedule validation and next-run calculation around before, at, and after due times.
+- [x] 2.1 Implement schedule request schemas for `every_15_minutes`, `daily`, and `weekly` definitions.
+- [x] 2.2 Validate schedule definitions, including integer hours from 0 through 23 and one or more weekdays for weekly schedules.
+- [x] 2.3 Implement `Asia/Saigon` next-run calculation for every-15-minutes, daily, and multi-weekday weekly schedules.
+- [x] 2.4 Add unit tests for schedule validation and next-run calculation around before, at, and after due times.
 
 ## 3. Repositories and Services
 
