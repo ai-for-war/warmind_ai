@@ -36,10 +36,10 @@
 
 ## 6. Dispatcher Idempotency and Overlap
 
-- [ ] 6.1 Add tests proving repeated dispatcher calls for the same occurrence create at most one report.
-- [ ] 6.2 Add tests proving concurrent claim attempts for the same occurrence resolve to a single schedule run.
-- [ ] 6.3 Add tests proving later due occurrences can create new reports even when earlier reports are still queued or running.
-- [ ] 6.4 Add tests for stale `dispatching` run recovery and enqueue failure recording.
+- [x] 6.1 Add tests proving repeated dispatcher calls for the same occurrence create at most one report.
+- [x] 6.2 Add tests proving concurrent claim attempts for the same occurrence resolve to a single schedule run.
+- [x] 6.3 Add tests proving later due occurrences can create new reports even when earlier reports are still queued or running.
+- [x] 6.4 Add tests for stale `dispatching` run recovery and enqueue failure recording.
 
 ## 7. Documentation and Deployment Notes
 
