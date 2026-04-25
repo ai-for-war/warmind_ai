@@ -14,10 +14,10 @@
 
 ## 3. Repositories and Services
 
-- [ ] 3.1 Add `StockResearchScheduleRepository` with create, find owned, list owned, update, pause/resume, soft delete, and due schedule query methods.
-- [ ] 3.2 Add `StockResearchScheduleRunRepository` with occurrence insert, stale dispatch claim, queued mark, enqueue-failed mark, and lookup methods.
-- [ ] 3.3 Add `StockResearchScheduleService` for CRUD, run-now, symbol validation, runtime config validation, and next-run persistence.
-- [ ] 3.4 Add `StockResearchScheduleDispatcherService` that claims due occurrences idempotently, creates queued reports, enqueues worker tasks, and advances `next_run_at`.
+- [x] 3.1 Add `StockResearchScheduleRepository` with create, find owned, list owned, update, pause/resume, soft delete, and due schedule query methods.
+- [x] 3.2 Add `StockResearchScheduleRunRepository` with occurrence insert, stale dispatch claim, queued mark, enqueue-failed mark, and lookup methods.
+- [x] 3.3 Add `StockResearchScheduleService` for CRUD, run-now, symbol validation, runtime config validation, and next-run persistence.
+- [x] 3.4 Add `StockResearchScheduleDispatcherService` that claims due occurrences idempotently, creates queued reports, enqueues worker tasks, and advances `next_run_at`.
 
 ## 4. Redis Worker Execution
 

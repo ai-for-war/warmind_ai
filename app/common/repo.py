@@ -23,6 +23,10 @@ from app.repo.sheet_data_repo import SheetDataRepository
 from app.repo.sheet_sync_state_repo import SheetSyncStateRepository
 from app.repo.stock_symbol_repo import StockSymbolRepository
 from app.repo.stock_research_report_repo import StockResearchReportRepository
+from app.repo.stock_research_schedule_repo import StockResearchScheduleRepository
+from app.repo.stock_research_schedule_run_repo import (
+    StockResearchScheduleRunRepository,
+)
 from app.repo.stock_watchlist_item_repo import StockWatchlistItemRepository
 from app.repo.stock_watchlist_repo import StockWatchlistRepository
 from app.repo.user_repo import UserRepository
@@ -225,6 +229,20 @@ def get_stock_research_report_repo() -> StockResearchReportRepository:
     """Get singleton stock research report repository instance."""
     db = MongoDB.get_db()
     return StockResearchReportRepository(db)
+
+
+@lru_cache
+def get_stock_research_schedule_repo() -> StockResearchScheduleRepository:
+    """Get singleton stock research schedule repository instance."""
+    db = MongoDB.get_db()
+    return StockResearchScheduleRepository(db)
+
+
+@lru_cache
+def get_stock_research_schedule_run_repo() -> StockResearchScheduleRunRepository:
+    """Get singleton stock research schedule-run repository instance."""
+    db = MongoDB.get_db()
+    return StockResearchScheduleRunRepository(db)
 
 
 @lru_cache
