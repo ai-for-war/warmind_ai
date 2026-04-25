@@ -120,6 +120,7 @@ class _StatefulRunRepo:
         self.runs_by_id: dict[str, StockResearchScheduleRun] = {}
         self.create_calls = 0
         self.claim_stale_calls = 0
+        self.claim_enqueue_failed_calls = 0
         self.mark_enqueue_failed_calls = 0
         self._lock = asyncio.Lock()
 
@@ -171,6 +172,27 @@ class _StatefulRunRepo:
         updated = run.model_copy(update={"lock_expires_at": lock_expires_at})
         self.runs_by_key[(schedule_id, occurrence_at)] = updated
         self.runs_by_id[updated.id] = updated
+        return updated
+
+    async def claim_enqueue_failed(
+        self,
+        *,
+        schedule_id: str,
+        occurrence_at: datetime,
+        lock_expires_at: datetime,
+    ) -> StockResearchScheduleRun | None:
+        self.claim_enqueue_failed_calls += 1
+        run = self.runs_by_key.get((schedule_id, occurrence_at))
+        if run is None or run.status != StockResearchScheduleRunStatus.ENQUEUE_FAILED:
+            return None
+
+        updated = run.model_copy(
+            update={
+                "status": StockResearchScheduleRunStatus.DISPATCHING,
+                "lock_expires_at": lock_expires_at,
+            }
+        )
+        self._save(updated)
         return updated
 
     async def attach_report(
@@ -431,3 +453,49 @@ async def test_enqueue_failure_is_recorded_without_advancing_schedule() -> None:
         == StockResearchScheduleRunStatus.ENQUEUE_FAILED
     )
     assert schedule_repo.schedules["schedule-1"].next_run_at == _utc(2026, 4, 24, 1)
+
+
+@pytest.mark.asyncio
+async def test_enqueue_failed_occurrence_is_retried_and_advances_on_success() -> None:
+    occurrence_at = _utc(2026, 4, 24, 1)
+    schedule = _schedule(next_run_at=occurrence_at)
+    schedule_repo = _StatefulScheduleRepo([schedule])
+    run_repo = _StatefulRunRepo()
+    failed_run = StockResearchScheduleRun(
+        _id="6807dd18c5d8d14d4af1d111",
+        schedule_id="schedule-1",
+        occurrence_at=occurrence_at,
+        status=StockResearchScheduleRunStatus.ENQUEUE_FAILED,
+        report_id="report-existing",
+        lock_expires_at=_utc(2026, 4, 24, 1, 10),
+        created_at=_utc(),
+        updated_at=_utc(),
+    )
+    run_repo._save(failed_run)
+    report_repo = _StatefulReportRepo()
+    queue_service = _QueueService()
+    dispatcher = _dispatcher(
+        schedule_repo=schedule_repo,
+        run_repo=run_repo,
+        report_repo=report_repo,
+        queue_service=queue_service,
+    )
+
+    result = await dispatcher.dispatch_due(now=occurrence_at)
+
+    assert result.dispatched == 1
+    assert result.enqueue_failed == 0
+    assert run_repo.claim_enqueue_failed_calls == 1
+    assert report_repo.reports == []
+    assert queue_service.calls == [
+        {
+            "report_id": "report-existing",
+            "symbol": "FPT",
+            "runtime_config": _runtime_config(),
+        }
+    ]
+    assert (
+        run_repo.runs_by_id[failed_run.id].status
+        == StockResearchScheduleRunStatus.QUEUED
+    )
+    assert schedule_repo.schedules["schedule-1"].next_run_at == _utc(2026, 4, 25, 1)

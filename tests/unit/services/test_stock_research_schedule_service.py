@@ -280,6 +280,7 @@ async def test_dispatcher_creates_run_report_queue_and_advances_schedule() -> No
     run_repo = SimpleNamespace(
         create_dispatching=AsyncMock(return_value=run),
         claim_stale_dispatching=AsyncMock(),
+        claim_enqueue_failed=AsyncMock(),
         attach_report=AsyncMock(return_value=attached_run),
         mark_queued=AsyncMock(return_value=attached_run),
         mark_enqueue_failed=AsyncMock(),
@@ -324,6 +325,7 @@ async def test_dispatcher_skips_duplicate_non_stale_occurrence() -> None:
     run_repo = SimpleNamespace(
         create_dispatching=AsyncMock(return_value=None),
         claim_stale_dispatching=AsyncMock(return_value=None),
+        claim_enqueue_failed=AsyncMock(return_value=None),
     )
     dispatcher = StockResearchScheduleDispatcherService(
         schedule_repo=schedule_repo,

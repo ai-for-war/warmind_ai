@@ -75,6 +75,31 @@ class StockResearchScheduleRunRepository:
         )
         return self._to_model(document)
 
+    async def claim_enqueue_failed(
+        self,
+        *,
+        schedule_id: str,
+        occurrence_at: datetime,
+        lock_expires_at: datetime,
+    ) -> StockResearchScheduleRun | None:
+        """Claim a previously failed enqueue attempt for retry."""
+        document = await self.collection.find_one_and_update(
+            {
+                "schedule_id": schedule_id,
+                "occurrence_at": occurrence_at,
+                "status": StockResearchScheduleRunStatus.ENQUEUE_FAILED.value,
+            },
+            {
+                "$set": {
+                    "status": StockResearchScheduleRunStatus.DISPATCHING.value,
+                    "lock_expires_at": lock_expires_at,
+                    "updated_at": datetime.now(timezone.utc),
+                }
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        return self._to_model(document)
+
     async def mark_queued(
         self,
         *,

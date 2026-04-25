@@ -107,6 +107,12 @@ class StockResearchScheduleDispatcherService:
                 now=now,
                 lock_expires_at=lock_expires_at,
             )
+        if run is None:
+            run = await self.run_repo.claim_enqueue_failed(
+                schedule_id=schedule.id,
+                occurrence_at=occurrence_at,
+                lock_expires_at=lock_expires_at,
+            )
         if run is None or run.id is None:
             return False, False
 

@@ -160,6 +160,12 @@ Sheet sync worker:
 python -m app.workers.sheet_sync_worker
 ```
 
+Stock research worker:
+
+```bash
+python -m app.workers.stock_research_worker
+```
+
 ### 6. Run tests
 
 ```bash
