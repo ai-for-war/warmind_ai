@@ -29,10 +29,10 @@
 
 ## 5. API Endpoints
 
-- [ ] 5.1 Add stock research schedule routes for create, list, read, update, pause/resume or status update, delete, and run-now.
-- [ ] 5.2 Wire schedule routes into the v1 router with existing authentication and organization dependencies.
-- [ ] 5.3 Add internal API-key-protected endpoint for EventBridge schedule dispatch.
-- [ ] 5.4 Add integration tests for schedule CRUD, ownership enforcement, run-now, and internal dispatch authentication.
+- [x] 5.1 Add stock research schedule routes for create, list, read, update, pause/resume or status update, delete, and run-now.
+- [x] 5.2 Wire schedule routes into the v1 router with existing authentication and organization dependencies.
+- [x] 5.3 Add internal API-key-protected endpoint for EventBridge schedule dispatch.
+- [x] 5.4 Add integration tests for schedule CRUD, ownership enforcement, run-now, and internal dispatch authentication.
 
 ## 6. Dispatcher Idempotency and Overlap
 

@@ -85,20 +85,28 @@ class StockResearchScheduleRepository:
         *,
         user_id: str,
         organization_id: str,
-    ) -> list[StockResearchSchedule]:
+        page: int = 1,
+        page_size: int = 20,
+    ) -> tuple[list[StockResearchSchedule], int]:
         """List one user's non-deleted schedules inside one organization."""
+        query: dict[str, object] = {
+            "user_id": user_id,
+            "organization_id": organization_id,
+            "status": {"$ne": StockResearchScheduleStatus.DELETED.value},
+        }
+        skip = (page - 1) * page_size
+        total = await self.collection.count_documents(query)
         cursor = (
-            self.collection.find(
-                {
-                    "user_id": user_id,
-                    "organization_id": organization_id,
-                    "status": {"$ne": StockResearchScheduleStatus.DELETED.value},
-                }
-            )
+            self.collection.find(query)
             .sort("created_at", DESCENDING)
+            .skip(skip)
+            .limit(page_size)
         )
         documents = [document async for document in cursor]
-        return [self._to_model(document) for document in documents if document]
+        return (
+            [self._to_model(document) for document in documents if document],
+            total,
+        )
 
     async def update_owned_schedule(
         self,

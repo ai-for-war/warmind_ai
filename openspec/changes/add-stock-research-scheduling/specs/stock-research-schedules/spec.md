@@ -18,6 +18,7 @@ The system SHALL provide APIs to create, list, read, update, pause, resume, and 
 #### Scenario: List user schedules
 - **WHEN** a user lists stock research schedules in an organization
 - **THEN** the system returns only schedules owned by that user in that organization
+- **AND** the response includes pagination metadata for total count, page, and page size
 
 #### Scenario: Pause a schedule
 - **WHEN** a user pauses an active stock research schedule they own

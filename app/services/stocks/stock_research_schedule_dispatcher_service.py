@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any
 
 from app.domain.models.stock_research_report import StockResearchReportTriggerType
 from app.domain.models.stock_research_schedule import StockResearchSchedule
@@ -16,9 +15,7 @@ from app.repo.stock_research_schedule_run_repo import (
 from app.services.stocks.stock_research_schedule_calculator import (
     calculate_next_stock_research_run_at,
 )
-from app.services.stocks.stock_research_schedule_service import (
-    DEFAULT_STOCK_RESEARCH_QUEUE_NAME,
-)
+from app.services.stocks.stock_research_queue_service import StockResearchQueueService
 
 SCHEDULE_DISPATCH_LOCK_SECONDS = 600
 
@@ -42,15 +39,13 @@ class StockResearchScheduleDispatcherService:
         schedule_repo: StockResearchScheduleRepository,
         run_repo: StockResearchScheduleRunRepository,
         report_repo: StockResearchReportRepository,
-        queue: Any,
-        queue_name: str = DEFAULT_STOCK_RESEARCH_QUEUE_NAME,
+        queue_service: StockResearchQueueService,
         lock_seconds: int = SCHEDULE_DISPATCH_LOCK_SECONDS,
     ) -> None:
         self.schedule_repo = schedule_repo
         self.run_repo = run_repo
         self.report_repo = report_repo
-        self.queue = queue
-        self.queue_name = queue_name
+        self.queue_service = queue_service
         self.lock_seconds = lock_seconds
 
     async def dispatch_due(
@@ -134,13 +129,10 @@ class StockResearchScheduleDispatcherService:
             if attached is not None:
                 run = attached
 
-        enqueue_succeeded = await self.queue.enqueue(
-            self.queue_name,
-            {
-                "report_id": report_id,
-                "symbol": schedule.symbol,
-                "runtime_config": schedule.runtime_config.model_dump(),
-            },
+        enqueue_succeeded = await self.queue_service.enqueue_report(
+            report_id=report_id,
+            symbol=schedule.symbol,
+            runtime_config=schedule.runtime_config,
         )
         if not enqueue_succeeded:
             await self.run_repo.mark_enqueue_failed(

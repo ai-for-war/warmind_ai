@@ -198,6 +198,38 @@ async def test_create_schedule_validates_symbol_runtime_and_persists_next_run(
 
 
 @pytest.mark.asyncio
+async def test_list_schedules_returns_paginated_response() -> None:
+    schedule_repo = SimpleNamespace(
+        list_by_user_and_organization=AsyncMock(
+            return_value=([_schedule(), _schedule(schedule_id="schedule-2")], 7)
+        )
+    )
+    service = StockResearchScheduleService(
+        schedule_repo=schedule_repo,
+        report_repo=SimpleNamespace(),
+        stock_repo=SimpleNamespace(),
+    )
+
+    response = await service.list_schedules(
+        current_user=_user(),
+        organization_id="org-1",
+        page=2,
+        page_size=2,
+    )
+
+    schedule_repo.list_by_user_and_organization.assert_awaited_once_with(
+        user_id="user-1",
+        organization_id="org-1",
+        page=2,
+        page_size=2,
+    )
+    assert [item.id for item in response.items] == ["schedule-1", "schedule-2"]
+    assert response.total == 7
+    assert response.page == 2
+    assert response.page_size == 2
+
+
+@pytest.mark.asyncio
 async def test_run_now_creates_report_and_enqueues_without_moving_next_run() -> None:
     queue_service = _QueueService()
     schedule = _schedule()

@@ -170,6 +170,9 @@ class StockResearchScheduleListResponse(StockResearchReportSchemaBase):
     """Response returned by the stock research schedule list endpoint."""
 
     items: list[StockResearchScheduleSummary] = Field(default_factory=list)
+    total: int = Field(..., ge=0)
+    page: int = Field(..., ge=1)
+    page_size: int = Field(..., ge=1, le=100)
 
 
 class StockResearchScheduleDeleteResponse(StockResearchReportSchemaBase):
