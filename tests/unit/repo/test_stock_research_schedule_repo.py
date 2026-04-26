@@ -105,6 +105,7 @@ class _FakeCursor:
 class _FakeCollection:
     def __init__(self, documents: list[dict[str, object]]) -> None:
         self._documents = [deepcopy(document) for document in documents]
+        self.delete_one_called = False
 
     def find(self, query: dict[str, object]) -> _FakeCursor:
         return _FakeCursor(
@@ -117,6 +118,30 @@ class _FakeCollection:
 
     async def count_documents(self, query: dict[str, object]) -> int:
         return sum(1 for document in self._documents if _matches_query(document, query))
+
+    async def find_one_and_update(
+        self,
+        query: dict[str, object],
+        update: dict[str, dict[str, object]],
+        **_: object,
+    ) -> dict[str, object] | None:
+        for document in self._documents:
+            if not _matches_query(document, query):
+                continue
+            document.update(update.get("$set", {}))
+            return deepcopy(document)
+        return None
+
+    async def delete_one(self, query: dict[str, object]) -> None:  # pragma: no cover
+        self.delete_one_called = True
+        raise AssertionError(f"Unexpected hard delete for query: {query}")
+
+    def find_document(self, schedule_id: str) -> dict[str, object] | None:
+        object_id = ObjectId(schedule_id)
+        for document in self._documents:
+            if document.get("_id") == object_id:
+                return deepcopy(document)
+        return None
 
 
 class _FakeDB:
@@ -169,3 +194,23 @@ async def test_list_by_user_and_organization_filters_sorts_and_paginates() -> No
 
     assert total == 3
     assert [schedule.symbol for schedule in schedules] == ["SSI"]
+
+
+@pytest.mark.asyncio
+async def test_soft_delete_owned_schedule_marks_status_deleted_without_removing_document() -> None:
+    schedule_id = "6807dd18c5d8d14d4af1d111"
+    db = _FakeDB([_schedule_document(schedule_id=schedule_id)])
+    repository = StockResearchScheduleRepository(db)
+
+    deleted = await repository.soft_delete_owned_schedule(
+        schedule_id=schedule_id,
+        user_id="user-1",
+        organization_id="org-1",
+    )
+
+    assert deleted is not None
+    assert deleted.status == StockResearchScheduleStatus.DELETED
+    stored = db.stock_research_schedules.find_document(schedule_id)
+    assert stored is not None
+    assert stored["status"] == StockResearchScheduleStatus.DELETED.value
+    assert db.stock_research_schedules.delete_one_called is False

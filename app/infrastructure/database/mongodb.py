@@ -1,6 +1,7 @@
 """MongoDB async client using motor."""
 
 import logging
+from datetime import timezone
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from pymongo import ASCENDING, DESCENDING
@@ -22,7 +23,7 @@ class MongoDB:
             uri: MongoDB connection URI
             db_name: Database name to use
         """
-        cls.client = AsyncIOMotorClient(uri)
+        cls.client = AsyncIOMotorClient(uri, tz_aware=True, tzinfo=timezone.utc)
         cls.db = cls.client[db_name]
 
     @classmethod
