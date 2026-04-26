@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 import pytest
 
+import app.workers.stock_research_worker as stock_research_worker
 from app.agents.implementations.stock_research_agent.runtime import (
     StockResearchAgentRuntimeConfig,
 )
@@ -119,6 +120,23 @@ class _BlockingService:
         await self.release.wait()
 
 
+class _Settings:
+    MONGODB_URI = "mongodb://localhost:27017"
+    MONGODB_DB_NAME = "test"
+    REDIS_URL = "redis://localhost:6379/0"
+
+
+class _MCPManager:
+    def __init__(self) -> None:
+        self.tool_count = 2
+        self.raw_tool_count = 2
+        self.missing_normalized_tool_names: list[str] = []
+        self.initialize_calls: list[object] = []
+
+    async def initialize(self, config: object) -> None:
+        self.initialize_calls.append(config)
+
+
 def _payload(
     *,
     report_id: str = "report-1",
@@ -133,6 +151,47 @@ def _payload(
             "reasoning": "high",
         },
     }
+
+
+@pytest.mark.asyncio
+async def test_setup_connections_initializes_mongodb_redis_and_mcp(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[str, dict[str, object]]] = []
+    mcp_manager = _MCPManager()
+
+    async def fake_mongodb_connect(**kwargs) -> None:
+        calls.append(("mongodb", kwargs))
+
+    async def fake_redis_connect(**kwargs) -> None:
+        calls.append(("redis", kwargs))
+
+    monkeypatch.setattr(stock_research_worker, "get_settings", lambda: _Settings())
+    monkeypatch.setattr(stock_research_worker.MongoDB, "connect", fake_mongodb_connect)
+    monkeypatch.setattr(
+        stock_research_worker.RedisClient,
+        "connect",
+        fake_redis_connect,
+    )
+    monkeypatch.setattr(
+        stock_research_worker,
+        "get_mcp_tools_manager",
+        lambda: mcp_manager,
+    )
+
+    await stock_research_worker.setup_connections()
+
+    assert calls == [
+        (
+            "mongodb",
+            {
+                "uri": _Settings.MONGODB_URI,
+                "db_name": _Settings.MONGODB_DB_NAME,
+            },
+        ),
+        ("redis", {"url": _Settings.REDIS_URL}),
+    ]
+    assert mcp_manager.initialize_calls == [stock_research_worker.MCP_SERVERS]
 
 
 @pytest.mark.asyncio

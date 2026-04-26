@@ -15,12 +15,14 @@ from app.agents.implementations.stock_research_agent.runtime import (
 )
 from app.common.repo import get_stock_research_report_repo
 from app.common.service import get_redis_queue, get_stock_research_service
+from app.config.mcp import MCP_SERVERS
 from app.config.settings import get_settings
 from app.domain.schemas.stock_research_task import (
     StockResearchTask,
     parse_stock_research_task,
 )
 from app.infrastructure.database.mongodb import MongoDB
+from app.infrastructure.mcp.manager import get_mcp_tools_manager
 from app.infrastructure.redis.client import RedisClient
 from app.infrastructure.redis.redis_queue import RedisQueue
 from app.repo.stock_research_report_repo import StockResearchReportRepository
@@ -178,7 +180,7 @@ class StockResearchWorker:
 
 
 async def setup_connections() -> None:
-    """Initialize MongoDB and Redis for the worker process."""
+    """Initialize external connections and tools for the worker process."""
     settings = get_settings()
 
     await MongoDB.connect(uri=settings.MONGODB_URI, db_name=settings.MONGODB_DB_NAME)
@@ -186,6 +188,19 @@ async def setup_connections() -> None:
 
     await RedisClient.connect(url=settings.REDIS_URL)
     logger.info("Connected to Redis")
+
+    mcp_manager = get_mcp_tools_manager()
+    await mcp_manager.initialize(MCP_SERVERS)
+    logger.info(
+        "MCP Tools Manager initialized with %d normalized tools (%d raw tools)",
+        mcp_manager.tool_count,
+        mcp_manager.raw_tool_count,
+    )
+    if mcp_manager.missing_normalized_tool_names:
+        logger.warning(
+            "Missing normalized MCP research tools: %s",
+            mcp_manager.missing_normalized_tool_names,
+        )
 
 
 async def cleanup_connections() -> None:
