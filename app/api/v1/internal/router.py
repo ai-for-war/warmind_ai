@@ -11,10 +11,16 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.security import APIKeyHeader
 
 from app.common.repo import get_sheet_connection_repo
-from app.common.service import get_redis_queue
+from app.common.service import (
+    get_redis_queue,
+    get_stock_research_schedule_dispatcher_service,
+)
 from app.config.settings import get_settings
 from app.infrastructure.redis.redis_queue import RedisQueue
 from app.repo.sheet_connection_repo import SheetConnectionRepository
+from app.services.stocks.stock_research_schedule_dispatcher_service import (
+    StockResearchScheduleDispatcherService,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +98,24 @@ async def enqueue_all_connections(
         logger.exception("Failed to enqueue connections: %s", e)
 
 
+async def dispatch_stock_research_schedules(
+    dispatcher: StockResearchScheduleDispatcherService,
+) -> None:
+    """Background task to dispatch due stock research schedules."""
+    try:
+        result = await dispatcher.dispatch_due()
+        logger.info(
+            "Dispatched stock research schedules scanned=%d dispatched=%d "
+            "skipped=%d enqueue_failed=%d",
+            result.scanned,
+            result.dispatched,
+            result.skipped,
+            result.enqueue_failed,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Failed to dispatch stock research schedules: %s", exc)
+
+
 @router.post("/trigger-sync")
 async def trigger_sync(
     background_tasks: BackgroundTasks,
@@ -115,6 +139,25 @@ async def trigger_sync(
     """
     background_tasks.add_task(enqueue_all_connections, connection_repo, queue)
 
+    return {
+        "status": "accepted",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@router.post("/trigger-stock-research-schedules")
+async def trigger_stock_research_schedules(
+    background_tasks: BackgroundTasks,
+    _: bool = Depends(verify_internal_api_key),
+    dispatcher: StockResearchScheduleDispatcherService = Depends(
+        get_stock_research_schedule_dispatcher_service
+    ),
+) -> dict[str, object]:
+    """Trigger dispatch for due stock research schedules.
+
+    Called by EventBridge Scheduler every 15 minutes.
+    """
+    background_tasks.add_task(dispatch_stock_research_schedules, dispatcher)
     return {
         "status": "accepted",
         "timestamp": datetime.now(timezone.utc).isoformat(),

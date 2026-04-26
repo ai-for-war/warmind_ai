@@ -222,6 +222,55 @@ async def test_find_owned_report_scopes_by_user_and_organization() -> None:
 
 
 @pytest.mark.asyncio
+async def test_find_by_id_returns_report_without_owner_scope() -> None:
+    existing = _report_document(
+        user_id="user-1",
+        organization_id="org-1",
+        symbol="FPT",
+    )
+    repository = StockResearchReportRepository(_FakeDB([existing]))
+
+    found = await repository.find_by_id(str(existing["_id"]))
+
+    assert found is not None
+    assert found.id == str(existing["_id"])
+    assert found.symbol == "FPT"
+
+
+@pytest.mark.asyncio
+async def test_claim_queued_report_marks_report_running_atomically() -> None:
+    existing = _report_document(
+        report_id="6807dd18c5d8d14d4af1d111",
+        status=StockResearchReportStatus.QUEUED,
+    )
+    repository = StockResearchReportRepository(_FakeDB([existing]))
+
+    claimed = await repository.claim_queued_report("6807dd18c5d8d14d4af1d111")
+    second_claim = await repository.claim_queued_report("6807dd18c5d8d14d4af1d111")
+
+    assert claimed is not None
+    assert claimed.status == StockResearchReportStatus.RUNNING
+    assert claimed.started_at is not None
+    assert claimed.completed_at is None
+    assert claimed.error is None
+    assert second_claim is None
+
+
+@pytest.mark.asyncio
+async def test_claim_queued_report_skips_terminal_report() -> None:
+    existing = _report_document(
+        report_id="6807dd18c5d8d14d4af1d111",
+        status=StockResearchReportStatus.COMPLETED,
+        completed_at=_utc(2026, 4, 22, 10),
+    )
+    repository = StockResearchReportRepository(_FakeDB([existing]))
+
+    claimed = await repository.claim_queued_report("6807dd18c5d8d14d4af1d111")
+
+    assert claimed is None
+
+
+@pytest.mark.asyncio
 async def test_update_lifecycle_state_updates_artifacts_and_failure_metadata() -> None:
     created_at = _utc(2026, 4, 22, 8)
     source = StockResearchReportSource(

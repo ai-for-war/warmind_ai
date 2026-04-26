@@ -42,7 +42,9 @@ class Settings(BaseSettings):
     SHEET_SYNC_QUEUE_NAME: str = "sheet_sync_tasks"
     IMAGE_GENERATION_QUEUE_NAME: str = "image_generation_tasks"
     MEETING_NOTE_QUEUE_NAME: str = "meeting_note_tasks"
+    STOCK_RESEARCH_QUEUE_NAME: str = "stock_research_tasks"
     IMAGE_GENERATION_MAX_CONCURRENCY: int = 4
+    STOCK_RESEARCH_MAX_CONCURRENCY: int = 20
     LEAD_AGENT_MAX_DELEGATED_TASKS: int = 3
     LEAD_AGENT_MAX_PARALLEL_SUBAGENTS: int = 3
     LEAD_AGENT_SUBAGENT_TIMEOUT_SECONDS: float = 120.0

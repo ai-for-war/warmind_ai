@@ -196,6 +196,20 @@ class StockResearchService:
         if terminal_report is not None:
             await self._create_terminal_notification_best_effort(report=terminal_report)
 
+    async def mark_report_enqueue_failed(self, *, report_id: str) -> None:
+        """Mark a persisted report failed when worker enqueue cannot be created."""
+        await self.report_repo.update_lifecycle_state(
+            report_id=report_id,
+            status=StockResearchReportStatus.FAILED,
+            completed_at=datetime.now(timezone.utc),
+            content=None,
+            sources=[],
+            error=StockResearchReportFailure(
+                code="StockResearchReportEnqueueError",
+                message="Stock research report could not be queued",
+            ),
+        )
+
     @staticmethod
     def _to_failure_model(exc: Exception) -> StockResearchReportFailure:
         """Convert one processing exception into stable persistence metadata."""

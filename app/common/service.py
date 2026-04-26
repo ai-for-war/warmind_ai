@@ -24,6 +24,8 @@ from app.common.repo import (
     get_sheet_data_repo,
     get_sheet_sync_state_repo,
     get_stock_research_report_repo,
+    get_stock_research_schedule_repo,
+    get_stock_research_schedule_run_repo,
     get_stock_symbol_repo,
     get_stock_watchlist_item_repo,
     get_stock_watchlist_repo,
@@ -80,7 +82,14 @@ from app.services.stocks.price_gateway import VnstockPriceGateway
 from app.services.stocks.price_service import StockPriceService
 from app.services.stocks.refresh import StockCatalogSnapshotRefresher
 from app.services.stocks.stock_catalog_service import StockCatalogService
+from app.services.stocks.stock_research_queue_service import StockResearchQueueService
 from app.services.stocks.stock_research_service import StockResearchService
+from app.services.stocks.stock_research_schedule_dispatcher_service import (
+    StockResearchScheduleDispatcherService,
+)
+from app.services.stocks.stock_research_schedule_service import (
+    StockResearchScheduleService,
+)
 from app.services.stocks.watchlist_service import StockWatchlistService
 from app.services.stocks.vnstock_gateway import VnstockListingGateway
 from app.services.stt.context_store import RedisInterviewContextStore
@@ -307,6 +316,40 @@ def get_stock_research_service() -> StockResearchService:
         report_repo=get_stock_research_report_repo(),
         stock_repo=get_stock_symbol_repo(),
         notification_service=get_notification_service(),
+    )
+
+
+@lru_cache
+def get_stock_research_queue_service() -> StockResearchQueueService:
+    """Get singleton stock research queue service."""
+    settings = get_settings()
+    return StockResearchQueueService(
+        queue=get_redis_queue(),
+        queue_name=settings.STOCK_RESEARCH_QUEUE_NAME,
+    )
+
+
+@lru_cache
+def get_stock_research_schedule_service() -> StockResearchScheduleService:
+    """Get singleton stock research schedule service."""
+    return StockResearchScheduleService(
+        schedule_repo=get_stock_research_schedule_repo(),
+        report_repo=get_stock_research_report_repo(),
+        stock_repo=get_stock_symbol_repo(),
+        queue_service=get_stock_research_queue_service(),
+    )
+
+
+@lru_cache
+def get_stock_research_schedule_dispatcher_service() -> (
+    StockResearchScheduleDispatcherService
+):
+    """Get singleton stock research schedule dispatcher service."""
+    return StockResearchScheduleDispatcherService(
+        schedule_repo=get_stock_research_schedule_repo(),
+        run_repo=get_stock_research_schedule_run_repo(),
+        report_repo=get_stock_research_report_repo(),
+        queue_service=get_stock_research_queue_service(),
     )
 
 

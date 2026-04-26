@@ -15,6 +15,7 @@ from app.domain.models.stock_research_report import (
     StockResearchReportRuntimeConfig,
     StockResearchReportSource,
     StockResearchReportStatus,
+    StockResearchReportTriggerType,
 )
 
 _UNSET = object()
@@ -33,6 +34,11 @@ class StockResearchReportRepository:
         organization_id: str,
         symbol: str,
         status: StockResearchReportStatus = StockResearchReportStatus.QUEUED,
+        trigger_type: StockResearchReportTriggerType = (
+            StockResearchReportTriggerType.MANUAL
+        ),
+        schedule_id: str | None = None,
+        schedule_run_id: str | None = None,
         runtime_config: StockResearchReportRuntimeConfig | None = None,
         content: str | None = None,
         sources: list[StockResearchReportSource] | None = None,
@@ -45,6 +51,9 @@ class StockResearchReportRepository:
             organization_id=organization_id,
             symbol=symbol,
             status=status,
+            trigger_type=trigger_type,
+            schedule_id=schedule_id,
+            schedule_run_id=schedule_run_id,
             runtime_config=runtime_config,
             content=content,
             sources=sources or [],
@@ -98,6 +107,40 @@ class StockResearchReportRepository:
         document = await self.collection.find_one_and_update(
             {"_id": object_id},
             {"$set": update_fields},
+            return_document=ReturnDocument.AFTER,
+        )
+        return self._to_model(document)
+
+    async def find_by_id(self, report_id: str) -> StockResearchReport | None:
+        """Find one stock research report by id without caller scope filtering."""
+        object_id = _parse_object_id(report_id)
+        if object_id is None:
+            return None
+
+        document = await self.collection.find_one({"_id": object_id})
+        return self._to_model(document)
+
+    async def claim_queued_report(self, report_id: str) -> StockResearchReport | None:
+        """Atomically claim one queued report for worker processing."""
+        object_id = _parse_object_id(report_id)
+        if object_id is None:
+            return None
+
+        now = datetime.now(timezone.utc)
+        document = await self.collection.find_one_and_update(
+            {
+                "_id": object_id,
+                "status": StockResearchReportStatus.QUEUED.value,
+            },
+            {
+                "$set": {
+                    "status": StockResearchReportStatus.RUNNING.value,
+                    "started_at": now,
+                    "completed_at": None,
+                    "error": None,
+                    "updated_at": now,
+                }
+            },
             return_document=ReturnDocument.AFTER,
         )
         return self._to_model(document)

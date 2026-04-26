@@ -12,6 +12,7 @@ from httpx import ASGITransport, AsyncClient
 service_module = ModuleType("app.common.service")
 service_module.get_auth_service = lambda: SimpleNamespace()
 service_module.get_stock_research_service = lambda: None
+service_module.get_stock_research_queue_service = lambda: None
 sys.modules.setdefault("app.common.service", service_module)
 
 from app.api.deps import (
@@ -22,7 +23,10 @@ from app.api.deps import (
 from app.api.v1.stock_research.router import router as stock_research_router
 from app.common.exceptions import AppException, StockSymbolNotFoundError
 from app.common.repo import get_member_repo, get_org_repo
-from app.common.service import get_stock_research_service
+from app.common.service import (
+    get_stock_research_queue_service,
+    get_stock_research_service,
+)
 from app.domain.models.stock_research_report import StockResearchReportStatus
 from app.domain.models.user import User, UserRole
 from app.domain.schemas.stock_research_report import (
@@ -85,7 +89,7 @@ def _summary(
 class _FakeStockResearchService:
     def __init__(self) -> None:
         self.create_calls: list[dict[str, object]] = []
-        self.process_calls: list[dict[str, object]] = []
+        self.enqueue_failed_calls: list[dict[str, object]] = []
         self.get_calls: list[dict[str, object]] = []
         self.list_calls: list[dict[str, object]] = []
         self.raise_on_create: Exception | None = None
@@ -124,6 +128,9 @@ class _FakeStockResearchService:
             raise self.raise_on_create
         return self.create_response
 
+    async def mark_report_enqueue_failed(self, **kwargs) -> None:
+        self.enqueue_failed_calls.append(kwargs)
+
     def resolve_request_runtime_config(self, request):
         runtime_config = getattr(request, "runtime_config", None)
         if runtime_config is None:
@@ -143,9 +150,6 @@ class _FakeStockResearchService:
             "reasoning": runtime_config.reasoning,
         }
 
-    async def process_report(self, **kwargs) -> None:
-        self.process_calls.append(kwargs)
-
     async def get_report(self, **kwargs) -> StockResearchReportResponse:
         self.get_calls.append(kwargs)
         return self.get_response
@@ -158,6 +162,16 @@ class _FakeStockResearchService:
                 "page_size": kwargs.get("page_size", self.list_response.page_size),
             }
         )
+
+
+class _FakeStockResearchQueueService:
+    def __init__(self, *, success: bool = True) -> None:
+        self.success = success
+        self.enqueue_calls: list[dict[str, object]] = []
+
+    async def enqueue_report(self, **kwargs) -> bool:
+        self.enqueue_calls.append(kwargs)
+        return self.success
 
 
 class _FakeOrganization:
@@ -200,6 +214,7 @@ class _FakeMemberRepo:
 def _build_test_app(
     *,
     service: _FakeStockResearchService,
+    queue_service: _FakeStockResearchQueueService | None = None,
     use_real_org_context: bool = False,
     org_repo: _FakeOrganizationRepo | None = None,
     member_repo: _FakeMemberRepo | None = None,
@@ -216,6 +231,9 @@ def _build_test_app(
 
     app.include_router(stock_research_router, prefix="/api/v1")
     app.dependency_overrides[get_stock_research_service] = lambda: service
+    app.dependency_overrides[get_stock_research_queue_service] = (
+        lambda: queue_service or _FakeStockResearchQueueService()
+    )
     app.dependency_overrides[get_current_active_user] = lambda: _user()
 
     if use_real_org_context:
@@ -230,9 +248,10 @@ def _build_test_app(
 
 
 @pytest.mark.asyncio
-async def test_create_report_returns_202_and_schedules_background_processing() -> None:
+async def test_create_report_returns_202_and_enqueues_worker_processing() -> None:
     service = _FakeStockResearchService()
-    app = _build_test_app(service=service)
+    queue_service = _FakeStockResearchQueueService()
+    app = _build_test_app(service=service, queue_service=queue_service)
 
     async with AsyncClient(
         transport=ASGITransport(app=app),
@@ -252,7 +271,7 @@ async def test_create_report_returns_202_and_schedules_background_processing() -
     assert body["symbol"] == "FPT"
     assert body["runtime_config"] == _runtime_config_payload()
     assert service.create_calls[0]["organization_id"] == "org-1"
-    assert service.process_calls == [
+    assert queue_service.enqueue_calls == [
         {
             "report_id": "report-1",
             "symbol": "FPT",
@@ -277,7 +296,29 @@ async def test_create_report_requires_runtime_config() -> None:
 
     assert response.status_code == 422
     assert service.create_calls == []
-    assert service.process_calls == []
+
+
+@pytest.mark.asyncio
+async def test_create_report_surfaces_enqueue_failure() -> None:
+    service = _FakeStockResearchService()
+    queue_service = _FakeStockResearchQueueService(success=False)
+    app = _build_test_app(service=service, queue_service=queue_service)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.post(
+            "/api/v1/stock-research/reports",
+            json={
+                "symbol": "fpt",
+                "runtime_config": _runtime_config_payload(),
+            },
+        )
+
+    assert response.status_code == 502
+    assert response.json()["detail"] == "Stock research report could not be queued"
+    assert service.enqueue_failed_calls == [{"report_id": "report-1"}]
 
 
 @pytest.mark.asyncio
