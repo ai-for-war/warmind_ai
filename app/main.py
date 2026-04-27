@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.v1.router import router as v1_router
 from app.common.exceptions import AppException
+from app.config.langsmith import configure_langsmith
 from app.config.mcp import MCP_SERVERS
 from app.config.settings import get_settings
 from app.infrastructure.cloudinary.client import CloudinaryClient
@@ -26,25 +27,7 @@ logging.basicConfig(
 )
 
 settings = get_settings()
-
-
-import os
-
-
-def configure_langsmith() -> None:
-    os.environ["LANGSMITH_TRACING"] = "true" if settings.LANGSMITH_TRACING else "false"
-
-    if settings.LANGSMITH_ENDPOINT:
-        os.environ["LANGSMITH_ENDPOINT"] = settings.LANGSMITH_ENDPOINT
-
-    if settings.LANGSMITH_API_KEY:
-        os.environ["LANGSMITH_API_KEY"] = settings.LANGSMITH_API_KEY
-
-    if settings.LANGSMITH_PROJECT:
-        os.environ["LANGSMITH_PROJECT"] = settings.LANGSMITH_PROJECT
-
-
-configure_langsmith()
+configure_langsmith(settings)
 
 logger = logging.getLogger(__name__)
 

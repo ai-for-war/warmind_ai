@@ -166,7 +166,14 @@ async def test_setup_connections_initializes_mongodb_redis_and_mcp(
     async def fake_redis_connect(**kwargs) -> None:
         calls.append(("redis", kwargs))
 
-    monkeypatch.setattr(stock_research_worker, "get_settings", lambda: _Settings())
+    settings = _Settings()
+
+    monkeypatch.setattr(stock_research_worker, "get_settings", lambda: settings)
+    monkeypatch.setattr(
+        stock_research_worker,
+        "configure_langsmith",
+        lambda settings: calls.append(("langsmith", {"settings": settings})),
+    )
     monkeypatch.setattr(stock_research_worker.MongoDB, "connect", fake_mongodb_connect)
     monkeypatch.setattr(
         stock_research_worker.RedisClient,
@@ -182,6 +189,7 @@ async def test_setup_connections_initializes_mongodb_redis_and_mcp(
     await stock_research_worker.setup_connections()
 
     assert calls == [
+        ("langsmith", {"settings": settings}),
         (
             "mongodb",
             {

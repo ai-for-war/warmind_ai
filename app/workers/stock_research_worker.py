@@ -15,6 +15,7 @@ from app.agents.implementations.stock_research_agent.runtime import (
 )
 from app.common.repo import get_stock_research_report_repo
 from app.common.service import get_redis_queue, get_stock_research_service
+from app.config.langsmith import configure_langsmith
 from app.config.mcp import MCP_SERVERS
 from app.config.settings import get_settings
 from app.domain.schemas.stock_research_task import (
@@ -182,6 +183,7 @@ class StockResearchWorker:
 async def setup_connections() -> None:
     """Initialize external connections and tools for the worker process."""
     settings = get_settings()
+    configure_langsmith(settings)
 
     await MongoDB.connect(uri=settings.MONGODB_URI, db_name=settings.MONGODB_DB_NAME)
     logger.info("Connected to MongoDB")
