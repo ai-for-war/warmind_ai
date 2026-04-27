@@ -9,8 +9,9 @@ from langgraph.types import Command
 from langgraph.prebuilt.tool_node import ToolCallRequest
 
 from app.agents.middleware.tool_output_limit import (
-    FETCH_CONTENT_MAX_CHARS,
+    FETCH_CONTENT_MAX_ESTIMATED_TOKENS,
     ToolOutputLimitMiddleware,
+    _count_tokens,
 )
 from app.agents.implementations.stock_research_agent.middleware import (
     StockResearchToolErrorMiddleware,
@@ -28,7 +29,7 @@ def search(query: str) -> str:
 
 
 @pytest.mark.asyncio
-async def test_fetch_content_output_is_hard_capped_at_4096_chars() -> None:
+async def test_fetch_content_output_is_hard_capped_at_3000_estimated_tokens() -> None:
     middleware = ToolOutputLimitMiddleware()
     request = ToolCallRequest(
         tool_call={"id": "call-1", "name": "fetch_content", "args": {}},
@@ -36,7 +37,7 @@ async def test_fetch_content_output_is_hard_capped_at_4096_chars() -> None:
         state={},
         runtime=None,
     )
-    oversized_content = "x" * (FETCH_CONTENT_MAX_CHARS + 1000)
+    oversized_content = "token " * (FETCH_CONTENT_MAX_ESTIMATED_TOKENS + 1000)
 
     async def _handler(_: ToolCallRequest) -> ToolMessage:
         return ToolMessage(content=oversized_content, tool_call_id="call-1")
@@ -44,11 +45,13 @@ async def test_fetch_content_output_is_hard_capped_at_4096_chars() -> None:
     response = await middleware.awrap_tool_call(request, _handler)
 
     assert isinstance(response.content, str)
-    assert len(response.content) == FETCH_CONTENT_MAX_CHARS
-    assert response.content.startswith("x")
+    truncated_token_count = _count_tokens(response.content)
+    assert truncated_token_count is not None
+    assert truncated_token_count <= FETCH_CONTENT_MAX_ESTIMATED_TOKENS
+    assert response.content.startswith("token")
     assert "[TRUNCATED]" in response.content
     assert (
-        f"Original length: {len(oversized_content)} characters."
+        f"Original estimated tokens: {_count_tokens(oversized_content)}."
         in response.content
     )
 
@@ -72,6 +75,33 @@ async def test_fetch_content_output_under_limit_is_preserved() -> None:
 
 
 @pytest.mark.asyncio
+async def test_fetch_content_list_output_is_hard_capped() -> None:
+    middleware = ToolOutputLimitMiddleware()
+    request = ToolCallRequest(
+        tool_call={"id": "call-1", "name": "fetch_content", "args": {}},
+        tool=fetch_content,
+        state={},
+        runtime=None,
+    )
+    oversized_text = "token " * (FETCH_CONTENT_MAX_ESTIMATED_TOKENS + 1000)
+
+    async def _handler(_: ToolCallRequest) -> ToolMessage:
+        return ToolMessage(
+            content=[{"type": "text", "text": oversized_text}],
+            tool_call_id="call-1",
+        )
+
+    response = await middleware.awrap_tool_call(request, _handler)
+
+    assert isinstance(response.content, str)
+    truncated_token_count = _count_tokens(response.content)
+    assert truncated_token_count is not None
+    assert truncated_token_count <= FETCH_CONTENT_MAX_ESTIMATED_TOKENS
+    assert response.content.startswith("token")
+    assert "[TRUNCATED]" in response.content
+
+
+@pytest.mark.asyncio
 async def test_output_limit_middleware_does_not_truncate_search_results() -> None:
     middleware = ToolOutputLimitMiddleware()
     request = ToolCallRequest(
@@ -80,7 +110,7 @@ async def test_output_limit_middleware_does_not_truncate_search_results() -> Non
         state={},
         runtime=None,
     )
-    oversized_content = "x" * (FETCH_CONTENT_MAX_CHARS + 1000)
+    oversized_content = "token " * (FETCH_CONTENT_MAX_ESTIMATED_TOKENS + 1000)
 
     async def _handler(_: ToolCallRequest) -> ToolMessage:
         return ToolMessage(content=oversized_content, tool_call_id="call-1")
@@ -118,7 +148,7 @@ async def test_output_limit_middleware_uses_tool_call_name_when_tool_is_missing(
         state={},
         runtime=None,
     )
-    oversized_content = "x" * (FETCH_CONTENT_MAX_CHARS + 1000)
+    oversized_content = "token " * (FETCH_CONTENT_MAX_ESTIMATED_TOKENS + 1000)
 
     async def _handler(_: ToolCallRequest) -> ToolMessage:
         return ToolMessage(content=oversized_content, tool_call_id="call-1")
@@ -126,7 +156,9 @@ async def test_output_limit_middleware_uses_tool_call_name_when_tool_is_missing(
     response = await middleware.awrap_tool_call(request, _handler)
 
     assert isinstance(response.content, str)
-    assert len(response.content) == FETCH_CONTENT_MAX_CHARS
+    truncated_token_count = _count_tokens(response.content)
+    assert truncated_token_count is not None
+    assert truncated_token_count <= FETCH_CONTENT_MAX_ESTIMATED_TOKENS
 
 
 def test_create_stock_research_agent_registers_output_limit_middleware(
