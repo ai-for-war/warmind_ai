@@ -14,6 +14,7 @@ from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import ToolException, tool
 from langgraph.prebuilt.tool_node import ToolCallRequest
 
+from app.agents.middleware.tool_output_limit import ToolOutputLimitMiddleware
 from app.agents.implementations.lead_agent.middleware.builder import (
     build_lead_agent_middleware,
 )
@@ -676,14 +677,15 @@ async def test_simple_turn_can_finish_without_todo_creation_while_complex_turn_k
 
 def test_lead_agent_runtime_registers_todo_middleware_with_complex_task_guidance() -> None:
     middlewares = _build_runtime_middleware(profile={"max_input_tokens": 100000})
-    assert len(middlewares) == 7
+    assert len(middlewares) == 8
     assert isinstance(middlewares[0], SummarizationMiddleware)
     assert isinstance(middlewares[1], LeadAgentOrchestrationPromptMiddleware)
     assert isinstance(middlewares[2], LeadAgentSkillPromptMiddleware)
     assert isinstance(middlewares[3], LeadAgentTodoMiddleware)
     assert isinstance(middlewares[4], LeadAgentDelegationLimitMiddleware)
     assert isinstance(middlewares[5], LeadAgentToolSelectionMiddleware)
-    assert isinstance(middlewares[6], LeadAgentToolErrorMiddleware)
+    assert isinstance(middlewares[6], ToolOutputLimitMiddleware)
+    assert isinstance(middlewares[7], LeadAgentToolErrorMiddleware)
 
     summarization_middleware = middlewares[0]
     assert summarization_middleware.trigger == [

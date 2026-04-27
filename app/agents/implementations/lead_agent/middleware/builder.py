@@ -7,6 +7,7 @@ from typing import Any
 from langchain.agents.middleware import AgentMiddleware, SummarizationMiddleware
 from langchain.chat_models import BaseChatModel
 
+from app.agents.middleware.tool_output_limit import ToolOutputLimitMiddleware
 from app.agents.implementations.lead_agent.middleware.constants import (
     LEAD_AGENT_SUMMARIZATION_FRACTION_TRIGGER,
     LEAD_AGENT_SUMMARIZATION_KEEP,
@@ -66,5 +67,6 @@ def build_lead_agent_middleware(
         LeadAgentTodoMiddleware(),
         LeadAgentDelegationLimitMiddleware(),
         LeadAgentToolSelectionMiddleware(),
+        ToolOutputLimitMiddleware(),
         LeadAgentToolErrorMiddleware(),
     ]

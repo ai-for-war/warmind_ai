@@ -5,6 +5,7 @@ from __future__ import annotations
 from langchain.agents import create_agent
 from langgraph.graph.state import CompiledStateGraph
 
+from app.agents.middleware.tool_output_limit import ToolOutputLimitMiddleware
 from app.agents.implementations.stock_research_agent.middleware import (
     StockResearchToolErrorMiddleware,
 )
@@ -34,6 +35,9 @@ def create_stock_research_agent(
         model=llm,
         tools=list(tool_surface.tools),
         system_prompt=STOCK_RESEARCH_AGENT_SYSTEM_PROMPT,
-        middleware=[StockResearchToolErrorMiddleware()],
+        middleware=[
+            ToolOutputLimitMiddleware(),
+            StockResearchToolErrorMiddleware(),
+        ],
         response_format=StockResearchAgentOutput,
     )
