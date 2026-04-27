@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from types import SimpleNamespace
 
 import pytest
@@ -23,6 +24,7 @@ from app.agents.implementations.stock_research_agent.middleware import (
     build_stock_research_middleware,
 )
 from app.prompts.system.stock_research_agent import (
+    get_stock_research_agent_system_prompt,
     get_stock_research_agent_summarization_prompt,
 )
 
@@ -203,6 +205,7 @@ def test_create_stock_research_agent_registers_summary_and_tool_middlewares(
     assert compiled_agent == "compiled-agent"
     assert captured["model"] is fake_model
     assert captured["tools"] == list(fake_tools)
+    assert "Do not default to old year-specific queries" in captured["system_prompt"]
     assert isinstance(captured["middleware"], list)
     assert isinstance(captured["middleware"][0], SummarizationMiddleware)
     assert isinstance(captured["middleware"][1], ToolOutputLimitMiddleware)
@@ -243,3 +246,13 @@ def test_stock_research_summary_skips_fraction_trigger_without_model_profile() -
     assert summarization_middleware.trigger == [
         STOCK_RESEARCH_SUMMARIZATION_TOKEN_TRIGGER,
     ]
+
+
+def test_stock_research_system_prompt_uses_current_date_for_fresh_queries() -> None:
+    system_prompt = get_stock_research_agent_system_prompt(date(2026, 4, 27))
+
+    assert "Current date: 2026-04-27 in Asia/Saigon." in system_prompt
+    assert "prefer the current year `2026`" in system_prompt
+    assert "Do not default to old year-specific queries" in system_prompt
+    assert "latest 2024" in system_prompt
+    assert "latest 2025" in system_prompt

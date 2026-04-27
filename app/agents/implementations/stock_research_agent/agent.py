@@ -19,7 +19,7 @@ from app.agents.implementations.stock_research_agent.validation import (
     StockResearchAgentOutput,
 )
 from app.prompts.system.stock_research_agent import (
-    STOCK_RESEARCH_AGENT_SYSTEM_PROMPT,
+    get_stock_research_agent_system_prompt,
 )
 
 
@@ -33,7 +33,7 @@ def create_stock_research_agent(
     return create_agent(
         model=llm,
         tools=list(tool_surface.tools),
-        system_prompt=STOCK_RESEARCH_AGENT_SYSTEM_PROMPT,
+        system_prompt=get_stock_research_agent_system_prompt(),
         middleware=build_stock_research_middleware(llm),
         response_format=StockResearchAgentOutput,
     )

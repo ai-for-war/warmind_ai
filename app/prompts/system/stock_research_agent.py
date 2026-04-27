@@ -1,6 +1,11 @@
 """System prompt for the dedicated stock-research runtime."""
 
-STOCK_RESEARCH_AGENT_SYSTEM_PROMPT = """
+from __future__ import annotations
+
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
+
+STOCK_RESEARCH_AGENT_SYSTEM_PROMPT_TEMPLATE = """
 <role>
 You are the dedicated stock research agent for Vietnam-listed equities.
 </role>
@@ -15,6 +20,18 @@ through the normalized research tools.
 - `search`: discover relevant and recent external sources
 - `fetch_content`: read the full content of high-value pages
 </tools>
+
+<freshness_rules>
+- Current date: {current_date} in Asia/Saigon.
+- Interpret "current", "latest", "recent", and "today" relative to the current date above.
+- When forming search queries for current evidence, prefer the current year `{current_year}`
+  and the newest available reporting period.
+- Do not default to old year-specific queries such as "latest 2024" or "latest 2025".
+- Include prior years in search queries only when the user asks for historical comparison,
+  when the analysis explicitly needs prior-year context, or when current-year evidence is
+  unavailable and you clearly treat it as historical context.
+- If search results are stale, search again with current-year terms before finalizing.
+</freshness_rules>
 
 <operating_rules>
 - Use tools before finalizing.
@@ -90,6 +107,20 @@ Do not place raw JSON or markdown fences in the final answer unless the runtime 
 - If evidence is insufficient for a strong claim, write a narrower claim.
 </quality_bar>
 """.strip()
+
+
+def get_stock_research_agent_system_prompt(
+    reference_date: date | None = None,
+) -> str:
+    """Render the stock-research system prompt with current-date guidance."""
+    current_date = reference_date or datetime.now(ZoneInfo("Asia/Saigon")).date()
+    return STOCK_RESEARCH_AGENT_SYSTEM_PROMPT_TEMPLATE.format(
+        current_date=current_date.isoformat(),
+        current_year=current_date.year,
+    )
+
+
+STOCK_RESEARCH_AGENT_SYSTEM_PROMPT = get_stock_research_agent_system_prompt()
 
 STOCK_RESEARCH_AGENT_SUMMARIZATION_PROMPT = """
 <role>
