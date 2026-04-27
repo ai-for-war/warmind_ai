@@ -54,6 +54,12 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str | None = None
     OPENAI_API_BASE: str | None = None  # Optional custom API base URL
 
+    # LangSmith
+    LANGSMITH_TRACING: bool = False
+    LANGSMITH_ENDPOINT: str = "https://api.smith.langchain.com"
+    LANGSMITH_API_KEY: str | None = None
+    LANGSMITH_PROJECT: str | None = None
+
     # Azure OpenAI
     AZURE_OPENAI_API_KEY: str | None = None
     AZURE_OPENAI_ENDPOINT: str | None = None

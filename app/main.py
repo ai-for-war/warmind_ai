@@ -26,6 +26,26 @@ logging.basicConfig(
 )
 
 settings = get_settings()
+
+
+import os
+
+
+def configure_langsmith() -> None:
+    os.environ["LANGSMITH_TRACING"] = "true" if settings.LANGSMITH_TRACING else "false"
+
+    if settings.LANGSMITH_ENDPOINT:
+        os.environ["LANGSMITH_ENDPOINT"] = settings.LANGSMITH_ENDPOINT
+
+    if settings.LANGSMITH_API_KEY:
+        os.environ["LANGSMITH_API_KEY"] = settings.LANGSMITH_API_KEY
+
+    if settings.LANGSMITH_PROJECT:
+        os.environ["LANGSMITH_PROJECT"] = settings.LANGSMITH_PROJECT
+
+
+configure_langsmith()
+
 logger = logging.getLogger(__name__)
 
 
@@ -104,6 +124,7 @@ async def app_exception_handler(request: Request, exc: AppException):
         status_code=exc.status_code,
         content={"detail": exc.message},
     )
+
 
 # CORS middleware - allow frontend origins
 app.add_middleware(
