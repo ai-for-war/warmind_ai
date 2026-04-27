@@ -69,23 +69,24 @@ def get_stock_research_runtime_catalog() -> (
             StockResearchAgentModelCatalogEntry(
                 model="gpt-5.2",
                 reasoning_options=STOCK_RESEARCH_OPENAI_REASONING_OPTIONS,
-                default_reasoning="high",
-                is_default=True,
+                default_reasoning="medium",
+                is_default=False,
             ),
             StockResearchAgentModelCatalogEntry(
                 model="gpt-5.4",
                 reasoning_options=STOCK_RESEARCH_OPENAI_REASONING_OPTIONS,
-                default_reasoning="high",
-                is_default=False,
+                default_reasoning="medium",
+                is_default=True,
             ),
             StockResearchAgentModelCatalogEntry(
                 model="gpt-5.4-mini",
                 reasoning_options=STOCK_RESEARCH_OPENAI_REASONING_OPTIONS,
-                default_reasoning="high",
+                default_reasoning="medium",
                 is_default=False,
             ),
             StockResearchAgentModelCatalogEntry(model="gpt-4.1"),
         ),
+        default_provider=STOCK_RESEARCH_PROVIDER_OPENAI,
     )
 
 

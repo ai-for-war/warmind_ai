@@ -62,48 +62,79 @@ def build_runtime_catalog(
     azure_display_name: str = "Azure OpenAI (Legacy)",
     minimax_display_name: str = "MiniMax",
     zai_display_name: str = "Z.AI",
+    default_provider: str | None = None,
 ) -> tuple[AgentProviderCatalogEntry, ...]:
     """Build one provider catalog from the currently configured backends."""
     settings = get_settings()
     providers: list[AgentProviderCatalogEntry] = []
+    zai_ready = bool(settings.ZAI_API_KEY and zai_models)
+    minimax_ready = bool(settings.MINIMAX_API_KEY and minimax_models)
+    azure_ready = bool(_is_azure_legacy_ready() and azure_models)
+    openai_ready = bool(settings.OPENAI_API_KEY and openai_models)
+    configured_default_provider = (
+        default_provider
+        if (
+            (default_provider == AGENT_PROVIDER_ZAI and zai_ready)
+            or (default_provider == AGENT_PROVIDER_MINIMAX and minimax_ready)
+            or (default_provider == AGENT_PROVIDER_AZURA and azure_ready)
+            or (default_provider == AGENT_PROVIDER_OPENAI and openai_ready)
+        )
+        else None
+    )
 
-    if settings.ZAI_API_KEY and zai_models:
+    if zai_ready:
         providers.append(
             AgentProviderCatalogEntry(
                 provider=AGENT_PROVIDER_ZAI,
                 display_name=zai_display_name,
                 models=zai_models,
-                is_default=True,
+                is_default=_is_default_provider(
+                    provider=AGENT_PROVIDER_ZAI,
+                    providers=providers,
+                    configured_default_provider=configured_default_provider,
+                ),
             )
         )
 
-    if settings.MINIMAX_API_KEY and minimax_models:
+    if minimax_ready:
         providers.append(
             AgentProviderCatalogEntry(
                 provider=AGENT_PROVIDER_MINIMAX,
                 display_name=minimax_display_name,
                 models=minimax_models,
-                is_default=not providers,
+                is_default=_is_default_provider(
+                    provider=AGENT_PROVIDER_MINIMAX,
+                    providers=providers,
+                    configured_default_provider=configured_default_provider,
+                ),
             )
         )
 
-    if _is_azure_legacy_ready() and azure_models:
+    if azure_ready:
         providers.append(
             AgentProviderCatalogEntry(
                 provider=AGENT_PROVIDER_AZURA,
                 display_name=azure_display_name,
                 models=azure_models,
-                is_default=not providers,
+                is_default=_is_default_provider(
+                    provider=AGENT_PROVIDER_AZURA,
+                    providers=providers,
+                    configured_default_provider=configured_default_provider,
+                ),
             )
         )
 
-    if settings.OPENAI_API_KEY and openai_models:
+    if openai_ready:
         providers.append(
             AgentProviderCatalogEntry(
                 provider=AGENT_PROVIDER_OPENAI,
                 display_name=openai_display_name,
                 models=openai_models,
-                is_default=not providers,
+                is_default=_is_default_provider(
+                    provider=AGENT_PROVIDER_OPENAI,
+                    providers=providers,
+                    configured_default_provider=configured_default_provider,
+                ),
             )
         )
 
@@ -233,6 +264,17 @@ def _is_azure_legacy_ready() -> bool:
             settings.AZURE_OPENAI_LEGACY_CHAT_DEPLOYMENT,
         ]
     )
+
+
+def _is_default_provider(
+    *,
+    provider: str,
+    providers: list[AgentProviderCatalogEntry],
+    configured_default_provider: str | None,
+) -> bool:
+    if configured_default_provider is not None:
+        return provider == configured_default_provider
+    return not providers
 
 
 def _get_default_provider_entry(

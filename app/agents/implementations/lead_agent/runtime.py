@@ -53,7 +53,7 @@ def get_lead_agent_runtime_catalog() -> tuple[LeadAgentProviderCatalogEntry, ...
                 model="gpt-5.2",
                 reasoning_options=LEAD_AGENT_OPENAI_REASONING_OPTIONS,
                 default_reasoning="medium",
-                is_default=True,
+                is_default=False,
             ),
             LeadAgentModelCatalogEntry(
                 model="gpt-5.1",
@@ -65,7 +65,7 @@ def get_lead_agent_runtime_catalog() -> tuple[LeadAgentProviderCatalogEntry, ...
                 model="gpt-5.4",
                 reasoning_options=LEAD_AGENT_OPENAI_REASONING_OPTIONS,
                 default_reasoning="medium",
-                is_default=False,
+                is_default=True,
             ),
             LeadAgentModelCatalogEntry(
                 model="gpt-5.4-mini",
@@ -75,6 +75,7 @@ def get_lead_agent_runtime_catalog() -> tuple[LeadAgentProviderCatalogEntry, ...
             ),
             LeadAgentModelCatalogEntry(model="gpt-4.1"),
         ),
+        default_provider=LEAD_AGENT_PROVIDER_OPENAI,
     )
 
 
