@@ -3,6 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
+from langchain.agents.middleware import SummarizationMiddleware
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 from langgraph.types import Command
@@ -14,7 +15,15 @@ from app.agents.middleware.tool_output_limit import (
     _count_tokens,
 )
 from app.agents.implementations.stock_research_agent.middleware import (
+    STOCK_RESEARCH_SUMMARIZATION_FRACTION_TRIGGER,
+    STOCK_RESEARCH_SUMMARIZATION_KEEP,
+    STOCK_RESEARCH_SUMMARIZATION_TOKEN_TRIGGER,
+    STOCK_RESEARCH_SUMMARIZATION_TRIM_TOKENS,
     StockResearchToolErrorMiddleware,
+    build_stock_research_middleware,
+)
+from app.prompts.system.stock_research_agent import (
+    get_stock_research_agent_summarization_prompt,
 )
 
 
@@ -161,13 +170,16 @@ async def test_output_limit_middleware_uses_tool_call_name_when_tool_is_missing(
     assert truncated_token_count <= FETCH_CONTENT_MAX_ESTIMATED_TOKENS
 
 
-def test_create_stock_research_agent_registers_output_limit_middleware(
+def test_create_stock_research_agent_registers_summary_and_tool_middlewares(
     monkeypatch,
 ) -> None:
     from app.agents.implementations.stock_research_agent import agent as agent_module
 
     captured: dict[str, object] = {}
-    fake_model = object()
+    fake_model = SimpleNamespace(
+        _llm_type="test-chat-model",
+        profile={"max_input_tokens": 100000},
+    )
     fake_tools = (search, fetch_content)
 
     monkeypatch.setattr(
@@ -192,5 +204,42 @@ def test_create_stock_research_agent_registers_output_limit_middleware(
     assert captured["model"] is fake_model
     assert captured["tools"] == list(fake_tools)
     assert isinstance(captured["middleware"], list)
-    assert isinstance(captured["middleware"][0], ToolOutputLimitMiddleware)
-    assert isinstance(captured["middleware"][1], StockResearchToolErrorMiddleware)
+    assert isinstance(captured["middleware"][0], SummarizationMiddleware)
+    assert isinstance(captured["middleware"][1], ToolOutputLimitMiddleware)
+    assert isinstance(captured["middleware"][2], StockResearchToolErrorMiddleware)
+
+    summarization_middleware = captured["middleware"][0]
+    assert summarization_middleware.trigger == [
+        STOCK_RESEARCH_SUMMARIZATION_FRACTION_TRIGGER,
+        STOCK_RESEARCH_SUMMARIZATION_TOKEN_TRIGGER,
+    ]
+    assert summarization_middleware.keep == STOCK_RESEARCH_SUMMARIZATION_KEEP
+    assert (
+        summarization_middleware.trim_tokens_to_summarize
+        == STOCK_RESEARCH_SUMMARIZATION_TRIM_TOKENS
+    )
+    assert (
+        summarization_middleware.summary_prompt
+        == get_stock_research_agent_summarization_prompt()
+    )
+    assert "## VERIFIED FACTS" in summarization_middleware.summary_prompt
+    assert "Every fact MUST end with one or more source citation tokens" in (
+        summarization_middleware.summary_prompt
+    )
+    assert "industry forces that may affect" in summarization_middleware.summary_prompt
+    assert "Sau đây là những nghiên cứu ban đầu." in (
+        summarization_middleware.summary_prompt
+    )
+    assert "- source_id: S1" in summarization_middleware.summary_prompt
+
+
+def test_stock_research_summary_skips_fraction_trigger_without_model_profile() -> None:
+    middlewares = build_stock_research_middleware(
+        SimpleNamespace(_llm_type="test-chat-model", profile=None)
+    )
+    summarization_middleware = middlewares[0]
+
+    assert isinstance(summarization_middleware, SummarizationMiddleware)
+    assert summarization_middleware.trigger == [
+        STOCK_RESEARCH_SUMMARIZATION_TOKEN_TRIGGER,
+    ]
