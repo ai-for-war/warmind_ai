@@ -1,9 +1,9 @@
 ## 1. Schema And API Contract
 
-- [ ] 1.1 Expand stock price source schema to allow `VCI` and `KBS`, defaulting query inputs to `VCI`.
-- [ ] 1.2 Add optional `source` query support to both stock price history and intraday request schemas.
-- [ ] 1.3 Update stock price response schemas so response `source` can be `VCI` or `KBS`.
-- [ ] 1.4 Update intraday item schema so `id` accepts numeric VCI identifiers and string KBS identifiers.
+- [x] 1.1 Expand stock price source schema to allow `VCI` and `KBS`, defaulting query inputs to `VCI`.
+- [x] 1.2 Add optional `source` query support to both stock price history and intraday request schemas.
+- [x] 1.3 Update stock price response schemas so response `source` can be `VCI` or `KBS`.
+- [x] 1.4 Update intraday item schema so `id` accepts numeric VCI identifiers and string KBS identifiers.
 
 ## 2. Service And Gateway Behavior
 
