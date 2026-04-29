@@ -67,7 +67,8 @@ class _StaleFallbackCache(_FakeCache):
         variant: str,
         response_model: type[object],
     ):
-        del symbol, section, variant, response_model
+        del response_model
+        self.get_calls.append((symbol, section, variant))
         self.calls += 1
         if self.calls == 1:
             return None
@@ -215,6 +216,34 @@ async def test_history_cache_miss_fetches_upstream_and_caches_response() -> None
 
 
 @pytest.mark.asyncio
+async def test_history_with_explicit_kbs_uses_kbs_source() -> None:
+    repository = _FakeRepository(existing_symbols={"FPT"})
+    cache = _FakeCache()
+    gateway = _FakeGateway()
+    service = StockPriceService(repository, gateway, cache)
+
+    response = await service.get_history(
+        "FPT",
+        StockPriceHistoryQuery(source="KBS", start="2026-04-01", interval="1D"),
+    )
+
+    assert response.source == "KBS"
+    assert gateway.calls == [
+        (
+            "history",
+            "FPT",
+            {
+                "source": "KBS",
+                "start": "2026-04-01",
+                "end": None,
+                "interval": "1D",
+                "length": None,
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
 async def test_invalid_symbol_is_rejected_before_upstream_call() -> None:
     repository = _FakeRepository(existing_symbols={"VCB"})
     cache = _FakeCache()
@@ -252,6 +281,41 @@ async def test_stale_cache_is_returned_when_history_upstream_fails() -> None:
 
 
 @pytest.mark.asyncio
+async def test_kbs_stale_cache_uses_source_specific_variant() -> None:
+    repository = _FakeRepository(existing_symbols={"FPT"})
+    gateway = _FakeGateway()
+    gateway.fail_history = True
+    stale_response = StockPriceHistoryResponse(
+        symbol="FPT",
+        source="KBS",
+        cache_hit=False,
+        interval="1D",
+        items=[{"time": "2026-04-14", "close": 99.0}],
+    )
+    cache = _StaleFallbackCache(stale_response)
+    service = StockPriceService(repository, gateway, cache)
+
+    response = await service.get_history(
+        "FPT", StockPriceHistoryQuery(source="KBS", start="2026-04-01")
+    )
+
+    assert response.cache_hit is True
+    assert response.source == "KBS"
+    assert cache.get_calls == [
+        (
+            "FPT",
+            "history",
+            "source=KBS:interval=1D:start=2026-04-01:end=:length=",
+        ),
+        (
+            "FPT",
+            "history",
+            "source=KBS:interval=1D:start=2026-04-01:end=:length=",
+        ),
+    ]
+
+
+@pytest.mark.asyncio
 async def test_query_variant_keys_are_isolated_for_intraday_reads() -> None:
     repository = _FakeRepository(existing_symbols={"FPT"})
     cache = _FakeCache()
@@ -277,6 +341,61 @@ async def test_query_variant_keys_are_isolated_for_intraday_reads() -> None:
             "source=VCI:page_size=100:last_time=2026-04-15%2009%3A15%3A00:last_time_format=",
         ),
     ]
+
+
+@pytest.mark.asyncio
+async def test_cache_variants_are_isolated_by_source() -> None:
+    repository = _FakeRepository(existing_symbols={"FPT"})
+    cache = _FakeCache()
+    gateway = _FakeGateway()
+    service = StockPriceService(repository, gateway, cache)
+
+    vci_response = await service.get_history(
+        "FPT", StockPriceHistoryQuery(source="VCI", start="2026-04-01")
+    )
+    kbs_response = await service.get_history(
+        "FPT", StockPriceHistoryQuery(source="KBS", start="2026-04-01")
+    )
+
+    assert vci_response.source == "VCI"
+    assert kbs_response.source == "KBS"
+    assert cache.set_calls == [
+        (
+            "FPT",
+            "history",
+            "source=VCI:interval=1D:start=2026-04-01:end=:length=",
+        ),
+        (
+            "FPT",
+            "history",
+            "source=KBS:interval=1D:start=2026-04-01:end=:length=",
+        ),
+    ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "query",
+    [
+        StockPriceIntradayQuery(source="KBS", last_time="2026-04-15 09:15:00"),
+        StockPriceIntradayQuery(source="KBS", last_time_format="%Y-%m-%d"),
+    ],
+)
+async def test_kbs_intraday_rejects_cursor_parameters(
+    query: StockPriceIntradayQuery,
+) -> None:
+    repository = _FakeRepository(existing_symbols={"FPT"})
+    cache = _FakeCache()
+    gateway = _FakeGateway()
+    service = StockPriceService(repository, gateway, cache)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await service.get_intraday("FPT", query)
+
+    assert exc_info.value.status_code == 422
+    assert "KBS intraday" in exc_info.value.detail
+    assert repository.calls == []
+    assert gateway.calls == []
 
 
 @pytest.mark.asyncio

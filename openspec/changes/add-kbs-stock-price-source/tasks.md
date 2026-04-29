@@ -21,8 +21,8 @@
 
 ## 4. Tests
 
-- [ ] 4.1 Add gateway tests proving `VCI` and `KBS` are passed to `vnstock.Quote` correctly.
-- [ ] 4.2 Add service tests for default VCI behavior, explicit KBS behavior, cache variant isolation by source, and stale fallback by source.
-- [ ] 4.3 Add validation tests rejecting KBS intraday cursor parameters.
-- [ ] 4.4 Add schema/API tests for `source` query handling and KBS string intraday identifiers.
-- [ ] 4.5 Run the relevant stock price unit and integration tests.
+- [x] 4.1 Add gateway tests proving `VCI` and `KBS` are passed to `vnstock.Quote` correctly.
+- [x] 4.2 Add service tests for default VCI behavior, explicit KBS behavior, cache variant isolation by source, and stale fallback by source.
+- [x] 4.3 Add validation tests rejecting KBS intraday cursor parameters.
+- [x] 4.4 Add schema/API tests for `source` query handling and KBS string intraday identifiers.
+- [x] 4.5 Run the relevant stock price unit and integration tests.

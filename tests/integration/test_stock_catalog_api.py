@@ -178,7 +178,7 @@ class _FakeStockPriceService:
         self.history_calls.append((symbol, query))
         return StockPriceHistoryResponse(
             symbol=symbol,
-            source="VCI",
+            source=query.source,
             cache_hit=False,
             interval=query.interval,
             items=[
@@ -197,7 +197,7 @@ class _FakeStockPriceService:
         self.intraday_calls.append((symbol, query))
         return StockPriceIntradayResponse(
             symbol=symbol,
-            source="VCI",
+            source=query.source,
             cache_hit=True,
             items=[
                 {
@@ -205,7 +205,7 @@ class _FakeStockPriceService:
                     "price": 101.2,
                     "volume": 50,
                     "match_type": "Buy",
-                    "id": 42,
+                    "id": "FPT-20260415-1" if query.source == "KBS" else 42,
                 }
             ],
         )
@@ -558,6 +558,28 @@ async def test_get_stock_price_history_requires_org_auth_and_returns_metadata() 
     assert body["items"][0]["close"] == 101.0
     assert price_service.history_calls[0][0] == "FPT"
     assert price_service.history_calls[0][1].start == "2026-04-01"
+    assert price_service.history_calls[0][1].source == "VCI"
+
+
+@pytest.mark.asyncio
+async def test_get_stock_price_history_accepts_kbs_source() -> None:
+    service = _FakeStockCatalogService()
+    price_service = _FakeStockPriceService()
+    app = _build_test_app(service=service, price_service=price_service)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.get(
+            "/stocks/FPT/prices/history",
+            params={"source": "KBS", "start": "2026-04-01"},
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["source"] == "KBS"
+    assert price_service.history_calls[0][1].source == "KBS"
 
 
 @pytest.mark.asyncio
@@ -584,8 +606,31 @@ async def test_get_stock_price_intraday_passes_query_params() -> None:
     assert body["cache_hit"] is True
     assert body["items"][0]["id"] == 42
     assert price_service.intraday_calls[0][0] == "FPT"
+    assert price_service.intraday_calls[0][1].source == "VCI"
     assert price_service.intraday_calls[0][1].page_size == 120
     assert price_service.intraday_calls[0][1].last_time == "2026-04-15 09:15:00"
+
+
+@pytest.mark.asyncio
+async def test_get_stock_price_intraday_accepts_kbs_source_and_string_id() -> None:
+    service = _FakeStockCatalogService()
+    price_service = _FakeStockPriceService()
+    app = _build_test_app(service=service, price_service=price_service)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        response = await client.get(
+            "/stocks/FPT/prices/intraday",
+            params={"source": "KBS", "page_size": 120},
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["source"] == "KBS"
+    assert body["items"][0]["id"] == "FPT-20260415-1"
+    assert price_service.intraday_calls[0][1].source == "KBS"
 
 
 @pytest.mark.asyncio

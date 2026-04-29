@@ -39,6 +39,7 @@ class _FakeQuote:
                 "history",
                 self.symbol,
                 {
+                    "source": self.source,
                     "start": start,
                     "end": end,
                     "interval": interval,
@@ -72,6 +73,7 @@ class _FakeQuote:
                 "intraday",
                 self.symbol,
                 {
+                    "source": self.source,
                     "page_size": page_size,
                     "last_time": last_time,
                     "last_time_format": last_time_format,
@@ -126,6 +128,7 @@ def test_fetch_history_returns_only_canonical_vci_fields() -> None:
             "history",
             "FPT",
             {
+                "source": "VCI",
                 "start": "2026-04-01",
                 "end": "2026-04-15",
                 "interval": "1D",
@@ -159,12 +162,22 @@ def test_fetch_intraday_passes_runtime_specific_cursor_parameters() -> None:
             "intraday",
             "FPT",
             {
+                "source": "VCI",
                 "page_size": 200,
                 "last_time": "2026-04-15 09:15:00",
                 "last_time_format": "%Y-%m-%d %H:%M:%S",
             },
         )
     ]
+
+
+@pytest.mark.parametrize("method_name", ["history", "intraday"])
+def test_fetch_price_methods_pass_explicit_kbs_source(method_name: str) -> None:
+    gateway, calls = _gateway_and_calls()
+
+    getattr(gateway, f"fetch_{method_name}")("fpt", source="KBS")
+
+    assert calls[0][2]["source"] == "KBS"
 
 
 @pytest.mark.parametrize("method_name", ["history", "intraday"])
