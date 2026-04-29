@@ -105,7 +105,7 @@ class _FakeCompany:
         return _FakeFrame(
             [
                 {
-                    "id": 4,
+                    "id": "69a8ccc1f2d24c49e8134967",
                     "event_title": "Dividend",
                     "public_date": "2026-04-13",
                     "issue_date": "2026-04-14",

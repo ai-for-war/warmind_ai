@@ -132,7 +132,7 @@ class StockCompanyAffiliateItem(StockSchemaBase):
 class StockCompanyEventItem(StockSchemaBase):
     """One company event row from VCI."""
 
-    id: int | None = None
+    id: str | int | None = None
     event_title: str | None = None
     public_date: str | None = None
     issue_date: str | None = None
