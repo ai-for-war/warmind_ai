@@ -126,7 +126,7 @@ class _FakeCompany:
         return _FakeFrame(
             [
                 {
-                    "id": 5,
+                    "id": "69effdf0db487120c6897f92",
                     "news_title": "FPT expands",
                     "news_short_content": "short",
                     "news_full_content": "full",
@@ -268,7 +268,7 @@ def test_fetch_news_normalizes_runtime_timestamp_fields_to_strings() -> None:
 
     assert payload == [
         {
-            "id": 5,
+            "id": "69effdf0db487120c6897f92",
             "news_title": "FPT expands",
             "news_short_content": "short",
             "news_full_content": "full",
