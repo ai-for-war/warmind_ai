@@ -8,7 +8,7 @@ from pydantic import Field, field_validator, model_validator
 
 from app.domain.schemas.stock import StockSchemaBase
 
-StockPriceSource = Literal["VCI"]
+StockPriceSource = Literal["VCI", "KBS"]
 HistoryInterval = Literal["1m", "5m", "15m", "30m", "1H", "1D", "1W", "1M"]
 
 DEFAULT_HISTORY_INTERVAL: HistoryInterval = "1D"
@@ -18,6 +18,19 @@ MAX_INTRADAY_PAGE_SIZE = 30_000
 
 class StockPriceQueryBase(StockSchemaBase):
     """Base schema for stock price query parameters."""
+
+    source: StockPriceSource = "VCI"
+
+    @field_validator("source", mode="before")
+    @classmethod
+    def normalize_source(cls, value: str | None) -> StockPriceSource:
+        """Normalize source text to the supported vnstock source values."""
+        if value is None:
+            return "VCI"
+        if not isinstance(value, str):
+            raise TypeError("source must be a string")
+        normalized = value.strip().upper()
+        return normalized or "VCI"  # type: ignore[return-value]
 
 
 class StockPriceHistoryQuery(StockPriceQueryBase):
@@ -42,7 +55,7 @@ class StockPriceHistoryQuery(StockPriceQueryBase):
     @field_validator("interval", mode="before")
     @classmethod
     def normalize_interval(cls, value: str | None) -> HistoryInterval:
-        """Normalize interval text into the canonical VCI value."""
+        """Normalize interval text into the canonical vnstock value."""
         if value is None:
             return DEFAULT_HISTORY_INTERVAL
         if not isinstance(value, str):
@@ -127,9 +140,20 @@ class StockPriceResponseBase(StockSchemaBase):
             raise ValueError("symbol must not be blank")
         return normalized
 
+    @field_validator("source", mode="before")
+    @classmethod
+    def normalize_source(cls, value: str | None) -> StockPriceSource:
+        """Normalize response source text to the supported vnstock source values."""
+        if value is None:
+            return "VCI"
+        if not isinstance(value, str):
+            raise TypeError("source must be a string")
+        normalized = value.strip().upper()
+        return normalized or "VCI"  # type: ignore[return-value]
+
 
 class StockPriceHistoryItem(StockSchemaBase):
-    """Canonical VCI OHLCV row for one historical timestamp."""
+    """Canonical OHLCV row for one historical timestamp."""
 
     time: str | None = None
     open: int | float | None = None
@@ -140,13 +164,13 @@ class StockPriceHistoryItem(StockSchemaBase):
 
 
 class StockPriceIntradayItem(StockSchemaBase):
-    """Canonical VCI intraday trade row for one timestamp."""
+    """Canonical intraday trade row for one timestamp."""
 
     time: str | None = None
     price: int | float | None = None
     volume: int | float | None = None
     match_type: str | None = None
-    id: int | None = None
+    id: int | str | None = None
 
 
 class StockPriceHistoryResponse(StockPriceResponseBase):

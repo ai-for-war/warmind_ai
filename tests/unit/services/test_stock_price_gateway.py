@@ -25,6 +25,7 @@ class _FakeQuote:
         self.symbol = symbol
         self.source = source
         self.calls = calls
+        self.provider = self
 
     def history(
         self,
@@ -39,6 +40,7 @@ class _FakeQuote:
                 "history",
                 self.symbol,
                 {
+                    "source": self.source,
                     "start": start,
                     "end": end,
                     "interval": interval,
@@ -60,22 +62,12 @@ class _FakeQuote:
             ]
         )
 
-    def intraday(
-        self,
-        *,
-        page_size: int = 100,
-        last_time: str | None = None,
-        last_time_format: str | None = None,
-    ) -> list[dict[str, Any]]:
+    def intraday(self, **kwargs: Any) -> list[dict[str, Any]]:
         self.calls.append(
             (
                 "intraday",
                 self.symbol,
-                {
-                    "page_size": page_size,
-                    "last_time": last_time,
-                    "last_time_format": last_time_format,
-                },
+                {"source": self.source, **kwargs},
             )
         )
         return [
@@ -126,6 +118,7 @@ def test_fetch_history_returns_only_canonical_vci_fields() -> None:
             "history",
             "FPT",
             {
+                "source": "VCI",
                 "start": "2026-04-01",
                 "end": "2026-04-15",
                 "interval": "1D",
@@ -159,9 +152,37 @@ def test_fetch_intraday_passes_runtime_specific_cursor_parameters() -> None:
             "intraday",
             "FPT",
             {
+                "source": "VCI",
                 "page_size": 200,
                 "last_time": "2026-04-15 09:15:00",
                 "last_time_format": "%Y-%m-%d %H:%M:%S",
+            },
+        )
+    ]
+
+
+@pytest.mark.parametrize("method_name", ["history", "intraday"])
+def test_fetch_price_methods_pass_explicit_kbs_source(method_name: str) -> None:
+    gateway, calls = _gateway_and_calls()
+
+    getattr(gateway, f"fetch_{method_name}")("fpt", source="KBS")
+
+    assert calls[0][2]["source"] == "KBS"
+
+
+def test_fetch_kbs_intraday_omits_vci_cursor_parameters() -> None:
+    gateway, calls = _gateway_and_calls()
+
+    payload = gateway.fetch_intraday("fpt", source="KBS", page_size=50)
+
+    assert payload[0]["id"] == 42
+    assert calls == [
+        (
+            "intraday",
+            "FPT",
+            {
+                "source": "KBS",
+                "page_size": 50,
             },
         )
     ]
