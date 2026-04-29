@@ -83,11 +83,17 @@ class VnstockPriceGateway:
         last_time_format: str | None = None,
     ) -> list[dict[str, Any]]:
         """Fetch intraday trade timeseries for one stock symbol."""
-        payload = self._build_quote(symbol, source=source).intraday(
-            page_size=page_size,
-            last_time=last_time,
-            last_time_format=last_time_format,
-        )
+        intraday_kwargs: dict[str, Any] = {"page_size": page_size}
+        if source == "VCI":
+            intraday_kwargs.update(
+                {
+                    "last_time": last_time,
+                    "last_time_format": last_time_format,
+                }
+            )
+        quote = self._build_quote(symbol, source=source)
+        intraday_method = getattr(quote, "provider", quote).intraday
+        payload = intraday_method(**intraday_kwargs)
         return self._to_records(
             payload,
             allowed_fields=INTRADAY_FIELDS,
