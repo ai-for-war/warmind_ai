@@ -221,6 +221,7 @@ class StockPriceService:
     def _build_history_variant(query: StockPriceHistoryQuery) -> str:
         return ":".join(
             (
+                f"source={StockPriceService._quote_variant_part(query.source)}",
                 f"interval={StockPriceService._quote_variant_part(query.interval)}",
                 f"start={StockPriceService._quote_variant_part(query.start)}",
                 f"end={StockPriceService._quote_variant_part(query.end)}",
@@ -232,6 +233,7 @@ class StockPriceService:
     def _build_intraday_variant(query: StockPriceIntradayQuery) -> str:
         return ":".join(
             (
+                f"source={StockPriceService._quote_variant_part(query.source)}",
                 f"page_size={query.page_size}",
                 f"last_time={StockPriceService._quote_variant_part(query.last_time)}",
                 f"last_time_format={StockPriceService._quote_variant_part(query.last_time_format)}",

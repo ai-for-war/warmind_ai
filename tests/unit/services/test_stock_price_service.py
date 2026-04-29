@@ -209,7 +209,7 @@ async def test_history_cache_miss_fetches_upstream_and_caches_response() -> None
         (
             "FPT",
             "history",
-            "interval=1D:start=2026-04-01:end=2026-04-15:length=",
+            "source=VCI:interval=1D:start=2026-04-01:end=2026-04-15:length=",
         )
     ]
 
@@ -270,11 +270,11 @@ async def test_query_variant_keys_are_isolated_for_intraday_reads() -> None:
     assert first.cache_hit is False
     assert second.cache_hit is False
     assert cache.set_calls == [
-        ("FPT", "intraday", "page_size=100:last_time=:last_time_format="),
+        ("FPT", "intraday", "source=VCI:page_size=100:last_time=:last_time_format="),
         (
             "FPT",
             "intraday",
-            "page_size=100:last_time=2026-04-15%2009%3A15%3A00:last_time_format=",
+            "source=VCI:page_size=100:last_time=2026-04-15%2009%3A15%3A00:last_time_format=",
         ),
     ]
 
@@ -333,7 +333,7 @@ async def test_one_failing_variant_does_not_block_other_variants() -> None:
     assert exc_info.value.status_code == 502
     assert response.items[0].close == 101.0
     assert cache.set_calls == [
-        ("FPT", "history", "interval=1D:start=:end=:length=30"),
+        ("FPT", "history", "source=VCI:interval=1D:start=:end=:length=30"),
     ]
 
 

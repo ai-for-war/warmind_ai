@@ -15,9 +15,9 @@
 
 ## 3. Cache Isolation
 
-- [ ] 3.1 Include `source` in history cache variants so VCI and KBS history responses cannot collide.
-- [ ] 3.2 Include `source` in intraday cache variants so VCI and KBS intraday responses cannot collide.
-- [ ] 3.3 Ensure stale-cache fallback uses the same selected source and query variant as the failed upstream read.
+- [x] 3.1 Include `source` in history cache variants so VCI and KBS history responses cannot collide.
+- [x] 3.2 Include `source` in intraday cache variants so VCI and KBS intraday responses cannot collide.
+- [x] 3.3 Ensure stale-cache fallback uses the same selected source and query variant as the failed upstream read.
 
 ## 4. Tests
 
