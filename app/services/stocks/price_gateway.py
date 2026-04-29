@@ -1,4 +1,4 @@
-"""Upstream gateway for loading stock price data from vnstock VCI."""
+"""Upstream gateway for loading stock price data from vnstock Quote."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from app.config.settings import get_settings
 from app.domain.schemas.stock_price import (
     DEFAULT_HISTORY_INTERVAL,
     DEFAULT_INTRADAY_PAGE_SIZE,
+    StockPriceSource,
 )
 
 HISTORY_FIELDS: tuple[str, ...] = (
@@ -31,7 +32,7 @@ INTRADAY_FIELDS: tuple[str, ...] = (
 
 
 class VnstockPriceGateway:
-    """Thin wrapper around vnstock Quote(source='VCI')."""
+    """Thin wrapper around vnstock Quote for supported price sources."""
 
     SOURCE = "VCI"
 
@@ -53,13 +54,14 @@ class VnstockPriceGateway:
         self,
         symbol: str,
         *,
+        source: StockPriceSource = SOURCE,
         start: str | None = None,
         end: str | None = None,
         interval: str = DEFAULT_HISTORY_INTERVAL,
         length: int | str | None = None,
     ) -> list[dict[str, Any]]:
         """Fetch historical OHLCV timeseries for one stock symbol."""
-        payload = self._build_quote(symbol).history(
+        payload = self._build_quote(symbol, source=source).history(
             start=start,
             end=end,
             interval=interval,
@@ -75,12 +77,13 @@ class VnstockPriceGateway:
         self,
         symbol: str,
         *,
+        source: StockPriceSource = SOURCE,
         page_size: int = DEFAULT_INTRADAY_PAGE_SIZE,
         last_time: str | None = None,
         last_time_format: str | None = None,
     ) -> list[dict[str, Any]]:
         """Fetch intraday trade timeseries for one stock symbol."""
-        payload = self._build_quote(symbol).intraday(
+        payload = self._build_quote(symbol, source=source).intraday(
             page_size=page_size,
             last_time=last_time,
             last_time_format=last_time_format,
@@ -91,20 +94,19 @@ class VnstockPriceGateway:
             transform_record=self._normalize_intraday_record,
         )
 
-    def _build_quote(self, symbol: str) -> Any:
+    def _build_quote(self, symbol: str, *, source: StockPriceSource = SOURCE) -> Any:
         normalized_symbol = self._normalize_symbol(symbol)
 
         if self._quote_factory is not None:
-            return self._quote_factory(normalized_symbol, self.SOURCE)
+            return self._quote_factory(normalized_symbol, source)
 
         from vnstock import Quote
 
         # The public Quote wrapper currently advertises broader compatibility
-        # parameters like `resolution` and `page`, but the installed VCI runtime
-        # path we depend on uses `history(start, end, interval, ..., length)` and
-        # `intraday(page_size, last_time, last_time_format, ...)`. Keep the
-        # backend contract aligned to the installed provider behavior.
-        return Quote(symbol=normalized_symbol, source=self.SOURCE)
+        # parameters like `resolution` and `page`, but the installed runtime path
+        # we depend on uses `history(start, end, interval, ..., length)` for VCI
+        # and KBS. Intraday cursor handling remains source-specific in service.
+        return Quote(symbol=normalized_symbol, source=source)
 
     @classmethod
     def _to_records(
@@ -187,8 +189,8 @@ class VnstockPriceGateway:
         return str(normalized)
 
     @classmethod
-    def _normalize_identifier_value(cls, value: Any) -> int | None:
-        """Convert numeric intraday identifiers into stable integer values."""
+    def _normalize_identifier_value(cls, value: Any) -> int | str | None:
+        """Preserve provider-compatible intraday identifiers."""
         normalized = cls._normalize_missing_value(value)
         if normalized is None:
             return None
@@ -202,5 +204,5 @@ class VnstockPriceGateway:
             stripped = normalized.strip()
             if not stripped:
                 return None
-            return int(stripped)
+            return int(stripped) if stripped.isdigit() else stripped
         raise TypeError("Unsupported intraday identifier type")

@@ -7,11 +7,11 @@
 
 ## 2. Service And Gateway Behavior
 
-- [ ] 2.1 Update the vnstock price gateway to build `Quote(symbol, source)` from the requested source instead of a single hard-coded source.
-- [ ] 2.2 Update history reads to pass the selected source through service and gateway layers while preserving default VCI behavior.
-- [ ] 2.3 Update intraday reads to pass the selected source through service and gateway layers while preserving default VCI behavior.
-- [ ] 2.4 Reject `source=KBS` intraday requests that include `last_time` or `last_time_format`.
-- [ ] 2.5 Preserve KBS string intraday identifiers during normalization while continuing to coerce numeric identifiers to stable integers.
+- [x] 2.1 Update the vnstock price gateway to build `Quote(symbol, source)` from the requested source instead of a single hard-coded source.
+- [x] 2.2 Update history reads to pass the selected source through service and gateway layers while preserving default VCI behavior.
+- [x] 2.3 Update intraday reads to pass the selected source through service and gateway layers while preserving default VCI behavior.
+- [x] 2.4 Reject `source=KBS` intraday requests that include `last_time` or `last_time_format`.
+- [x] 2.5 Preserve KBS string intraday identifiers during normalization while continuing to coerce numeric identifiers to stable integers.
 
 ## 3. Cache Isolation
 

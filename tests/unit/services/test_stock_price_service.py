@@ -88,6 +88,7 @@ class _FakeGateway:
         self,
         symbol: str,
         *,
+        source: str = "VCI",
         start: str | None = None,
         end: str | None = None,
         interval: str = "1D",
@@ -98,6 +99,7 @@ class _FakeGateway:
                 "history",
                 symbol,
                 {
+                    "source": source,
                     "start": start,
                     "end": end,
                     "interval": interval,
@@ -122,6 +124,7 @@ class _FakeGateway:
         self,
         symbol: str,
         *,
+        source: str = "VCI",
         page_size: int = 100,
         last_time: str | None = None,
         last_time_format: str | None = None,
@@ -131,6 +134,7 @@ class _FakeGateway:
                 "intraday",
                 symbol,
                 {
+                    "source": source,
                     "page_size": page_size,
                     "last_time": last_time,
                     "last_time_format": last_time_format,
@@ -193,6 +197,7 @@ async def test_history_cache_miss_fetches_upstream_and_caches_response() -> None
             "history",
             "FPT",
             {
+                "source": "VCI",
                 "start": "2026-04-01",
                 "end": "2026-04-15",
                 "interval": "1D",
@@ -363,6 +368,7 @@ async def test_service_offloads_gateway_fetches_to_threadpool(
             gateway.fetch_intraday,
             ("FPT",),
             {
+                "source": "VCI",
                 "page_size": 120,
                 "last_time": "2026-04-15 09:15:00",
                 "last_time_format": None,

@@ -67,6 +67,7 @@ class StockPriceService:
             items = await run_in_threadpool(
                 self.gateway.fetch_history,
                 normalized_symbol,
+                source=normalized_query.source,
                 start=normalized_query.start,
                 end=normalized_query.end,
                 interval=normalized_query.interval,
@@ -74,7 +75,7 @@ class StockPriceService:
             )
             response = StockPriceHistoryResponse(
                 symbol=normalized_symbol,
-                source=self.gateway.SOURCE,
+                source=normalized_query.source,
                 cache_hit=False,
                 interval=normalized_query.interval,
                 items=items,
@@ -104,6 +105,7 @@ class StockPriceService:
         query: StockPriceIntradayQuery,
     ) -> StockPriceIntradayResponse:
         normalized_query = StockPriceIntradayQuery.model_validate(query)
+        self._validate_intraday_source_contract(normalized_query)
         variant = self._build_intraday_variant(normalized_query)
         normalized_symbol = await self._validate_symbol(symbol)
 
@@ -120,13 +122,14 @@ class StockPriceService:
             items = await run_in_threadpool(
                 self.gateway.fetch_intraday,
                 normalized_symbol,
+                source=normalized_query.source,
                 page_size=normalized_query.page_size,
                 last_time=normalized_query.last_time,
                 last_time_format=normalized_query.last_time_format,
             )
             response = StockPriceIntradayResponse(
                 symbol=normalized_symbol,
-                source=self.gateway.SOURCE,
+                source=normalized_query.source,
                 cache_hit=False,
                 items=items,
             )
@@ -202,6 +205,17 @@ class StockPriceService:
             )
         except Exception as exc:
             logger.warning("Stock price cache write failed: %s", exc)
+
+    @staticmethod
+    def _validate_intraday_source_contract(query: StockPriceIntradayQuery) -> None:
+        if query.source != "KBS":
+            return
+        if query.last_time is None and query.last_time_format is None:
+            return
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="KBS intraday does not support last_time or last_time_format",
+        )
 
     @staticmethod
     def _build_history_variant(query: StockPriceHistoryQuery) -> str:
