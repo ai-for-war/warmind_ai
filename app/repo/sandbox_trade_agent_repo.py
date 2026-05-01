@@ -13,6 +13,7 @@ from pymongo.errors import DuplicateKeyError
 
 from app.domain.models.sandbox_trade_agent import (
     SandboxTradeAgentRuntimeConfig,
+    SandboxTradeDecision,
     SandboxTradeMarketSnapshot,
     SandboxTradeOrder,
     SandboxTradePortfolioSnapshot,
@@ -411,6 +412,69 @@ class SandboxTradeTickRepository:
         }
         if market_snapshot is not None:
             update_fields["market_snapshot"] = market_snapshot.model_dump(mode="json")
+
+        document = await self.collection.find_one_and_update(
+            {
+                "_id": object_id,
+                "status": SandboxTradeTickStatus.RUNNING.value,
+                "lock_token": lock_token,
+            },
+            {"$set": update_fields},
+            return_document=ReturnDocument.AFTER,
+        )
+        return self._to_model(document)
+
+    async def attach_decision(
+        self,
+        *,
+        tick_id: str,
+        lock_token: str,
+        decision: SandboxTradeDecision,
+    ) -> SandboxTradeTick | None:
+        """Persist a valid structured agent decision on a running tick."""
+        object_id = _parse_object_id(tick_id)
+        if object_id is None:
+            return None
+
+        document = await self.collection.find_one_and_update(
+            {
+                "_id": object_id,
+                "status": SandboxTradeTickStatus.RUNNING.value,
+                "lock_token": lock_token,
+            },
+            {
+                "$set": {
+                    "decision": decision.model_dump(mode="json"),
+                    "updated_at": datetime.now(timezone.utc),
+                }
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        return self._to_model(document)
+
+    async def mark_rejected_invalid_agent_decision(
+        self,
+        *,
+        tick_id: str,
+        lock_token: str,
+        completed_at: datetime,
+        rejection_reason: str,
+        error: str | None = None,
+    ) -> SandboxTradeTick | None:
+        """Reject one worker-owned tick because the agent output was invalid."""
+        object_id = _parse_object_id(tick_id)
+        if object_id is None:
+            return None
+
+        update_fields: dict[str, object] = {
+            "status": SandboxTradeTickStatus.REJECTED.value,
+            "completed_at": completed_at,
+            "rejection_reason": rejection_reason,
+            "lock_expires_at": None,
+            "updated_at": datetime.now(timezone.utc),
+        }
+        if error:
+            update_fields["error"] = error
 
         document = await self.collection.find_one_and_update(
             {

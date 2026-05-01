@@ -29,10 +29,10 @@
 
 ## 5. Trade Agent Runtime
 
-- [ ] 5.1 Add a sandbox trade-agent system prompt that receives market data, available cash, sellable quantity, pending settlements, recent decisions, and current portfolio state.
-- [ ] 5.2 Add structured decision schema validation for `BUY`, `SELL`, and `HOLD` decisions.
-- [ ] 5.3 Implement trade-agent invocation for processable ticks using the existing model/runtime patterns where appropriate.
-- [ ] 5.4 Record valid decisions on ticks and reject malformed or unsupported decisions with `INVALID_AGENT_DECISION`.
+- [x] 5.1 Add a sandbox trade-agent system prompt that receives market data, available cash, sellable quantity, pending settlements, recent decisions, and current portfolio state.
+- [x] 5.2 Add structured decision schema validation for `BUY`, `SELL`, and `HOLD` decisions.
+- [x] 5.3 Implement trade-agent invocation for processable ticks using the existing model/runtime patterns where appropriate.
+- [x] 5.4 Record valid decisions on ticks and reject malformed or unsupported decisions with `INVALID_AGENT_DECISION`.
 
 ## 6. Sandbox Execution and T+2 Settlement
 

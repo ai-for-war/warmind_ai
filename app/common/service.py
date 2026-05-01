@@ -91,6 +91,9 @@ from app.services.stocks.refresh import StockCatalogSnapshotRefresher
 from app.services.stocks.sandbox_trade_agent_service import (
     SandboxTradeAgentSessionService,
 )
+from app.services.stocks.sandbox_trade_agent_runtime_service import (
+    SandboxTradeAgentRuntimeService,
+)
 from app.services.stocks.sandbox_trade_dispatcher_service import (
     SandboxTradeAgentDispatcherService,
 )
@@ -438,6 +441,14 @@ def get_sandbox_trade_market_data_service() -> SandboxTradeMarketDataService:
         price_service=get_stock_price_service(),
         tick_repo=get_sandbox_trade_tick_repo(),
         windows=windows,
+    )
+
+
+@lru_cache
+def get_sandbox_trade_agent_runtime_service() -> SandboxTradeAgentRuntimeService:
+    """Get singleton sandbox trade-agent runtime invocation service."""
+    return SandboxTradeAgentRuntimeService(
+        tick_repo=get_sandbox_trade_tick_repo(),
     )
 
 
