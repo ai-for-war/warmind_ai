@@ -138,6 +138,9 @@ class SandboxTradeExecutionService:
             )
             return SandboxTradeExecutionResult(tick=failed_tick, position=position)
 
+        if not await self._still_owns_tick(tick):
+            return SandboxTradeExecutionResult(tick=tick, position=position)
+
         if tick.decision.action == SandboxTradeAction.HOLD:
             completed_tick = await self._mark_completed_and_snapshot(
                 session=session,
@@ -516,3 +519,11 @@ class SandboxTradeExecutionService:
     @staticmethod
     def _trade_date(value: datetime) -> str:
         return value.astimezone(SANDBOX_TRADE_TIMEZONE).date().isoformat()
+
+    async def _still_owns_tick(self, tick: SandboxTradeTick) -> bool:
+        if tick.id is None or tick.lock_token is None:
+            return True
+        return await self.tick_repo.is_running_with_lock(
+            tick_id=tick.id,
+            lock_token=tick.lock_token,
+        )

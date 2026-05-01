@@ -46,11 +46,11 @@
 
 ## 7. Worker and API Wiring
 
-- [ ] 7.1 Add Redis task payload schema and queue helper for sandbox trade-agent tick tasks.
-- [ ] 7.2 Add sandbox trade-agent worker that dispatches due sessions, processes tick tasks, advances `next_run_at`, and records terminal tick states.
-- [ ] 7.3 Add authenticated API routes for session create, list, read, pause, resume, stop, delete, tick history, order history, settlement history, and current portfolio state.
-- [ ] 7.4 Wire sandbox trade-agent routes into the v1 API router with existing authentication and organization dependencies.
-- [ ] 7.5 Add optional internal dispatch endpoint only if the deployment path requires an external trigger instead of worker polling.
+- [x] 7.1 Add Redis task payload schema and queue helper for sandbox trade-agent tick tasks.
+- [x] 7.2 Add sandbox trade-agent worker that dispatches due sessions, processes tick tasks, advances `next_run_at`, and records terminal tick states.
+- [x] 7.3 Add authenticated API routes for session create, list, read, pause, resume, stop, delete, tick history, order history, settlement history, and current portfolio state.
+- [x] 7.4 Wire sandbox trade-agent routes into the v1 API router with existing authentication and organization dependencies.
+- [x] 7.5 Add optional internal dispatch endpoint only if the deployment path requires an external trigger instead of worker polling.
 
 ## 8. Tests and Verification
 

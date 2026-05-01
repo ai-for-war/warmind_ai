@@ -88,6 +88,20 @@ class SandboxTradeSessionRepository:
         )
         return self._to_model(document)
 
+    async def find_by_id(self, *, session_id: str) -> SandboxTradeSession | None:
+        """Find one non-deleted sandbox trade session by id for worker execution."""
+        object_id = _parse_object_id(session_id)
+        if object_id is None:
+            return None
+
+        document = await self.collection.find_one(
+            {
+                "_id": object_id,
+                "status": {"$ne": SandboxTradeSessionStatus.DELETED.value},
+            }
+        )
+        return self._to_model(document)
+
     async def list_by_user_and_organization(
         self,
         *,
@@ -332,6 +346,24 @@ class SandboxTradeTickRepository:
             return_document=ReturnDocument.AFTER,
         )
         return self._to_model(document)
+
+    async def is_running_with_lock(self, *, tick_id: str, lock_token: str) -> bool:
+        """Return whether one tick is still running under the caller's lock."""
+        object_id = _parse_object_id(tick_id)
+        if object_id is None:
+            return False
+
+        return (
+            await self.collection.count_documents(
+                {
+                    "_id": object_id,
+                    "status": SandboxTradeTickStatus.RUNNING.value,
+                    "lock_token": lock_token,
+                },
+                limit=1,
+            )
+            > 0
+        )
 
     async def release_dispatch_after_enqueue_failure(
         self,
