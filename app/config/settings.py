@@ -43,6 +43,14 @@ class Settings(BaseSettings):
     IMAGE_GENERATION_QUEUE_NAME: str = "image_generation_tasks"
     MEETING_NOTE_QUEUE_NAME: str = "meeting_note_tasks"
     STOCK_RESEARCH_QUEUE_NAME: str = "stock_research_tasks"
+    SANDBOX_TRADE_AGENT_QUEUE_NAME: str = "sandbox_trade_agent_tasks"
+    SANDBOX_TRADE_AGENT_CADENCE_SECONDS: int = 180
+    SANDBOX_TRADE_AGENT_WORKER_POLL_INTERVAL_SECONDS: int = 30
+    SANDBOX_TRADE_AGENT_TICK_LOCK_SECONDS: int = 600
+    SANDBOX_TRADE_AGENT_TRADING_WINDOWS: list[str] = [
+        "09:00-11:30",
+        "13:00-14:45",
+    ]
     IMAGE_GENERATION_MAX_CONCURRENCY: int = 4
     STOCK_RESEARCH_MAX_CONCURRENCY: int = 20
     LEAD_AGENT_MAX_DELEGATED_TASKS: int = 3

@@ -385,6 +385,16 @@ class MongoDB:
         )
         logger.info("Created index: idx_sandbox_trade_ticks_session_tick_desc")
 
+        await cls.db.sandbox_trade_ticks.create_index(
+            [
+                ("status", ASCENDING),
+                ("lock_expires_at", ASCENDING),
+            ],
+            name="idx_sandbox_trade_ticks_status_lock_expires",
+            background=True,
+        )
+        logger.info("Created index: idx_sandbox_trade_ticks_status_lock_expires")
+
         await cls.db.sandbox_trade_orders.create_index(
             [
                 ("session_id", ASCENDING),

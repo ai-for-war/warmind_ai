@@ -52,6 +52,9 @@ from app.repo.sandbox_trade_agent_repo import (
     SandboxTradeTickRepository,
 )
 from app.repo.stock_symbol_repo import StockSymbolRepository
+from app.services.stocks.sandbox_trade_schedule_calculator import (
+    calculate_next_sandbox_trade_run_at,
+)
 
 
 class SandboxTradeAgentSessionService:
@@ -640,5 +643,8 @@ class SandboxTradeAgentSessionService:
 
 
 def _default_next_run_at() -> datetime:
-    """Return a placeholder due time until trading-window scheduling is added."""
-    return datetime.now(timezone.utc)
+    """Return the next eligible sandbox trade run using default market windows."""
+    return calculate_next_sandbox_trade_run_at(
+        after=datetime.now(timezone.utc),
+        include_current=True,
+    )

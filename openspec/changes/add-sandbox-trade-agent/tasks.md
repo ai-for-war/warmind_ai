@@ -14,11 +14,11 @@
 
 ## 3. Trading Calendar and Tick Scheduling
 
-- [ ] 3.1 Add settings for sandbox trade-agent cadence, queue name, worker poll interval, and Vietnam continuous trading windows.
-- [ ] 3.2 Implement `Asia/Saigon` weekday and trading-window eligibility checks for `09:00-11:30` and `13:00-14:45`.
-- [ ] 3.3 Implement next-eligible-run calculation for active sessions, weekend skipping, lunch-break skipping, and end-of-day rollover.
-- [ ] 3.4 Implement idempotent due-session dispatch that creates or claims one tick per `(session_id, tick_at)` and enqueues a worker task.
-- [ ] 3.5 Implement stale tick claim recovery without allowing duplicate sandbox execution side effects.
+- [x] 3.1 Add settings for sandbox trade-agent cadence, queue name, worker poll interval, and Vietnam continuous trading windows.
+- [x] 3.2 Implement `Asia/Saigon` weekday and trading-window eligibility checks for `09:00-11:30` and `13:00-14:45`.
+- [x] 3.3 Implement next-eligible-run calculation for active sessions, weekend skipping, lunch-break skipping, and end-of-day rollover.
+- [x] 3.4 Implement idempotent due-session dispatch that creates or claims one tick per `(session_id, tick_at)` and enqueues a worker task.
+- [x] 3.5 Implement stale tick claim recovery without allowing duplicate sandbox execution side effects.
 
 ## 4. Market Data Snapshot
 

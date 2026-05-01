@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from uuid import uuid4
 
 from bson import ObjectId
 from bson.errors import InvalidId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ASCENDING, DESCENDING, ReturnDocument
+from pymongo.errors import DuplicateKeyError
 
 from app.domain.models.sandbox_trade_agent import (
     SandboxTradeAgentRuntimeConfig,
@@ -19,6 +21,7 @@ from app.domain.models.sandbox_trade_agent import (
     SandboxTradeSettlement,
     SandboxTradeSettlementStatus,
     SandboxTradeTick,
+    SandboxTradeTickStatus,
 )
 
 _UNSET = object()
@@ -105,6 +108,57 @@ class SandboxTradeSessionRepository:
         documents = [document async for document in cursor]
         return [self._to_model(document) for document in documents if document], total
 
+    async def list_due_active_sessions(
+        self,
+        *,
+        due_at: datetime,
+        limit: int = 100,
+    ) -> list[SandboxTradeSession]:
+        """List active sessions whose next sandbox tick is due."""
+        cursor = (
+            self.collection.find(
+                {
+                    "status": SandboxTradeSessionStatus.ACTIVE.value,
+                    "next_run_at": {"$lte": due_at},
+                }
+            )
+            .sort("next_run_at", ASCENDING)
+            .limit(limit)
+        )
+        documents = [document async for document in cursor]
+        return [self._to_model(document) for document in documents if document]
+
+    async def advance_next_run_at(
+        self,
+        *,
+        session_id: str,
+        expected_next_run_at: datetime,
+        next_run_at: datetime,
+        last_tick_at: datetime | None | object = _UNSET,
+    ) -> SandboxTradeSession | None:
+        """Advance one active session if its due occurrence has not changed."""
+        object_id = _parse_object_id(session_id)
+        if object_id is None:
+            return None
+
+        update_fields: dict[str, object] = {
+            "next_run_at": next_run_at,
+            "updated_at": datetime.now(timezone.utc),
+        }
+        if last_tick_at is not _UNSET:
+            update_fields["last_tick_at"] = last_tick_at
+
+        document = await self.collection.find_one_and_update(
+            {
+                "_id": object_id,
+                "status": SandboxTradeSessionStatus.ACTIVE.value,
+                "next_run_at": expected_next_run_at,
+            },
+            {"$set": update_fields},
+            return_document=ReturnDocument.AFTER,
+        )
+        return self._to_model(document)
+
     async def update_owned_session(
         self,
         *,
@@ -180,6 +234,130 @@ class SandboxTradeTickRepository:
 
     def __init__(self, db: AsyncIOMotorDatabase) -> None:
         self.collection = db.sandbox_trade_ticks
+
+    async def create_dispatching(
+        self,
+        *,
+        session_id: str,
+        tick_at: datetime,
+        lock_expires_at: datetime,
+    ) -> SandboxTradeTick | None:
+        """Create one idempotent dispatching tick or return None on duplicate."""
+        now = datetime.now(timezone.utc)
+        payload = SandboxTradeTick(
+            session_id=session_id,
+            tick_at=tick_at,
+            status=SandboxTradeTickStatus.DISPATCHING,
+            lock_expires_at=lock_expires_at,
+            lock_token=str(uuid4()),
+            created_at=now,
+            updated_at=now,
+        ).model_dump(by_alias=True, exclude={"id"})
+
+        try:
+            result = await self.collection.insert_one(payload)
+        except DuplicateKeyError:
+            return None
+
+        payload["_id"] = str(result.inserted_id)
+        return SandboxTradeTick(**payload)
+
+    async def claim_stale_dispatch(
+        self,
+        *,
+        session_id: str,
+        tick_at: datetime,
+        now: datetime,
+        lock_expires_at: datetime,
+    ) -> SandboxTradeTick | None:
+        """Refresh and reclaim a stale non-terminal tick dispatch lock."""
+        document = await self.collection.find_one_and_update(
+            {
+                "session_id": session_id,
+                "tick_at": tick_at,
+                "status": {
+                    "$in": [
+                        SandboxTradeTickStatus.DISPATCHING.value,
+                        SandboxTradeTickStatus.RUNNING.value,
+                    ]
+                },
+                "lock_expires_at": {"$lte": now},
+            },
+            {
+                "$set": {
+                    "status": SandboxTradeTickStatus.DISPATCHING.value,
+                    "lock_expires_at": lock_expires_at,
+                    "lock_token": str(uuid4()),
+                    "updated_at": datetime.now(timezone.utc),
+                }
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        return self._to_model(document)
+
+    async def claim_for_processing(
+        self,
+        *,
+        tick_id: str,
+        lock_token: str,
+        now: datetime,
+        lock_expires_at: datetime,
+    ) -> SandboxTradeTick | None:
+        """Move a queued dispatch tick to running for one worker owner."""
+        object_id = _parse_object_id(tick_id)
+        if object_id is None:
+            return None
+
+        document = await self.collection.find_one_and_update(
+            {
+                "_id": object_id,
+                "status": SandboxTradeTickStatus.DISPATCHING.value,
+                "lock_token": lock_token,
+                "lock_expires_at": {"$gt": now},
+            },
+            {
+                "$set": {
+                    "status": SandboxTradeTickStatus.RUNNING.value,
+                    "started_at": now,
+                    "lock_expires_at": lock_expires_at,
+                    "lock_token": str(uuid4()),
+                    "updated_at": datetime.now(timezone.utc),
+                }
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        return self._to_model(document)
+
+    async def release_dispatch_after_enqueue_failure(
+        self,
+        *,
+        tick_id: str,
+        lock_token: str,
+        now: datetime,
+        error: str | None = None,
+    ) -> SandboxTradeTick | None:
+        """Expire one dispatch claim so a later dispatcher can retry enqueue."""
+        object_id = _parse_object_id(tick_id)
+        if object_id is None:
+            return None
+
+        update_fields: dict[str, object] = {
+            "lock_expires_at": now,
+            "updated_at": datetime.now(timezone.utc),
+        }
+        if error:
+            update_fields["error"] = error
+
+        document = await self.collection.find_one_and_update(
+            {
+                "_id": object_id,
+                "status": SandboxTradeTickStatus.DISPATCHING.value,
+                "lock_token": lock_token,
+            },
+            {"$set": update_fields},
+            return_document=ReturnDocument.AFTER,
+        )
+        return self._to_model(document)
 
     async def list_by_session(
         self,

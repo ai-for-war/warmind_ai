@@ -248,6 +248,7 @@ class SandboxTradeTick(SandboxTradeModelBase):
     tick_at: datetime
     status: SandboxTradeTickStatus = SandboxTradeTickStatus.DISPATCHING
     lock_expires_at: datetime | None = None
+    lock_token: str | None = None
     started_at: datetime | None = None
     completed_at: datetime | None = None
     market_snapshot: SandboxTradeMarketSnapshot | None = None
@@ -259,7 +260,7 @@ class SandboxTradeTick(SandboxTradeModelBase):
     created_at: datetime
     updated_at: datetime
 
-    @field_validator("session_id", "order_id", mode="before")
+    @field_validator("session_id", "order_id", "lock_token", mode="before")
     @classmethod
     def normalize_optional_identifier(cls, value: str | None) -> str | None:
         """Require persisted identifiers to be non-blank when present."""
