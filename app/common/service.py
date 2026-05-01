@@ -20,6 +20,12 @@ from app.common.repo import (
     get_message_repo,
     get_notification_repo,
     get_org_repo,
+    get_sandbox_trade_order_repo,
+    get_sandbox_trade_portfolio_snapshot_repo,
+    get_sandbox_trade_position_repo,
+    get_sandbox_trade_session_repo,
+    get_sandbox_trade_settlement_repo,
+    get_sandbox_trade_tick_repo,
     get_sheet_connection_repo,
     get_sheet_data_repo,
     get_sheet_sync_state_repo,
@@ -81,6 +87,9 @@ from app.services.stocks.price_cache import StockPriceCache
 from app.services.stocks.price_gateway import VnstockPriceGateway
 from app.services.stocks.price_service import StockPriceService
 from app.services.stocks.refresh import StockCatalogSnapshotRefresher
+from app.services.stocks.sandbox_trade_agent_service import (
+    SandboxTradeAgentSessionService,
+)
 from app.services.stocks.stock_catalog_service import StockCatalogService
 from app.services.stocks.stock_research_queue_service import StockResearchQueueService
 from app.services.stocks.stock_research_service import StockResearchService
@@ -350,6 +359,20 @@ def get_stock_research_schedule_dispatcher_service() -> (
         run_repo=get_stock_research_schedule_run_repo(),
         report_repo=get_stock_research_report_repo(),
         queue_service=get_stock_research_queue_service(),
+    )
+
+
+@lru_cache
+def get_sandbox_trade_agent_session_service() -> SandboxTradeAgentSessionService:
+    """Get singleton sandbox trade-agent session service."""
+    return SandboxTradeAgentSessionService(
+        session_repo=get_sandbox_trade_session_repo(),
+        tick_repo=get_sandbox_trade_tick_repo(),
+        order_repo=get_sandbox_trade_order_repo(),
+        position_repo=get_sandbox_trade_position_repo(),
+        settlement_repo=get_sandbox_trade_settlement_repo(),
+        snapshot_repo=get_sandbox_trade_portfolio_snapshot_repo(),
+        stock_repo=get_stock_symbol_repo(),
     )
 
 

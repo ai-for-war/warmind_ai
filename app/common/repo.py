@@ -18,6 +18,14 @@ from app.repo.message_repo import MessageRepository
 from app.repo.notification_repo import NotificationRepository
 from app.repo.organization_member_repo import OrganizationMemberRepository
 from app.repo.organization_repo import OrganizationRepository
+from app.repo.sandbox_trade_agent_repo import (
+    SandboxTradeOrderRepository,
+    SandboxTradePortfolioSnapshotRepository,
+    SandboxTradePositionRepository,
+    SandboxTradeSessionRepository,
+    SandboxTradeSettlementRepository,
+    SandboxTradeTickRepository,
+)
 from app.repo.sheet_connection_repo import SheetConnectionRepository
 from app.repo.sheet_data_repo import SheetDataRepository
 from app.repo.sheet_sync_state_repo import SheetSyncStateRepository
@@ -243,6 +251,50 @@ def get_stock_research_schedule_run_repo() -> StockResearchScheduleRunRepository
     """Get singleton stock research schedule-run repository instance."""
     db = MongoDB.get_db()
     return StockResearchScheduleRunRepository(db)
+
+
+@lru_cache
+def get_sandbox_trade_session_repo() -> SandboxTradeSessionRepository:
+    """Get singleton sandbox trade-session repository instance."""
+    db = MongoDB.get_db()
+    return SandboxTradeSessionRepository(db)
+
+
+@lru_cache
+def get_sandbox_trade_tick_repo() -> SandboxTradeTickRepository:
+    """Get singleton sandbox trade-tick repository instance."""
+    db = MongoDB.get_db()
+    return SandboxTradeTickRepository(db)
+
+
+@lru_cache
+def get_sandbox_trade_order_repo() -> SandboxTradeOrderRepository:
+    """Get singleton sandbox trade-order repository instance."""
+    db = MongoDB.get_db()
+    return SandboxTradeOrderRepository(db)
+
+
+@lru_cache
+def get_sandbox_trade_position_repo() -> SandboxTradePositionRepository:
+    """Get singleton sandbox trade-position repository instance."""
+    db = MongoDB.get_db()
+    return SandboxTradePositionRepository(db)
+
+
+@lru_cache
+def get_sandbox_trade_settlement_repo() -> SandboxTradeSettlementRepository:
+    """Get singleton sandbox trade-settlement repository instance."""
+    db = MongoDB.get_db()
+    return SandboxTradeSettlementRepository(db)
+
+
+@lru_cache
+def get_sandbox_trade_portfolio_snapshot_repo() -> (
+    SandboxTradePortfolioSnapshotRepository
+):
+    """Get singleton sandbox trade-portfolio snapshot repository instance."""
+    db = MongoDB.get_db()
+    return SandboxTradePortfolioSnapshotRepository(db)
 
 
 @lru_cache

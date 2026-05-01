@@ -7,10 +7,10 @@
 
 ## 2. Repositories and Session Services
 
-- [ ] 2.1 Add repositories for sandbox trade sessions, ticks, orders, positions, settlements, and portfolio snapshots.
-- [ ] 2.2 Implement session creation with symbol validation, uppercase normalization, default `100000000` VND virtual capital, and initial cash/position state.
-- [ ] 2.3 Implement organization-scoped session list, read, pause, resume, stop, and delete service methods.
-- [ ] 2.4 Implement history read service methods for ticks, orders, settlements, current position, and latest portfolio state.
+- [x] 2.1 Add repositories for sandbox trade sessions, ticks, orders, positions, settlements, and portfolio snapshots.
+- [x] 2.2 Implement session creation with symbol validation, uppercase normalization, default `100000000` VND virtual capital, and initial cash/position state.
+- [x] 2.3 Implement organization-scoped session list, read, pause, resume, stop, and delete service methods.
+- [x] 2.4 Implement history read service methods for ticks, orders, settlements, current position, and latest portfolio state.
 
 ## 3. Trading Calendar and Tick Scheduling
 
