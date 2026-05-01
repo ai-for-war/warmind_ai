@@ -1,9 +1,9 @@
 ## 1. Domain Models, Schemas, and Indexes
 
-- [ ] 1.1 Add sandbox trade session domain models and API schemas for create, update, lifecycle actions, list, read, and status responses.
-- [ ] 1.2 Add tick, structured decision, sandbox order, position, settlement, and portfolio snapshot domain models and response schemas.
-- [ ] 1.3 Add enum values for session status, tick status, action, order side, order status, settlement asset type, and settlement status.
-- [ ] 1.4 Add MongoDB indexes for organization-scoped session listing, active due-session lookup, unique `(session_id, tick_at)` ticks, session order history, session settlement lookup, and latest portfolio snapshots.
+- [x] 1.1 Add sandbox trade session domain models and API schemas for create, update, lifecycle actions, list, read, and status responses.
+- [x] 1.2 Add tick, structured decision, sandbox order, position, settlement, and portfolio snapshot domain models and response schemas.
+- [x] 1.3 Add enum values for session status, tick status, action, order side, order status, settlement asset type, and settlement status.
+- [x] 1.4 Add MongoDB indexes for organization-scoped session listing, active due-session lookup, unique `(session_id, tick_at)` ticks, session order history, session settlement lookup, and latest portfolio snapshots.
 
 ## 2. Repositories and Session Services
 
