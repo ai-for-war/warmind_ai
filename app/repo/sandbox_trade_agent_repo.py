@@ -16,11 +16,14 @@ from app.domain.models.sandbox_trade_agent import (
     SandboxTradeDecision,
     SandboxTradeMarketSnapshot,
     SandboxTradeOrder,
+    SandboxTradeOrderSide,
+    SandboxTradeOrderStatus,
     SandboxTradePortfolioSnapshot,
     SandboxTradePosition,
     SandboxTradeSession,
     SandboxTradeSessionStatus,
     SandboxTradeSettlement,
+    SandboxTradeSettlementAssetType,
     SandboxTradeSettlementStatus,
     SandboxTradeTick,
     SandboxTradeTickStatus,
@@ -487,6 +490,106 @@ class SandboxTradeTickRepository:
         )
         return self._to_model(document)
 
+    async def mark_completed(
+        self,
+        *,
+        tick_id: str,
+        lock_token: str,
+        completed_at: datetime,
+        order_id: str | None = None,
+    ) -> SandboxTradeTick | None:
+        """Mark one worker-owned tick as completed after sandbox execution."""
+        object_id = _parse_object_id(tick_id)
+        if object_id is None:
+            return None
+
+        update_fields: dict[str, object] = {
+            "status": SandboxTradeTickStatus.COMPLETED.value,
+            "completed_at": completed_at,
+            "lock_expires_at": None,
+            "updated_at": datetime.now(timezone.utc),
+        }
+        if order_id is not None:
+            update_fields["order_id"] = order_id
+
+        document = await self.collection.find_one_and_update(
+            {
+                "_id": object_id,
+                "status": SandboxTradeTickStatus.RUNNING.value,
+                "lock_token": lock_token,
+            },
+            {"$set": update_fields},
+            return_document=ReturnDocument.AFTER,
+        )
+        return self._to_model(document)
+
+    async def mark_rejected_execution(
+        self,
+        *,
+        tick_id: str,
+        lock_token: str,
+        completed_at: datetime,
+        rejection_reason: str,
+        order_id: str | None = None,
+    ) -> SandboxTradeTick | None:
+        """Reject one worker-owned tick due to mechanical execution constraints."""
+        object_id = _parse_object_id(tick_id)
+        if object_id is None:
+            return None
+
+        update_fields: dict[str, object] = {
+            "status": SandboxTradeTickStatus.REJECTED.value,
+            "completed_at": completed_at,
+            "rejection_reason": rejection_reason,
+            "lock_expires_at": None,
+            "updated_at": datetime.now(timezone.utc),
+        }
+        if order_id is not None:
+            update_fields["order_id"] = order_id
+
+        document = await self.collection.find_one_and_update(
+            {
+                "_id": object_id,
+                "status": SandboxTradeTickStatus.RUNNING.value,
+                "lock_token": lock_token,
+            },
+            {"$set": update_fields},
+            return_document=ReturnDocument.AFTER,
+        )
+        return self._to_model(document)
+
+    async def mark_failed(
+        self,
+        *,
+        tick_id: str,
+        lock_token: str,
+        completed_at: datetime,
+        error: str,
+    ) -> SandboxTradeTick | None:
+        """Mark one worker-owned tick as failed and release its lock."""
+        object_id = _parse_object_id(tick_id)
+        if object_id is None:
+            return None
+
+        document = await self.collection.find_one_and_update(
+            {
+                "_id": object_id,
+                "status": SandboxTradeTickStatus.RUNNING.value,
+                "lock_token": lock_token,
+            },
+            {
+                "$set": {
+                    "status": SandboxTradeTickStatus.FAILED.value,
+                    "completed_at": completed_at,
+                    "error": error,
+                    "lock_expires_at": None,
+                    "updated_at": datetime.now(timezone.utc),
+                }
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        return self._to_model(document)
+
     async def list_by_session(
         self,
         *,
@@ -520,6 +623,72 @@ class SandboxTradeOrderRepository:
 
     def __init__(self, db: AsyncIOMotorDatabase) -> None:
         self.collection = db.sandbox_trade_orders
+
+    async def create_filled(
+        self,
+        *,
+        session_id: str,
+        tick_id: str,
+        symbol: str,
+        side: SandboxTradeOrderSide,
+        quantity: float,
+        price: float,
+        gross_amount: float,
+        filled_at: datetime,
+        trade_date: str,
+    ) -> SandboxTradeOrder:
+        """Create one immediately filled sandbox order."""
+        now = datetime.now(timezone.utc)
+        payload = SandboxTradeOrder(
+            session_id=session_id,
+            tick_id=tick_id,
+            symbol=symbol,
+            side=side,
+            status=SandboxTradeOrderStatus.FILLED,
+            quantity=quantity,
+            price=price,
+            gross_amount=gross_amount,
+            filled_at=filled_at,
+            trade_date=trade_date,
+            created_at=now,
+            updated_at=now,
+        ).model_dump(by_alias=True, exclude={"id"})
+        result = await self.collection.insert_one(payload)
+        payload["_id"] = str(result.inserted_id)
+        return SandboxTradeOrder(**payload)
+
+    async def create_rejected(
+        self,
+        *,
+        session_id: str,
+        tick_id: str,
+        symbol: str,
+        side: SandboxTradeOrderSide,
+        quantity: float,
+        price: float | None,
+        gross_amount: float,
+        rejection_reason: str,
+        trade_date: str | None = None,
+    ) -> SandboxTradeOrder:
+        """Create one rejected sandbox order audit record."""
+        now = datetime.now(timezone.utc)
+        payload = SandboxTradeOrder(
+            session_id=session_id,
+            tick_id=tick_id,
+            symbol=symbol,
+            side=side,
+            status=SandboxTradeOrderStatus.REJECTED,
+            quantity=quantity,
+            price=price,
+            gross_amount=gross_amount,
+            rejection_reason=rejection_reason,
+            trade_date=trade_date,
+            created_at=now,
+            updated_at=now,
+        ).model_dump(by_alias=True, exclude={"id"})
+        result = await self.collection.insert_one(payload)
+        payload["_id"] = str(result.inserted_id)
+        return SandboxTradeOrder(**payload)
 
     async def list_by_session(
         self,
@@ -589,6 +758,117 @@ class SandboxTradePositionRepository:
         document = await self.collection.find_one({"session_id": session_id})
         return self._to_model(document)
 
+    async def apply_cash_settlement(
+        self,
+        *,
+        session_id: str,
+        amount: float,
+        now: datetime,
+    ) -> SandboxTradePosition | None:
+        """Move due pending cash into available cash for one session."""
+        document = await self.collection.find_one_and_update(
+            {
+                "session_id": session_id,
+                "pending_cash": {"$gte": amount},
+            },
+            {
+                "$inc": {
+                    "available_cash": amount,
+                    "pending_cash": -amount,
+                },
+                "$set": {"updated_at": now},
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        return self._to_model(document)
+
+    async def apply_security_settlement(
+        self,
+        *,
+        session_id: str,
+        quantity: float,
+        now: datetime,
+    ) -> SandboxTradePosition | None:
+        """Move due pending securities into sellable quantity for one session."""
+        document = await self.collection.find_one_and_update(
+            {
+                "session_id": session_id,
+                "pending_quantity": {"$gte": quantity},
+            },
+            {
+                "$inc": {
+                    "sellable_quantity": quantity,
+                    "pending_quantity": -quantity,
+                },
+                "$set": {"updated_at": now},
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        return self._to_model(document)
+
+    async def apply_buy_fill(
+        self,
+        *,
+        session_id: str,
+        quantity: float,
+        gross_amount: float,
+        average_cost: float,
+        now: datetime,
+    ) -> SandboxTradePosition | None:
+        """Apply one filled sandbox buy to current position accounting."""
+        document = await self.collection.find_one_and_update(
+            {
+                "session_id": session_id,
+                "available_cash": {"$gte": gross_amount},
+            },
+            {
+                "$inc": {
+                    "available_cash": -gross_amount,
+                    "total_quantity": quantity,
+                    "pending_quantity": quantity,
+                },
+                "$set": {
+                    "average_cost": average_cost,
+                    "updated_at": now,
+                },
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        return self._to_model(document)
+
+    async def apply_sell_fill(
+        self,
+        *,
+        session_id: str,
+        quantity: float,
+        gross_amount: float,
+        realized_pnl_delta: float,
+        average_cost: float,
+        now: datetime,
+    ) -> SandboxTradePosition | None:
+        """Apply one filled sandbox sell to current position accounting."""
+        document = await self.collection.find_one_and_update(
+            {
+                "session_id": session_id,
+                "sellable_quantity": {"$gte": quantity},
+                "total_quantity": {"$gte": quantity},
+            },
+            {
+                "$inc": {
+                    "sellable_quantity": -quantity,
+                    "total_quantity": -quantity,
+                    "pending_cash": gross_amount,
+                    "realized_pnl": realized_pnl_delta,
+                },
+                "$set": {
+                    "average_cost": average_cost,
+                    "updated_at": now,
+                },
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        return self._to_model(document)
+
     @staticmethod
     def _to_model(document: dict[str, object] | None) -> SandboxTradePosition | None:
         """Convert one MongoDB document into a typed position model."""
@@ -642,6 +922,86 @@ class SandboxTradeSettlementRepository:
         documents = [document async for document in cursor]
         return [self._to_model(document) for document in documents if document]
 
+    async def list_due_pending_by_session(
+        self,
+        *,
+        session_id: str,
+        due_at: datetime,
+        limit: int = 100,
+    ) -> list[SandboxTradeSettlement]:
+        """List due pending settlements for one session."""
+        cursor = (
+            self.collection.find(
+                {
+                    "session_id": session_id,
+                    "status": SandboxTradeSettlementStatus.PENDING.value,
+                    "settle_at": {"$lte": due_at},
+                }
+            )
+            .sort("settle_at", ASCENDING)
+            .limit(limit)
+        )
+        documents = [document async for document in cursor]
+        return [self._to_model(document) for document in documents if document]
+
+    async def create_pending(
+        self,
+        *,
+        session_id: str,
+        order_id: str,
+        symbol: str,
+        asset_type: SandboxTradeSettlementAssetType,
+        trade_date: str,
+        settle_at: datetime,
+        amount: float | None = None,
+        quantity: float | None = None,
+    ) -> SandboxTradeSettlement:
+        """Create one pending T+2 sandbox settlement ledger entry."""
+        now = datetime.now(timezone.utc)
+        payload = SandboxTradeSettlement(
+            session_id=session_id,
+            order_id=order_id,
+            symbol=symbol,
+            asset_type=asset_type,
+            status=SandboxTradeSettlementStatus.PENDING,
+            amount=amount,
+            quantity=quantity,
+            trade_date=trade_date,
+            settle_at=settle_at,
+            created_at=now,
+            updated_at=now,
+        ).model_dump(by_alias=True, exclude={"id"})
+        result = await self.collection.insert_one(payload)
+        payload["_id"] = str(result.inserted_id)
+        return SandboxTradeSettlement(**payload)
+
+    async def mark_settled(
+        self,
+        *,
+        settlement_id: str,
+        settled_at: datetime,
+    ) -> SandboxTradeSettlement | None:
+        """Mark one pending settlement as settled exactly once."""
+        object_id = _parse_object_id(settlement_id)
+        if object_id is None:
+            return None
+
+        document = await self.collection.find_one_and_update(
+            {
+                "_id": object_id,
+                "status": SandboxTradeSettlementStatus.PENDING.value,
+            },
+            {
+                "$set": {
+                    "status": SandboxTradeSettlementStatus.SETTLED.value,
+                    "settled_at": settled_at,
+                    "updated_at": datetime.now(timezone.utc),
+                }
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        return self._to_model(document)
+
     @staticmethod
     def _to_model(
         document: dict[str, object] | None,
@@ -659,6 +1019,45 @@ class SandboxTradePortfolioSnapshotRepository:
 
     def __init__(self, db: AsyncIOMotorDatabase) -> None:
         self.collection = db.sandbox_trade_portfolio_snapshots
+
+    async def create(
+        self,
+        *,
+        session_id: str,
+        tick_id: str | None,
+        symbol: str,
+        available_cash: float,
+        pending_cash: float,
+        total_quantity: float,
+        sellable_quantity: float,
+        pending_quantity: float,
+        latest_price: float | None,
+        market_value: float,
+        equity: float,
+        realized_pnl: float,
+        unrealized_pnl: float | None,
+        created_at: datetime,
+    ) -> SandboxTradePortfolioSnapshot:
+        """Persist one append-only portfolio accounting snapshot."""
+        payload = SandboxTradePortfolioSnapshot(
+            session_id=session_id,
+            tick_id=tick_id,
+            symbol=symbol,
+            available_cash=available_cash,
+            pending_cash=pending_cash,
+            total_quantity=total_quantity,
+            sellable_quantity=sellable_quantity,
+            pending_quantity=pending_quantity,
+            latest_price=latest_price,
+            market_value=market_value,
+            equity=equity,
+            realized_pnl=realized_pnl,
+            unrealized_pnl=unrealized_pnl,
+            created_at=created_at,
+        ).model_dump(by_alias=True, exclude={"id"})
+        result = await self.collection.insert_one(payload)
+        payload["_id"] = str(result.inserted_id)
+        return SandboxTradePortfolioSnapshot(**payload)
 
     async def list_by_session(
         self,

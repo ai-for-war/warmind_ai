@@ -36,13 +36,13 @@
 
 ## 6. Sandbox Execution and T+2 Settlement
 
-- [ ] 6.1 Implement weekday-only T+2 settlement date calculation in `Asia/Saigon` with no holiday calendar.
-- [ ] 6.2 Apply due cash and securities settlements before building each tick's agent input.
-- [ ] 6.3 Implement long-only buy validation against available cash and sell validation against sellable quantity.
-- [ ] 6.4 Implement sandbox buy fills that reduce available cash immediately and create pending securities settlement.
-- [ ] 6.5 Implement sandbox sell fills that reduce sellable quantity immediately and create pending cash settlement.
-- [ ] 6.6 Implement rejected execution outcomes for insufficient cash, insufficient sellable quantity, and outside trading window.
-- [ ] 6.7 Persist portfolio snapshots after completed, skipped, rejected, and failed ticks.
+- [x] 6.1 Implement weekday-only T+2 settlement date calculation in `Asia/Saigon` with no holiday calendar.
+- [x] 6.2 Apply due cash and securities settlements before building each tick's agent input.
+- [x] 6.3 Implement long-only buy validation against available cash and sell validation against sellable quantity.
+- [x] 6.4 Implement sandbox buy fills that reduce available cash immediately and create pending securities settlement.
+- [x] 6.5 Implement sandbox sell fills that reduce sellable quantity immediately and create pending cash settlement.
+- [x] 6.6 Implement rejected execution outcomes for insufficient cash, insufficient sellable quantity, and outside trading window.
+- [x] 6.7 Persist portfolio snapshots after completed, skipped, rejected, and failed ticks.
 
 ## 7. Worker and API Wiring
 

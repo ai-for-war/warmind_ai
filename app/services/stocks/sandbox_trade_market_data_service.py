@@ -19,6 +19,9 @@ from app.domain.schemas.stock_price import (
 )
 from app.repo.sandbox_trade_agent_repo import SandboxTradeTickRepository
 from app.services.stocks.price_service import StockPriceService
+from app.services.stocks.sandbox_trade_portfolio_snapshot_service import (
+    SandboxTradePortfolioSnapshotService,
+)
 from app.services.stocks.sandbox_trade_schedule_calculator import (
     SANDBOX_TRADE_TIMEZONE,
     SandboxTradeTradingWindow,
@@ -56,11 +59,13 @@ class SandboxTradeMarketDataService:
         price_service: StockPriceService,
         tick_repo: SandboxTradeTickRepository,
         windows: tuple[SandboxTradeTradingWindow, ...],
+        portfolio_snapshot_service: SandboxTradePortfolioSnapshotService | None = None,
         page_size: int = DEFAULT_INTRADAY_PAGE_SIZE,
     ) -> None:
         self.price_service = price_service
         self.tick_repo = tick_repo
         self.windows = windows
+        self.portfolio_snapshot_service = portfolio_snapshot_service
         self.page_size = page_size
 
     async def prepare_tick_market_data(
@@ -91,6 +96,15 @@ class SandboxTradeMarketDataService:
                 completed_at=process_now,
                 skip_reason=NO_FRESH_MARKET_DATA,
             )
+            if (
+                skipped_tick is not None
+                and self.portfolio_snapshot_service is not None
+            ):
+                await self.portfolio_snapshot_service.persist_for_tick(
+                    session=session,
+                    tick=skipped_tick,
+                    now=process_now,
+                )
             return SandboxTradeMarketDataPreparation(
                 tick=skipped_tick or tick,
                 market_snapshot=None,

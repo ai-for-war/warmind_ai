@@ -97,8 +97,14 @@ from app.services.stocks.sandbox_trade_agent_runtime_service import (
 from app.services.stocks.sandbox_trade_dispatcher_service import (
     SandboxTradeAgentDispatcherService,
 )
+from app.services.stocks.sandbox_trade_execution_service import (
+    SandboxTradeExecutionService,
+)
 from app.services.stocks.sandbox_trade_market_data_service import (
     SandboxTradeMarketDataService,
+)
+from app.services.stocks.sandbox_trade_portfolio_snapshot_service import (
+    SandboxTradePortfolioSnapshotService,
 )
 from app.services.stocks.sandbox_trade_queue_service import SandboxTradeQueueService
 from app.services.stocks.sandbox_trade_schedule_calculator import (
@@ -441,6 +447,7 @@ def get_sandbox_trade_market_data_service() -> SandboxTradeMarketDataService:
         price_service=get_stock_price_service(),
         tick_repo=get_sandbox_trade_tick_repo(),
         windows=windows,
+        portfolio_snapshot_service=get_sandbox_trade_portfolio_snapshot_service(),
     )
 
 
@@ -449,6 +456,35 @@ def get_sandbox_trade_agent_runtime_service() -> SandboxTradeAgentRuntimeService
     """Get singleton sandbox trade-agent runtime invocation service."""
     return SandboxTradeAgentRuntimeService(
         tick_repo=get_sandbox_trade_tick_repo(),
+        portfolio_snapshot_service=get_sandbox_trade_portfolio_snapshot_service(),
+    )
+
+
+@lru_cache
+def get_sandbox_trade_portfolio_snapshot_service() -> (
+    SandboxTradePortfolioSnapshotService
+):
+    """Get singleton sandbox trade-agent portfolio snapshot service."""
+    return SandboxTradePortfolioSnapshotService(
+        position_repo=get_sandbox_trade_position_repo(),
+        snapshot_repo=get_sandbox_trade_portfolio_snapshot_repo(),
+    )
+
+
+@lru_cache
+def get_sandbox_trade_execution_service() -> SandboxTradeExecutionService:
+    """Get singleton sandbox trade-agent execution service."""
+    settings = get_settings()
+    windows = parse_sandbox_trade_trading_windows(
+        settings.SANDBOX_TRADE_AGENT_TRADING_WINDOWS
+    )
+    return SandboxTradeExecutionService(
+        tick_repo=get_sandbox_trade_tick_repo(),
+        order_repo=get_sandbox_trade_order_repo(),
+        position_repo=get_sandbox_trade_position_repo(),
+        settlement_repo=get_sandbox_trade_settlement_repo(),
+        portfolio_snapshot_service=get_sandbox_trade_portfolio_snapshot_service(),
+        windows=windows,
     )
 
 

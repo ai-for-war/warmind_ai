@@ -35,6 +35,9 @@ from app.prompts.system.sandbox_trade_agent import (
     get_sandbox_trade_agent_system_prompt,
 )
 from app.repo.sandbox_trade_agent_repo import SandboxTradeTickRepository
+from app.services.stocks.sandbox_trade_portfolio_snapshot_service import (
+    SandboxTradePortfolioSnapshotService,
+)
 
 TradeAgentInvoker = Callable[
     [SandboxTradeAgentRuntimeConfig, list[SystemMessage | HumanMessage]],
@@ -49,9 +52,11 @@ class SandboxTradeAgentRuntimeService:
         self,
         *,
         tick_repo: SandboxTradeTickRepository,
+        portfolio_snapshot_service: SandboxTradePortfolioSnapshotService | None = None,
         invoker: TradeAgentInvoker | None = None,
     ) -> None:
         self.tick_repo = tick_repo
+        self.portfolio_snapshot_service = portfolio_snapshot_service
         self.invoker = invoker or _invoke_structured_trade_agent
 
     async def invoke_for_tick(
@@ -69,7 +74,9 @@ class SandboxTradeAgentRuntimeService:
         process_now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
         if tick.market_snapshot is None:
             return await self._reject_invalid_decision(
+                session=session,
                 tick=tick,
+                position=position,
                 completed_at=process_now,
                 error="processable ticks require a market snapshot",
             )
@@ -91,7 +98,9 @@ class SandboxTradeAgentRuntimeService:
             decision = decision_output.to_domain_model()
         except (ValidationError, ValueError, TypeError, json.JSONDecodeError) as exc:
             return await self._reject_invalid_decision(
+                session=session,
                 tick=tick,
+                position=position,
                 completed_at=process_now,
                 error=str(exc),
             )
@@ -167,18 +176,27 @@ class SandboxTradeAgentRuntimeService:
     async def _reject_invalid_decision(
         self,
         *,
+        session: SandboxTradeSession,
         tick: SandboxTradeTick,
+        position: SandboxTradePosition,
         completed_at: datetime,
         error: str,
     ) -> SandboxTradeTick:
         if tick.id is None or tick.lock_token is None:
-            return tick.model_copy(
+            rejected_tick = tick.model_copy(
                 update={
                     "rejection_reason": INVALID_AGENT_DECISION,
                     "error": error,
                     "completed_at": completed_at,
                 }
             )
+            await self._snapshot_rejected_tick(
+                session=session,
+                tick=rejected_tick,
+                position=position,
+                completed_at=completed_at,
+            )
+            return rejected_tick
 
         updated = await self.tick_repo.mark_rejected_invalid_agent_decision(
             tick_id=tick.id,
@@ -187,7 +205,34 @@ class SandboxTradeAgentRuntimeService:
             rejection_reason=INVALID_AGENT_DECISION,
             error=error,
         )
-        return updated or tick
+        if updated is None:
+            return tick
+
+        rejected_tick = updated
+        await self._snapshot_rejected_tick(
+            session=session,
+            tick=rejected_tick,
+            position=position,
+            completed_at=completed_at,
+        )
+        return rejected_tick
+
+    async def _snapshot_rejected_tick(
+        self,
+        *,
+        session: SandboxTradeSession,
+        tick: SandboxTradeTick,
+        position: SandboxTradePosition,
+        completed_at: datetime,
+    ) -> None:
+        if self.portfolio_snapshot_service is None:
+            return
+        await self.portfolio_snapshot_service.persist_for_tick(
+            session=session,
+            tick=tick,
+            position=position,
+            now=completed_at,
+        )
 
     @staticmethod
     def _resolve_runtime_config(
