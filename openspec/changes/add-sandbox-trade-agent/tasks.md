@@ -54,13 +54,13 @@
 
 ## 8. Tests and Verification
 
-- [ ] 8.1 Add unit tests for session schema validation, symbol normalization, default capital, and ownership enforcement.
-- [ ] 8.2 Add unit tests for trading-window checks and next-run calculation across morning, lunch break, afternoon, end of day, Friday, Saturday, and Sunday.
-- [ ] 8.3 Add unit tests for T+2 weekday settlement, including Friday-to-Tuesday settlement.
-- [ ] 8.4 Add unit tests for execution constraints: sufficient cash buy, insufficient cash rejection, sufficient sellable sell, unsettled security sell rejection, and outside-window rejection.
-- [ ] 8.5 Add worker tests for idempotent tick dispatch, concurrent claim behavior, stale claim recovery, skipped market-data ticks, valid hold decisions, valid trade decisions, and invalid agent output.
-- [ ] 8.6 Add API integration tests for session CRUD, lifecycle transitions, history reads, and organization scope isolation.
-- [ ] 8.7 Run the relevant unit and integration test suites and fix regressions.
+- [x] 8.1 Add unit tests for session schema validation, symbol normalization, default capital, and ownership enforcement.
+- [x] 8.2 Add unit tests for trading-window checks and next-run calculation across morning, lunch break, afternoon, end of day, Friday, Saturday, and Sunday.
+- [x] 8.3 Add unit tests for T+2 weekday settlement, including Friday-to-Tuesday settlement.
+- [x] 8.4 Add unit tests for execution constraints: sufficient cash buy, insufficient cash rejection, sufficient sellable sell, unsettled security sell rejection, and outside-window rejection.
+- [x] 8.5 Add worker tests for idempotent tick dispatch, concurrent claim behavior, stale claim recovery, skipped market-data ticks, valid hold decisions, valid trade decisions, and invalid agent output.
+- [x] 8.6 Add API integration tests for session CRUD, lifecycle transitions, history reads, and organization scope isolation.
+- [x] 8.7 Run the relevant unit and integration test suites and fix regressions.
 
 ## 9. Documentation
 
