@@ -22,10 +22,10 @@
 
 ## 4. Market Data Snapshot
 
-- [ ] 4.1 Add a market-data snapshot service that uses the existing stock price/intraday read path for the session symbol.
-- [ ] 4.2 Define and implement freshness validation for latest usable price during a trading window, based on verified runtime behavior of the existing provider integration.
-- [ ] 4.3 Persist market-data snapshot details or deterministic summaries with each processable tick.
-- [ ] 4.4 Mark ticks as `skipped` with `NO_FRESH_MARKET_DATA` without calling the agent when no fresh price is available.
+- [x] 4.1 Add a market-data snapshot service that uses the existing stock price/intraday read path for the session symbol.
+- [x] 4.2 Define and implement freshness validation for latest usable price during a trading window, based on verified runtime behavior of the existing provider integration.
+- [x] 4.3 Persist market-data snapshot details or deterministic summaries with each processable tick.
+- [x] 4.4 Mark ticks as `skipped` with `NO_FRESH_MARKET_DATA` without calling the agent when no fresh price is available.
 
 ## 5. Trade Agent Runtime
 

@@ -94,6 +94,9 @@ from app.services.stocks.sandbox_trade_agent_service import (
 from app.services.stocks.sandbox_trade_dispatcher_service import (
     SandboxTradeAgentDispatcherService,
 )
+from app.services.stocks.sandbox_trade_market_data_service import (
+    SandboxTradeMarketDataService,
+)
 from app.services.stocks.sandbox_trade_queue_service import SandboxTradeQueueService
 from app.services.stocks.sandbox_trade_schedule_calculator import (
     calculate_next_sandbox_trade_run_at,
@@ -421,6 +424,20 @@ def get_sandbox_trade_agent_dispatcher_service() -> (
         windows=windows,
         cadence_seconds=settings.SANDBOX_TRADE_AGENT_CADENCE_SECONDS,
         lock_seconds=settings.SANDBOX_TRADE_AGENT_TICK_LOCK_SECONDS,
+    )
+
+
+@lru_cache
+def get_sandbox_trade_market_data_service() -> SandboxTradeMarketDataService:
+    """Get singleton sandbox trade-agent market data service."""
+    settings = get_settings()
+    windows = parse_sandbox_trade_trading_windows(
+        settings.SANDBOX_TRADE_AGENT_TRADING_WINDOWS
+    )
+    return SandboxTradeMarketDataService(
+        price_service=get_stock_price_service(),
+        tick_repo=get_sandbox_trade_tick_repo(),
+        windows=windows,
     )
 
 

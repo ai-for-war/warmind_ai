@@ -13,6 +13,7 @@ from pymongo.errors import DuplicateKeyError
 
 from app.domain.models.sandbox_trade_agent import (
     SandboxTradeAgentRuntimeConfig,
+    SandboxTradeMarketSnapshot,
     SandboxTradeOrder,
     SandboxTradePortfolioSnapshot,
     SandboxTradePosition,
@@ -352,6 +353,69 @@ class SandboxTradeTickRepository:
             {
                 "_id": object_id,
                 "status": SandboxTradeTickStatus.DISPATCHING.value,
+                "lock_token": lock_token,
+            },
+            {"$set": update_fields},
+            return_document=ReturnDocument.AFTER,
+        )
+        return self._to_model(document)
+
+    async def attach_market_snapshot(
+        self,
+        *,
+        tick_id: str,
+        lock_token: str,
+        market_snapshot: SandboxTradeMarketSnapshot,
+    ) -> SandboxTradeTick | None:
+        """Persist a market snapshot on a running tick owned by one worker."""
+        object_id = _parse_object_id(tick_id)
+        if object_id is None:
+            return None
+
+        document = await self.collection.find_one_and_update(
+            {
+                "_id": object_id,
+                "status": SandboxTradeTickStatus.RUNNING.value,
+                "lock_token": lock_token,
+            },
+            {
+                "$set": {
+                    "market_snapshot": market_snapshot.model_dump(mode="json"),
+                    "updated_at": datetime.now(timezone.utc),
+                }
+            },
+            return_document=ReturnDocument.AFTER,
+        )
+        return self._to_model(document)
+
+    async def mark_skipped_no_fresh_market_data(
+        self,
+        *,
+        tick_id: str,
+        lock_token: str,
+        completed_at: datetime,
+        skip_reason: str,
+        market_snapshot: SandboxTradeMarketSnapshot | None = None,
+    ) -> SandboxTradeTick | None:
+        """Mark one worker-owned tick as skipped before any agent call."""
+        object_id = _parse_object_id(tick_id)
+        if object_id is None:
+            return None
+
+        update_fields: dict[str, object] = {
+            "status": SandboxTradeTickStatus.SKIPPED.value,
+            "completed_at": completed_at,
+            "skip_reason": skip_reason,
+            "lock_expires_at": None,
+            "updated_at": datetime.now(timezone.utc),
+        }
+        if market_snapshot is not None:
+            update_fields["market_snapshot"] = market_snapshot.model_dump(mode="json")
+
+        document = await self.collection.find_one_and_update(
+            {
+                "_id": object_id,
+                "status": SandboxTradeTickStatus.RUNNING.value,
                 "lock_token": lock_token,
             },
             {"$set": update_fields},
