@@ -12,6 +12,10 @@ from app.domain.schemas.stock_company import (
     StockCompanyOverviewResponse,
     StockCompanySubsidiariesQuery,
 )
+from app.domain.schemas.stock_financial_report import (
+    StockFinancialReportQuery,
+    StockFinancialReportResponse,
+)
 
 
 def _utc(year: int, month: int, day: int, hour: int = 0) -> datetime:
@@ -152,3 +156,54 @@ def test_stock_company_response_normalizes_symbol_and_defaults_source() -> None:
     assert response.symbol == "FPT"
     assert response.source == "VCI"
     assert response.cache_hit is False
+
+
+def test_stock_financial_report_query_defaults_to_quarter() -> None:
+    query = StockFinancialReportQuery()
+
+    assert query.period == "quarter"
+
+
+def test_stock_financial_report_query_normalizes_period() -> None:
+    query = StockFinancialReportQuery(period=" Year ")
+
+    assert query.period == "year"
+
+
+def test_stock_financial_report_query_rejects_unsupported_period() -> None:
+    with pytest.raises(ValueError):
+        StockFinancialReportQuery(period="month")
+
+
+def test_stock_financial_report_response_validates_report_contract() -> None:
+    response = StockFinancialReportResponse(
+        symbol=" vci ",
+        report_type="income-statement",
+        period="quarter",
+        periods=["2025-Q4", "2025-Q3"],
+        items=[
+            {
+                "item": "Doanh thu",
+                "item_id": "revenue",
+                "values": {"2025-Q4": 1000, "2025-Q3": None},
+            }
+        ],
+    )
+
+    assert response.symbol == "VCI"
+    assert response.source == "KBS"
+    assert response.report_type == "income-statement"
+    assert response.period == "quarter"
+    assert response.cache_hit is False
+    assert response.items[0].values == {"2025-Q4": 1000, "2025-Q3": None}
+
+
+def test_stock_financial_report_response_rejects_unsupported_report_type() -> None:
+    with pytest.raises(ValueError):
+        StockFinancialReportResponse(
+            symbol="VCI",
+            report_type="overview",
+            period="quarter",
+            periods=[],
+            items=[],
+        )

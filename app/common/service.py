@@ -77,6 +77,11 @@ from app.services.stocks.cache import StockCatalogCache
 from app.services.stocks.company_cache import StockCompanyCache
 from app.services.stocks.company_gateway import VnstockCompanyGateway
 from app.services.stocks.company_service import StockCompanyService
+from app.services.stocks.financial_report_cache import StockFinancialReportCache
+from app.services.stocks.financial_report_gateway import (
+    VnstockFinancialReportGateway,
+)
+from app.services.stocks.financial_report_service import StockFinancialReportService
 from app.services.stocks.price_cache import StockPriceCache
 from app.services.stocks.price_gateway import VnstockPriceGateway
 from app.services.stocks.price_service import StockPriceService
@@ -243,6 +248,13 @@ def get_stock_price_cache() -> StockPriceCache:
 
 
 @lru_cache
+def get_stock_financial_report_cache() -> StockFinancialReportCache:
+    """Get singleton stock financial report cache helper."""
+    client = RedisClient.get_client()
+    return StockFinancialReportCache(client)
+
+
+@lru_cache
 def get_vnstock_listing_gateway() -> VnstockListingGateway:
     """Get singleton vnstock listing gateway."""
     return VnstockListingGateway()
@@ -258,6 +270,12 @@ def get_vnstock_company_gateway() -> VnstockCompanyGateway:
 def get_vnstock_price_gateway() -> VnstockPriceGateway:
     """Get singleton vnstock price gateway."""
     return VnstockPriceGateway()
+
+
+@lru_cache
+def get_vnstock_financial_report_gateway() -> VnstockFinancialReportGateway:
+    """Get singleton vnstock financial report gateway."""
+    return VnstockFinancialReportGateway()
 
 
 @lru_cache
@@ -296,6 +314,16 @@ def get_stock_price_service() -> StockPriceService:
         repository=get_stock_symbol_repo(),
         gateway=get_vnstock_price_gateway(),
         cache=get_stock_price_cache(),
+    )
+
+
+@lru_cache
+def get_stock_financial_report_service() -> StockFinancialReportService:
+    """Get singleton stock financial report service."""
+    return StockFinancialReportService(
+        repository=get_stock_symbol_repo(),
+        gateway=get_vnstock_financial_report_gateway(),
+        cache=get_stock_financial_report_cache(),
     )
 
 

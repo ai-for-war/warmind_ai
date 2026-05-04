@@ -13,6 +13,7 @@ from app.api.deps import (
 from app.common.service import (
     get_stock_catalog_service,
     get_stock_company_service,
+    get_stock_financial_report_service,
     get_stock_price_service,
 )
 from app.domain.models.user import User
@@ -41,7 +42,13 @@ from app.domain.schemas.stock_price import (
     StockPriceIntradayQuery,
     StockPriceIntradayResponse,
 )
+from app.domain.schemas.stock_financial_report import (
+    StockFinancialReportQuery,
+    StockFinancialReportResponse,
+    StockFinancialReportType,
+)
 from app.services.stocks.company_service import StockCompanyService
+from app.services.stocks.financial_report_service import StockFinancialReportService
 from app.services.stocks.price_service import StockPriceService
 from app.services.stocks.stock_catalog_service import StockCatalogService
 
@@ -218,3 +225,21 @@ async def get_stock_price_intraday(
 ) -> StockPriceIntradayResponse:
     """Return intraday trade timeseries for one stock symbol."""
     return await service.get_intraday(symbol, query)
+
+
+@router.get(
+    "/{symbol}/financial-reports/{report_type}",
+    response_model=StockFinancialReportResponse,
+)
+async def get_stock_financial_report(
+    symbol: str,
+    report_type: StockFinancialReportType,
+    query: StockFinancialReportQuery = Depends(),
+    _: User = Depends(get_current_active_user),
+    __: OrganizationContext = Depends(get_current_organization_context),
+    service: StockFinancialReportService = Depends(
+        get_stock_financial_report_service
+    ),
+) -> StockFinancialReportResponse:
+    """Return one KBS-backed financial report table for one stock symbol."""
+    return await service.get_report(symbol, report_type, query)
