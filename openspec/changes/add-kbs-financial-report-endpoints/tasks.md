@@ -29,8 +29,8 @@
 
 ## 5. Tests
 
-- [ ] 5.1 Add schema tests for report type, period defaults, unsupported period rejection, and response validation
-- [ ] 5.2 Add gateway tests for report-method mapping, DataFrame conversion, period ordering, NaN normalization, and unsupported payload rejection
-- [ ] 5.3 Add service tests for symbol normalization, unknown symbol rejection before upstream calls, cache hits, cache writes, stale fallback, empty-data `404`, and cache variant isolation
-- [ ] 5.4 Add router tests for authenticated organization access, request validation, successful response shape, and no aggregate fetch behavior
-- [ ] 5.5 Run the focused stock financial report test suite and any existing stock service/router tests affected by the change
+- [x] 5.1 Add schema tests for report type, period defaults, unsupported period rejection, and response validation
+- [x] 5.2 Add gateway tests for report-method mapping, DataFrame conversion, period ordering, NaN normalization, and unsupported payload rejection
+- [x] 5.3 Add service tests for symbol normalization, unknown symbol rejection before upstream calls, cache hits, cache writes, stale fallback, empty-data `404`, and cache variant isolation
+- [x] 5.4 Add router tests for authenticated organization access, request validation, successful response shape, and no aggregate fetch behavior
+- [x] 5.5 Run the focused stock financial report test suite and any existing stock service/router tests affected by the change
