@@ -1,8 +1,8 @@
 ## 1. Schema And API Contract
 
-- [ ] 1.1 Add stock financial report query, enum, item, and response schemas for report type, period, ordered periods, row `values`, and `cache_hit`
-- [ ] 1.2 Validate supported report types `income-statement`, `balance-sheet`, `cash-flow`, and `ratio`
-- [ ] 1.3 Validate supported periods `quarter` and `year`, defaulting omitted period to `quarter`
+- [x] 1.1 Add stock financial report query, enum, item, and response schemas for report type, period, ordered periods, row `values`, and `cache_hit`
+- [x] 1.2 Validate supported report types `income-statement`, `balance-sheet`, `cash-flow`, and `ratio`
+- [x] 1.3 Validate supported periods `quarter` and `year`, defaulting omitted period to `quarter`
 
 ## 2. KBS Gateway
 
