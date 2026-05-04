@@ -22,10 +22,10 @@
 
 ## 4. Routing And Dependency Wiring
 
-- [ ] 4.1 Wire the financial report cache, gateway, and service factories in `app/common/service.py`
-- [ ] 4.2 Extend the stock router with `GET /api/v1/stocks/{symbol}/financial-reports/{report_type}`
-- [ ] 4.3 Reuse the existing active-user and organization-context dependencies for the new endpoint
-- [ ] 4.4 Return the normalized financial report response from the router without adding aggregate all-report behavior
+- [x] 4.1 Wire the financial report cache, gateway, and service factories in `app/common/service.py`
+- [x] 4.2 Extend the stock router with `GET /api/v1/stocks/{symbol}/financial-reports/{report_type}`
+- [x] 4.3 Reuse the existing active-user and organization-context dependencies for the new endpoint
+- [x] 4.4 Return the normalized financial report response from the router without adding aggregate all-report behavior
 
 ## 5. Tests
 
