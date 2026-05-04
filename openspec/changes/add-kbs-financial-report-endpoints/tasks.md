@@ -14,11 +14,11 @@
 
 ## 3. Caching And Service
 
-- [ ] 3.1 Add a Redis cache helper for financial report responses keyed by symbol, report type, and period
-- [ ] 3.2 Add `StockFinancialReportService` to validate symbols through the stock catalog before upstream reads
-- [ ] 3.3 Implement cache hit, upstream fetch on miss, successful response caching, and same-variant stale-cache fallback
-- [ ] 3.4 Return `404` when a valid symbol has no KBS rows for the requested report type and period
-- [ ] 3.5 Map invalid request inputs to client errors and unexpected upstream/runtime failures to gateway errors when no stale cache exists
+- [x] 3.1 Add a Redis cache helper for financial report responses keyed by symbol, report type, and period
+- [x] 3.2 Add `StockFinancialReportService` to validate symbols through the stock catalog before upstream reads
+- [x] 3.3 Implement cache hit, upstream fetch on miss, successful response caching, and same-variant stale-cache fallback
+- [x] 3.4 Return `404` when a valid symbol has no KBS rows for the requested report type and period
+- [x] 3.5 Map invalid request inputs to client errors and unexpected upstream/runtime failures to gateway errors when no stale cache exists
 
 ## 4. Routing And Dependency Wiring
 
