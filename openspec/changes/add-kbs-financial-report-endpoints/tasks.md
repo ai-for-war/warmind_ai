@@ -6,11 +6,11 @@
 
 ## 2. KBS Gateway
 
-- [ ] 2.1 Add `VnstockFinancialReportGateway` for `Finance(symbol=..., source="KBS")`
-- [ ] 2.2 Map each public report type to the exact KBS finance method used by the runtime
-- [ ] 2.3 Convert DataFrame-like payloads into ordered rows with `item`, `item_id`, and period-keyed `values`
-- [ ] 2.4 Normalize missing numeric cells such as NaN to `None`
-- [ ] 2.5 Document the runtime mismatch around `display_mode` and hierarchy metadata near the KBS integration point
+- [x] 2.1 Add `VnstockFinancialReportGateway` for `Finance(symbol=..., source="KBS")`
+- [x] 2.2 Map each public report type to the exact KBS finance method used by the runtime
+- [x] 2.3 Convert DataFrame-like payloads into ordered rows with `item`, `item_id`, and period-keyed `values`
+- [x] 2.4 Normalize missing numeric cells such as NaN to `None`
+- [x] 2.5 Document the runtime mismatch around `display_mode` and hierarchy metadata near the KBS integration point
 
 ## 3. Caching And Service
 
