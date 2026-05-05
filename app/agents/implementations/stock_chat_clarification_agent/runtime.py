@@ -6,13 +6,29 @@ from functools import lru_cache
 
 from app.agents.runtime import (
     AGENT_OPENAI_REASONING_OPTIONS as STOCK_CHAT_OPENAI_REASONING_OPTIONS,
+)
+from app.agents.runtime import (
     AGENT_PROVIDER_AZURA as STOCK_CHAT_PROVIDER_AZURA,
+)
+from app.agents.runtime import (
     AGENT_PROVIDER_MINIMAX as STOCK_CHAT_PROVIDER_MINIMAX,
+)
+from app.agents.runtime import (
     AGENT_PROVIDER_OPENAI as STOCK_CHAT_PROVIDER_OPENAI,
+)
+from app.agents.runtime import (
     AGENT_PROVIDER_ZAI as STOCK_CHAT_PROVIDER_ZAI,
+)
+from app.agents.runtime import (
     AgentModelCatalogEntry as StockChatModelCatalogEntry,
+)
+from app.agents.runtime import (
     AgentProviderCatalogEntry as StockChatProviderCatalogEntry,
+)
+from app.agents.runtime import (
     AgentRuntimeConfig as StockChatRuntimeConfig,
+)
+from app.agents.runtime import (
     build_chat_model,
     build_runtime_catalog,
     get_default_runtime_config,
@@ -25,9 +41,9 @@ STOCK_CHAT_CLARIFICATION_TEMPERATURE = 0.0
 
 
 @lru_cache
-def get_stock_chat_clarification_runtime_catalog() -> (
-    tuple[StockChatProviderCatalogEntry, ...]
-):
+def get_stock_chat_clarification_runtime_catalog() -> tuple[
+    StockChatProviderCatalogEntry, ...
+]:
     """Return the server-side stock-chat clarification runtime catalog."""
     settings = get_settings()
     return build_runtime_catalog(
@@ -44,7 +60,7 @@ def get_stock_chat_clarification_runtime_catalog() -> (
         zai_models=(
             StockChatModelCatalogEntry(
                 model="glm-5.1",
-                is_default=False,
+                is_default=True,
             ),
             StockChatModelCatalogEntry(
                 model="glm-5-turbo",
@@ -62,13 +78,13 @@ def get_stock_chat_clarification_runtime_catalog() -> (
                 model="gpt-5.4-mini",
                 reasoning_options=STOCK_CHAT_OPENAI_REASONING_OPTIONS,
                 default_reasoning="low",
-                is_default=True,
+                is_default=False,
             ),
             StockChatModelCatalogEntry(
                 model="gpt-5.4",
                 reasoning_options=STOCK_CHAT_OPENAI_REASONING_OPTIONS,
-                default_reasoning="low",
-                is_default=False,
+                default_reasoning="medium",
+                is_default=True,
             ),
             StockChatModelCatalogEntry(
                 model="gpt-5.2",
