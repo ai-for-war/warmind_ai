@@ -57,7 +57,7 @@ class StockChatMessageRepository:
         user_id: str,
         organization_id: str,
         skip: int = 0,
-        limit: int = 100,
+        limit: int | None = 100,
     ) -> list[StockChatMessage]:
         """List active messages for one owned stock-chat conversation chronologically."""
         cursor = (
@@ -71,8 +71,9 @@ class StockChatMessageRepository:
             )
             .sort([("created_at", ASCENDING), ("_id", ASCENDING)])
             .skip(skip)
-            .limit(limit)
         )
+        if limit is not None:
+            cursor = cursor.limit(limit)
 
         messages: list[StockChatMessage] = []
         async for document in cursor:

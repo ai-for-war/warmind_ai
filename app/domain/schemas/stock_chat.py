@@ -16,6 +16,13 @@ class StockChatSendMessageRequest(StockSchemaBase):
     content: str = Field(..., min_length=1, max_length=10000)
 
 
+class StockChatSendMessageAcceptedResponse(StockSchemaBase):
+    """HTTP response returned after the user turn is accepted for processing."""
+
+    conversation_id: str = Field(..., min_length=1)
+    user_message_id: str = Field(..., min_length=1)
+
+
 class StockChatClarificationOptionResponse(StockSchemaBase):
     """One user-facing suggested answer for a clarification prompt."""
 
@@ -25,7 +32,7 @@ class StockChatClarificationOptionResponse(StockSchemaBase):
 
 
 class StockChatClarificationResponse(StockSchemaBase):
-    """User-facing clarification payload returned when context is missing."""
+    """One user-facing clarification payload emitted when context is missing."""
 
     question: str = Field(..., min_length=1, max_length=1000)
     options: list[StockChatClarificationOptionResponse] = Field(
@@ -36,13 +43,17 @@ class StockChatClarificationResponse(StockSchemaBase):
 
 
 class StockChatClarificationRequiredResponse(StockSchemaBase):
-    """Response returned when the user must provide more context."""
+    """Socket payload emitted when the user must provide more context."""
 
     status: Literal["clarification_required"]
     conversation_id: str = Field(..., min_length=1)
     user_message_id: str = Field(..., min_length=1)
     assistant_message_id: str = Field(..., min_length=1)
-    clarification: StockChatClarificationResponse
+    clarification: list[StockChatClarificationResponse] = Field(
+        ...,
+        min_length=1,
+        max_length=3,
+    )
 
 
-StockChatSendMessageResponse = StockChatClarificationRequiredResponse
+StockChatSendMessageResponse = StockChatSendMessageAcceptedResponse

@@ -20,11 +20,11 @@
 
 ## 4. Stock-Chat Service
 
-- [ ] 4.1 Implement first-message flow that creates a stock-chat conversation, persists the user message, loads history, and invokes the Clarification Agent.
-- [ ] 4.2 Implement follow-up flow that validates the stock-chat conversation, persists the user message, loads full chronological history, and invokes the Clarification Agent.
-- [ ] 4.3 Persist assistant clarification messages only when the agent returns `clarification_required`.
-- [ ] 4.4 Hand off to downstream processing without persisting a clarification assistant message when context is sufficient.
-- [ ] 4.5 Ensure phase-1 service flow does not invoke analyst, risk, report-generation, or trading agents.
+- [x] 4.1 Implement first-message flow that creates a stock-chat conversation, persists the user message, loads history, and invokes the Clarification Agent.
+- [x] 4.2 Implement follow-up flow that validates the stock-chat conversation, persists the user message, loads full chronological history, and invokes the Clarification Agent.
+- [x] 4.3 Persist assistant clarification messages only when the agent returns `clarification_required`.
+- [x] 4.4 Hand off to downstream processing without persisting a clarification assistant message when context is sufficient.
+- [x] 4.5 Ensure phase-1 service flow does not invoke analyst, risk, report-generation, or trading agents.
 
 ## 5. Tests
 

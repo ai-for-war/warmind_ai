@@ -48,7 +48,7 @@ class StockChatClarificationOption(BaseModel):
 
 
 class StockChatClarificationPayload(BaseModel):
-    """Clarification prompt returned when the transcript is missing context."""
+    """One clarification prompt returned when the transcript is missing context."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -85,12 +85,16 @@ class StockChatClarificationResult(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     status: Literal["clarification_required", "continue"]
-    clarification: StockChatClarificationPayload | None = None
+    clarification: list[StockChatClarificationPayload] | None = Field(
+        default=None,
+        min_length=1,
+        max_length=3,
+    )
 
     @model_validator(mode="after")
     def validate_status_payload(self) -> "StockChatClarificationResult":
         """Enforce one of the two allowed clarification decisions."""
-        if self.status == "clarification_required" and self.clarification is None:
+        if self.status == "clarification_required" and not self.clarification:
             raise ValueError(
                 "clarification is required when status is clarification_required"
             )

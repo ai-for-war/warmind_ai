@@ -15,3 +15,17 @@ class StockChatClarificationNotImplementedError(AppException):
 
     default_message = "Stock-chat clarification service is not implemented yet"
     status_code = 501
+
+
+class StockChatClarificationAgentError(AppException):
+    """Raised when the stock-chat clarification agent cannot return valid output."""
+
+    default_message = "Stock-chat clarification agent failed"
+    status_code = 502
+
+
+class StockChatDownstreamNotImplementedError(AppException):
+    """Raised when clarification is complete but downstream handling is absent."""
+
+    default_message = "Stock-chat downstream processing is not implemented yet"
+    status_code = 501

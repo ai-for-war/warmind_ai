@@ -7,12 +7,14 @@ The system SHALL provide a dedicated authenticated `POST /stock-chat/messages` e
 - **WHEN** an authenticated active user calls `POST /stock-chat/messages` without a `conversation_id`
 - **THEN** the system creates a new stock-chat conversation in the current user and organization scope
 - **AND** the system persists the submitted user message in that stock-chat conversation
-- **AND** the system returns the created `conversation_id` and `user_message_id`
+- **AND** the HTTP response returns the created `conversation_id` and `user_message_id`
+- **AND** clarification evaluation runs asynchronously after the HTTP response
 
 #### Scenario: Submit a follow-up stock-chat message
 - **WHEN** an authenticated active user calls `POST /stock-chat/messages` with a valid stock-chat `conversation_id`
 - **THEN** the system appends the submitted user message to that stock-chat conversation
-- **AND** the system uses the full persisted stock-chat message history for clarification evaluation
+- **AND** the HTTP response returns the `conversation_id` and `user_message_id`
+- **AND** the asynchronous clarification evaluation uses the full persisted stock-chat message history
 
 #### Scenario: Reject inaccessible stock-chat conversation
 - **WHEN** a user submits a stock-chat message with a `conversation_id` that does not exist or belongs to another user or organization
@@ -44,25 +46,25 @@ The system SHALL evaluate stock-chat readiness by invoking a Clarification Agent
 - **THEN** the system accepts natural-language `content` as the clarification answer
 - **AND** the system MUST NOT require a backend state patch payload for the selected option
 
-### Requirement: Clarification response returns user-facing question and options when context is missing
-When the Clarification Agent determines that context is insufficient, the system SHALL return `status: clarification_required` with one user-facing clarification question and two to four user-facing options when options are applicable. The response MUST include an `assistant_message_id` for the persisted clarification message.
+### Requirement: Clarification response emits user-facing questions and options when context is missing
+When the Clarification Agent determines that context is insufficient, the system SHALL emit a Socket.IO `stock-chat:clarification:required` event containing `status: clarification_required` with a `clarification` list of one to three user-facing clarification items. Each clarification item MUST contain one user-facing question and two to four user-facing options. The socket payload MUST include an `assistant_message_id` for the persisted clarification message.
 
 #### Scenario: Ask for time horizon when investment-decision question is missing it
 - **WHEN** a user asks whether to buy, sell, or hold a stock without specifying a time horizon
-- **THEN** the system returns `status: clarification_required`
-- **AND** the clarification asks for the intended time horizon
-- **AND** the clarification includes user-facing options such as short term, medium term, and long term
+- **THEN** the system emits `status: clarification_required`
+- **AND** one clarification item asks for the intended time horizon
+- **AND** that clarification item includes user-facing options such as short term, medium term, and long term
 - **AND** the system persists the assistant clarification message
 
 #### Scenario: Ask for symbol when stock identity is missing
 - **WHEN** a user asks a stock question without a clear stock symbol or company identity
-- **THEN** the system returns `status: clarification_required`
-- **AND** the clarification asks which stock or company the user wants to discuss
+- **THEN** the system emits `status: clarification_required`
+- **AND** one clarification item asks which stock or company the user wants to discuss
 
 #### Scenario: Ask for intent when requested task is unclear
 - **WHEN** a user mentions a stock but does not make the desired task clear
-- **THEN** the system returns `status: clarification_required`
-- **AND** the clarification asks what kind of help the user wants
+- **THEN** the system emits `status: clarification_required`
+- **AND** one clarification item asks what kind of help the user wants
 
 ### Requirement: Sufficient context hands off internally without a readiness response
 When the Clarification Agent determines that the conversation has enough context for later analyst agents, the system SHALL hand off to downstream processing instead of returning a user-facing readiness response. The system MUST NOT persist an assistant message for the clarification step when no clarification is required.
@@ -84,5 +86,5 @@ The stock-chat phase-1 endpoint SHALL only perform intake and clarification read
 - **THEN** the clarification step does not return a buy, sell, hold, price target, risk assessment, news summary, technical analysis, or fundamental analysis result as a readiness response
 
 #### Scenario: Clarification response does not call analyst agents
-- **WHEN** the system returns `status: clarification_required`
+- **WHEN** the system emits `status: clarification_required`
 - **THEN** no stock analyst agent is invoked for that request

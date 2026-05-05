@@ -17,7 +17,7 @@ Stock-chat persistence must use dedicated MongoDB collections, not the existing 
 - Provide a dedicated authenticated stock-chat message endpoint.
 - Persist stock-chat conversations and messages in separate collections.
 - Let the Clarification Agent read full stock-chat history for each turn.
-- Return structured clarification prompts with options when context is missing.
+- Emit structured clarification prompts with options over Socket.IO when context is missing.
 - Hand off to downstream processing when enough context exists for later analyst agents.
 - Persist assistant clarification messages so short follow-up replies like "Trung hạn" retain context.
 - Avoid returning or persisting a synthetic readiness assistant message, because no user-facing clarification has been produced.
@@ -43,13 +43,13 @@ This is preferred over adding a new `kind` field to the existing `conversations`
 
 Alternative considered: reuse existing conversations/messages with a discriminator. That would reduce repository code, but it increases coupling with legacy chat and lead-agent filtering rules and risks future endpoint leakage.
 
-### Decision: Return only clarification prompts from the clarification step
+### Decision: Acknowledge HTTP immediately and emit clarification prompts over Socket.IO
 
-`POST /api/v1/stock-chat/messages` will persist the user message and run the Clarification Agent. If context is missing, the endpoint returns the clarification question and options in the HTTP response. If context is sufficient, the system hands off to downstream processing instead of returning a `ready_for_analysis` response to the client.
+`POST /api/v1/stock-chat/messages` will persist the user message and return an HTTP payload containing only `conversation_id` and `user_message_id`. Clarification evaluation then runs asynchronously. If context is missing, the service persists the assistant clarification message and emits `stock-chat:clarification:required` with a `clarification` list of question/options items. If context is sufficient, the system hands off to downstream processing instead of returning a `ready_for_analysis` response to the client.
 
-This is preferred because the client only needs to render a prompt when more context is required. A readiness-only response would expose an internal routing decision and force the frontend to handle an unnecessary terminal state.
+This is preferred because the HTTP request should not wait on the LLM clarification step, and the client already uses Socket.IO for AI lifecycle updates. A readiness-only response would expose an internal routing decision and force the frontend to handle an unnecessary terminal state.
 
-Alternative considered: reuse the existing chat Socket.IO workflow. That adds unnecessary async lifecycle and event handling for a response that is expected to be short and structured.
+Alternative considered: return `clarification_required` directly from HTTP. That is simpler, but it blocks the request on the LLM and is inconsistent with the existing async chat and lead-agent message lifecycle.
 
 ### Decision: Clarification is history-driven, not state-patch-driven
 
@@ -61,7 +61,7 @@ Alternative considered: backend-managed normalized state with option `value` pat
 
 ### Decision: Persist assistant clarification only
 
-When context is missing, the system will persist the assistant's clarification question and options as an assistant message. This is required so later short answers remain understandable from history.
+When context is missing, the system will persist the assistant's clarification questions and options as an assistant message. This is required so later short answers remain understandable from history.
 
 When context is sufficient, the system will not persist an assistant message for clarification and will hand off internally. No assistant answer has been produced at this point, and persisting a synthetic readiness message would pollute the transcript that later analyst agents read.
 
@@ -70,10 +70,10 @@ When context is sufficient, the system will not persist an assistant message for
 The Clarification Agent will use a strict structured output schema with:
 
 - `status`: `clarification_required` or `continue`
-- `clarification`: required only for `clarification_required`
+- `clarification`: a list with one to three user-facing clarification items, required only for `clarification_required`
 - no user-facing payload for `continue`
 
-The prompt will forbid stock analysis and require the agent to ask at most one clarification question per turn. The service will validate the structured output before persisting or returning it.
+The prompt will forbid stock analysis and require the agent to ask only about missing required context. The service will validate the structured output before persisting or emitting it.
 
 ### Decision: Minimal readiness policy for phase 1
 
