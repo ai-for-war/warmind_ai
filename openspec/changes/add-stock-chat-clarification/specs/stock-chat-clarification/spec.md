@@ -64,25 +64,24 @@ When the Clarification Agent determines that context is insufficient, the system
 - **THEN** the system returns `status: clarification_required`
 - **AND** the clarification asks what kind of help the user wants
 
-### Requirement: Ready response returns readiness without persisting an assistant message
-When the Clarification Agent determines that the conversation has enough context for later analyst agents, the system SHALL return `status: ready_for_analysis` with a short `ready_summary`. The system MUST NOT persist an assistant message for the ready response.
+### Requirement: Sufficient context hands off internally without a readiness response
+When the Clarification Agent determines that the conversation has enough context for later analyst agents, the system SHALL hand off to downstream processing instead of returning a user-facing readiness response. The system MUST NOT persist an assistant message for the clarification step when no clarification is required.
 
-#### Scenario: Return ready after required context is present
+#### Scenario: Hand off after required context is present
 - **WHEN** the stock-chat history identifies the stock, the user intent, and any required time horizon
-- **THEN** the system returns `status: ready_for_analysis`
-- **AND** the response includes `assistant_message_id: null`
-- **AND** the response includes a short `ready_summary`
+- **THEN** the system does not return a `ready_for_analysis` response to the client
+- **AND** the system proceeds with downstream handling
 
 #### Scenario: Do not persist readiness as an assistant message
-- **WHEN** the Clarification Agent returns `ready_for_analysis`
+- **WHEN** the Clarification Agent determines that no clarification is required
 - **THEN** the system MUST NOT append an assistant message to the stock-chat message collection for that turn
 
 ### Requirement: Phase-1 stock chat does not perform analysis
 The stock-chat phase-1 endpoint SHALL only perform intake and clarification readiness evaluation. It MUST NOT run technical, fundamental, news, risk, decision, report-generation, or trading agents, and it MUST NOT return an investment recommendation.
 
-#### Scenario: Ready response does not include stock analysis
-- **WHEN** the system returns `status: ready_for_analysis`
-- **THEN** the response does not include a buy, sell, hold, price target, risk assessment, news summary, technical analysis, or fundamental analysis result
+#### Scenario: Clarification step does not return stock analysis
+- **WHEN** context is sufficient and the system hands off internally
+- **THEN** the clarification step does not return a buy, sell, hold, price target, risk assessment, news summary, technical analysis, or fundamental analysis result as a readiness response
 
 #### Scenario: Clarification response does not call analyst agents
 - **WHEN** the system returns `status: clarification_required`

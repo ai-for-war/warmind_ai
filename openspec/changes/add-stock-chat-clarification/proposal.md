@@ -6,10 +6,10 @@ Users need a dedicated stock-chat entry point that can determine whether a stock
 
 - Add a dedicated authenticated stock-chat message endpoint for phase 1 intake and clarification.
 - Store stock-chat conversations and messages in stock-chat-specific MongoDB collections instead of reusing the existing generic chat or lead-agent collections.
-- Add a Clarification Agent that reads the full stock-chat message history and returns either `clarification_required` with a question and options, or `ready_for_analysis` with a short readiness summary.
+- Add a Clarification Agent that reads the full stock-chat message history and returns a user-facing response only when clarification is required.
 - Persist user messages for every stock-chat turn.
 - Persist assistant clarification messages only when additional context is required.
-- Do not persist an assistant message when the clarification agent returns `ready_for_analysis`.
+- When clarification is not required, hand off to downstream processing instead of returning a readiness response to the client.
 - Keep phase 1 scoped to clarification only; it MUST NOT run technical, fundamental, news, risk, or decision agents.
 
 ## Capabilities
