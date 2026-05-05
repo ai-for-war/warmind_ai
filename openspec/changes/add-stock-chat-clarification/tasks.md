@@ -28,9 +28,9 @@
 
 ## 5. Tests
 
-- [ ] 5.1 Add API/service tests for first-message creation and dedicated stock-chat collection persistence.
-- [ ] 5.2 Add tests for missing-symbol clarification response.
-- [ ] 5.3 Add tests for investment-decision questions missing time horizon.
-- [ ] 5.4 Add tests showing a short follow-up answer is evaluated using persisted assistant clarification history.
-- [ ] 5.5 Add tests that sufficient context does not return a readiness response and does not persist a clarification assistant message.
-- [ ] 5.6 Add tests that stock-chat requests cannot access another user's or organization's conversation.
+- [x] 5.1 Add API/service tests for first-message creation and dedicated stock-chat collection persistence.
+- [x] 5.2 Add tests for missing-symbol clarification response.
+- [x] 5.3 Add tests for investment-decision questions missing time horizon.
+- [x] 5.4 Add tests showing a short follow-up answer is evaluated using persisted assistant clarification history.
+- [x] 5.5 Add tests that sufficient context does not return a readiness response and does not persist a clarification assistant message.
+- [x] 5.6 Add tests that stock-chat requests cannot access another user's or organization's conversation.
