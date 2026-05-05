@@ -13,10 +13,10 @@
 
 ## 3. Clarification Agent
 
-- [ ] 3.1 Add a stock-chat clarification system prompt that forbids stock analysis and distinguishes ask-vs-continue decisions.
-- [ ] 3.2 Add structured output validation for clarification result and clarification question/options.
-- [ ] 3.3 Add runtime helpers to build the stock-chat clarification model from the existing provider/model configuration patterns.
-- [ ] 3.4 Ensure clarification options contain user-facing `id`, `label`, and `description` only, without backend state patch values.
+- [x] 3.1 Add a stock-chat clarification system prompt that forbids stock analysis and distinguishes ask-vs-continue decisions.
+- [x] 3.2 Add structured output validation for clarification result and clarification question/options.
+- [x] 3.3 Add runtime helpers to build the stock-chat clarification model from the existing provider/model configuration patterns.
+- [x] 3.4 Ensure clarification options contain user-facing `id`, `label`, and `description` only, without backend state patch values.
 
 ## 4. Stock-Chat Service
 
