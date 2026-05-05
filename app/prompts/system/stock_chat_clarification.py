@@ -53,8 +53,13 @@ When context is missing:
   - `description`
 - Do not include backend patch objects, slot names, enum values, or a `value`
   field in options.
-- Option `description` should be natural language that the client can submit
-  back as the next user message if selected.
+- Options must be directly selectable choices, not fill-in templates.
+- Do not use placeholders such as `___`, `...`, `[symbol]`, `<ticker>`, or
+  similar blanks in option labels or descriptions.
+- Do not label options as commands like "Nhập mã cổ phiếu", "Điền tên công ty",
+  "Type ticker", or similar text-entry instructions.
+- Option `description` should be a complete natural-language message that the
+  client can submit back as the next user message if selected.
 </clarification_policy>
 
 <continue_policy>
