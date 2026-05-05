@@ -26,6 +26,8 @@ from app.common.repo import (
     get_stock_research_report_repo,
     get_stock_research_schedule_repo,
     get_stock_research_schedule_run_repo,
+    get_stock_chat_conversation_repo,
+    get_stock_chat_message_repo,
     get_stock_symbol_repo,
     get_stock_watchlist_item_repo,
     get_stock_watchlist_repo,
@@ -51,6 +53,7 @@ from app.services.ai.lead_agent_skill_access_resolver import (
 )
 from app.services.ai.lead_agent_skill_service import LeadAgentSkillService
 from app.services.ai.pipeline_validator import PipelineValidator
+from app.services.ai.stock_chat_service import StockChatService
 from app.services.analytics.analytics_service import AnalyticsService
 from app.services.analytics.cache_manager import AnalyticsCacheManager
 from app.services.auth.auth_service import AuthService
@@ -344,6 +347,15 @@ def get_stock_research_service() -> StockResearchService:
         report_repo=get_stock_research_report_repo(),
         stock_repo=get_stock_symbol_repo(),
         notification_service=get_notification_service(),
+    )
+
+
+@lru_cache
+def get_stock_chat_service() -> StockChatService:
+    """Get singleton stock-chat intake and clarification service."""
+    return StockChatService(
+        conversation_repo=get_stock_chat_conversation_repo(),
+        message_repo=get_stock_chat_message_repo(),
     )
 
 

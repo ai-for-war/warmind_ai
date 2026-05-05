@@ -22,6 +22,8 @@ from app.repo.sheet_connection_repo import SheetConnectionRepository
 from app.repo.sheet_data_repo import SheetDataRepository
 from app.repo.sheet_sync_state_repo import SheetSyncStateRepository
 from app.repo.stock_symbol_repo import StockSymbolRepository
+from app.repo.stock_chat_conversation_repo import StockChatConversationRepository
+from app.repo.stock_chat_message_repo import StockChatMessageRepository
 from app.repo.stock_research_report_repo import StockResearchReportRepository
 from app.repo.stock_research_schedule_repo import StockResearchScheduleRepository
 from app.repo.stock_research_schedule_run_repo import (
@@ -222,6 +224,20 @@ def get_stock_symbol_repo() -> StockSymbolRepository:
     """Get singleton stock symbol repository instance."""
     db = MongoDB.get_db()
     return StockSymbolRepository(db)
+
+
+@lru_cache
+def get_stock_chat_conversation_repo() -> StockChatConversationRepository:
+    """Get singleton stock-chat conversation repository instance."""
+    db = MongoDB.get_db()
+    return StockChatConversationRepository(db)
+
+
+@lru_cache
+def get_stock_chat_message_repo() -> StockChatMessageRepository:
+    """Get singleton stock-chat message repository instance."""
+    db = MongoDB.get_db()
+    return StockChatMessageRepository(db)
 
 
 @lru_cache

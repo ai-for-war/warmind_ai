@@ -66,6 +66,10 @@ class MongoDB:
         - sheet_connections: (user_id, organization_id), (sync_enabled, organization_id)
           for organization-scoped queries
         - messages: (conversation_id, deleted_at, created_at) for message retrieval
+        - stock_chat_conversations:
+          (user_id, organization_id, deleted_at, updated_at DESC)
+        - stock_chat_messages:
+          (conversation_id, user_id, organization_id, deleted_at, created_at, _id)
 
         This method is idempotent - calling it multiple times is safe.
         MongoDB will skip index creation if the index already exists.
@@ -250,6 +254,37 @@ class MongoDB:
             background=True,
         )
         logger.info("Created index: idx_stock_symbols_snapshot_at")
+
+        # Indexes for stock-chat dedicated collections
+        await cls.db.stock_chat_conversations.create_index(
+            [
+                ("user_id", ASCENDING),
+                ("organization_id", ASCENDING),
+                ("deleted_at", ASCENDING),
+                ("updated_at", DESCENDING),
+            ],
+            name="idx_stock_chat_conversations_user_org_deleted_updated",
+            background=True,
+        )
+        logger.info(
+            "Created index: idx_stock_chat_conversations_user_org_deleted_updated"
+        )
+
+        await cls.db.stock_chat_messages.create_index(
+            [
+                ("conversation_id", ASCENDING),
+                ("user_id", ASCENDING),
+                ("organization_id", ASCENDING),
+                ("deleted_at", ASCENDING),
+                ("created_at", ASCENDING),
+                ("_id", ASCENDING),
+            ],
+            name="idx_stock_chat_messages_conversation_scope_deleted_created",
+            background=True,
+        )
+        logger.info(
+            "Created index: idx_stock_chat_messages_conversation_scope_deleted_created"
+        )
 
         # Indexes for stock_research_reports collection
         await cls.db.stock_research_reports.create_index(

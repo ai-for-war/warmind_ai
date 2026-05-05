@@ -94,6 +94,13 @@ class StockResearchEvents:
     FAILED = "stock-research:failed"
 
 
+class StockChatEvents:
+    """Socket events for stock-chat clarification and downstream lifecycle."""
+
+    CLARIFICATION_REQUIRED = "stock-chat:clarification:required"
+    FAILED = "stock-chat:failed"
+
+
 class NotificationEvents:
     """Socket events for in-app notification lifecycle updates."""
 

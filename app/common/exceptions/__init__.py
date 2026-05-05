@@ -332,3 +332,9 @@ from app.common.exceptions.stock_research_schedule_exceptions import (  # noqa: 
     StockResearchScheduleDispatchError,
     StockResearchScheduleNotFoundError,
 )
+from app.common.exceptions.stock_chat_exceptions import (  # noqa: E402
+    StockChatClarificationAgentError,
+    StockChatClarificationNotImplementedError,
+    StockChatConversationNotFoundError,
+    StockChatDownstreamNotImplementedError,
+)
