@@ -1,8 +1,8 @@
 ## 1. Data Model and Persistence
 
-- [ ] 1.1 Add stock-chat conversation and message domain models for dedicated collections.
-- [ ] 1.2 Add stock-chat conversation and message repositories scoped by user and organization.
-- [ ] 1.3 Add MongoDB indexes for stock-chat conversation ownership, organization scope, message ordering, and soft-delete filtering if soft delete is used.
+- [x] 1.1 Add stock-chat conversation and message domain models for dedicated collections.
+- [x] 1.2 Add stock-chat conversation and message repositories scoped by user and organization.
+- [x] 1.3 Add MongoDB indexes for stock-chat conversation ownership, organization scope, message ordering, and soft-delete filtering if soft delete is used.
 
 ## 2. API Schemas and Router
 
