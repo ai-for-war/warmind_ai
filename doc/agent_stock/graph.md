@@ -1,18 +1,22 @@
 ```mermaid
 flowchart TD
-    A["User Question"] --> B["Clarification Agent"]
+    A["User"] --> B["Stock Agent"]
 
     B --> C{"Enough context?"}
 
     C -->|No| D["Ask User For Missing Info"]
-    C -->|Yes| E["Technical Analyst Agent"]
-    C -->|Yes| F["Fundamental Analyst Agent"]
-    C -->|Yes| G["News & Event Analyst Agent"]
+    C -->|Yes| E["Spawn Technical Analyst Agent"]
+    C -->|Yes| F["Spawn Fundamental Analyst Agent"]
+    C -->|Yes| G["Spawn News & Event Analyst Agent"]
 
-    E --> H["Risk Agent"]
-    F --> H
-    G --> H
+    E --> H["Technical Analysis Result"]
+    F --> I["Fundamental Analysis Result"]
+    G --> J["News & Event Analysis Result"]
 
-    H --> I["Decision & Response Agent"]
-    I --> J["Final Answer"]
+    H --> K["Stock Agent Collects Results"]
+    I --> K
+    J --> K
+
+    K --> L["Stock Agent Synthesizes Decision"]
+    L --> M["Final Answer To User"]
 ```
