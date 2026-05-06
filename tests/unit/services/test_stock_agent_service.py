@@ -239,6 +239,33 @@ class _FakeSkillStreamingAgent(_FakeStreamingAgent):
         )
 
 
+class _FakeDelegatedMetadataStreamingAgent(_FakeStreamingAgent):
+    async def astream_events(
+        self,
+        payload: dict[str, object],
+        *,
+        config: dict[str, dict[str, str]] | None = None,
+        version: str | None = None,
+    ):
+        async for event in super().astream_events(
+            payload,
+            config=config,
+            version=version,
+        ):
+            yield event
+
+        self.state.update(
+            {
+                "delegation_depth": 1,
+                "delegation_parent_run_id": "delegate-parent-1",
+                "delegated_execution_metadata": {
+                    "task_id": "task-1",
+                    "objective": "Research stock catalysts",
+                },
+            }
+        )
+
+
 class _FakeToolErrorStreamingAgent(_FakeStreamingAgent):
     async def astream_events(
         self,
@@ -760,6 +787,10 @@ async def test_process_agent_response_emits_socket_lifecycle_and_persists_assist
         ChatEvents.MESSAGE_TOKEN,
         ChatEvents.MESSAGE_COMPLETED,
     ]
+    assert [
+        call.kwargs["data"]["conversation_id"]
+        for call in emit_to_user.await_args_list
+    ] == ["conv-1"] * len(emit_to_user.await_args_list)
 
     assistant_call = conversation_service.add_message.await_args
     assert assistant_call.kwargs["role"] == MessageRole.ASSISTANT
@@ -789,6 +820,70 @@ async def test_process_agent_response_emits_socket_lifecycle_and_persists_assist
     assert completed_payload["subagent_enabled"] is False
     assert completed_payload["orchestration_mode"] == "direct"
     assert completed_payload["delegation_depth"] == 0
+
+
+@pytest.mark.asyncio
+async def test_process_agent_response_persists_delegated_execution_metadata() -> None:
+    conversation_service = _conversation_service()
+    service = StockAgentService(conversation_service=conversation_service)
+    service._agent = _FakeDelegatedMetadataStreamingAgent()
+    conversation_service.get_user_conversation.return_value = _conversation(
+        thread_id=THREAD_ID
+    )
+    conversation_service.get_message.return_value = _message(
+        message_id="msg-user",
+        role=MessageRole.USER,
+        content="Need delegated context",
+        thread_id=THREAD_ID,
+        metadata=MessageMetadata(
+            subagent_enabled=False,
+            orchestration_mode="direct",
+        ),
+    )
+
+    async def _persist_assistant(**kwargs):
+        return _message(
+            message_id="msg-assistant",
+            role=MessageRole.ASSISTANT,
+            content=kwargs["content"],
+            conversation_id=kwargs["conversation_id"],
+            thread_id=kwargs["thread_id"],
+            metadata=kwargs["metadata"],
+        )
+
+    conversation_service.add_message.side_effect = _persist_assistant
+    emit_to_user = AsyncMock()
+    monkeypatch_target = stock_agent_service_module.gateway
+    original_emit = monkeypatch_target.emit_to_user
+    monkeypatch_target.emit_to_user = emit_to_user
+
+    try:
+        await service.process_agent_response(
+            user_id="user-1",
+            conversation_id="conv-1",
+            user_message_id="msg-user",
+            organization_id="org-1",
+        )
+    finally:
+        monkeypatch_target.emit_to_user = original_emit
+
+    assistant_call = conversation_service.add_message.await_args
+    metadata = assistant_call.kwargs["metadata"]
+    assert metadata is not None
+    assert metadata.delegation_depth == 1
+    assert metadata.delegation_parent_run_id == "delegate-parent-1"
+    assert metadata.delegated_execution_metadata == {
+        "task_id": "task-1",
+        "objective": "Research stock catalysts",
+    }
+
+    completed_payload = emit_to_user.await_args_list[-1].kwargs["data"]["metadata"]
+    assert completed_payload["delegation_depth"] == 1
+    assert completed_payload["delegation_parent_run_id"] == "delegate-parent-1"
+    assert completed_payload["delegated_execution_metadata"] == {
+        "task_id": "task-1",
+        "objective": "Research stock catalysts",
+    }
 
 
 @pytest.mark.asyncio

@@ -45,11 +45,11 @@
 
 ## 6. Streaming, Metadata, and Planning Parity
 
-- [ ] 6.1 Ensure stock-agent background processing emits existing chat socket started, token, tool start, tool end, plan updated, completed, and failed events keyed by stock-agent `conversation_id`.
-- [ ] 6.2 Ensure stock-agent assistant messages persist runtime model metadata, token usage, finish reason, tool calls, skill metadata, loaded skills, orchestration mode, delegation metadata, and subagent enablement.
-- [ ] 6.3 Ensure stock-agent plan snapshots are read from stock-agent checkpointed todo state and returned through `/stock-agent/conversations/{conversation_id}/plan`.
-- [ ] 6.4 Ensure stock-agent delegated worker events are filtered or surfaced consistently with lead-agent streaming behavior.
-- [ ] 6.5 Add tests for stock-agent streaming event payloads, plan update snapshots, assistant metadata, and delegated execution metadata.
+- [x] 6.1 Ensure stock-agent background processing emits existing chat socket started, token, tool start, tool end, plan updated, completed, and failed events keyed by stock-agent `conversation_id`.
+- [x] 6.2 Ensure stock-agent assistant messages persist runtime model metadata, token usage, finish reason, tool calls, skill metadata, loaded skills, orchestration mode, delegation metadata, and subagent enablement.
+- [x] 6.3 Ensure stock-agent plan snapshots are read from stock-agent checkpointed todo state and returned through `/stock-agent/conversations/{conversation_id}/plan`.
+- [x] 6.4 Ensure stock-agent delegated worker events are filtered or surfaced consistently with lead-agent streaming behavior.
+- [x] 6.5 Add tests for stock-agent streaming event payloads, plan update snapshots, assistant metadata, and delegated execution metadata.
 
 ## 7. Isolation and Regression Verification
 
