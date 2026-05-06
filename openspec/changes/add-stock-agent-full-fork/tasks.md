@@ -1,11 +1,11 @@
 ## 1. Stock-Agent Runtime Fork
 
-- [ ] 1.1 Create `app/agents/implementations/stock_agent/` by forking the lead-agent runtime package structure, including `agent.py`, `runtime.py`, `state.py`, `tools.py`, `tool_catalog.py`, `delegation.py`, and middleware modules.
-- [ ] 1.2 Rename runtime symbols to `StockAgent...`, `create_stock_agent`, `get_stock_agent_*`, and `STOCK_AGENT_*` while preserving lead-agent-equivalent behavior.
-- [ ] 1.3 Add `app/prompts/system/stock_agent.py` with stock-agent-specific prompt functions for base, todo, orchestration, worker, and summarization prompts.
-- [ ] 1.4 Update stock-agent middleware imports so all prompt, state, constants, and helper references point to stock-agent modules.
-- [ ] 1.5 Update stock-agent delegation executor to compile worker runtimes with `create_stock_agent` and stock-agent runtime config.
-- [ ] 1.6 Add stock-agent runtime unit tests mirroring lead-agent agent, runtime, middleware, tool catalog, tools, and delegation coverage.
+- [x] 1.1 Create `app/agents/implementations/stock_agent/` by forking the lead-agent runtime package structure, including `agent.py`, `runtime.py`, `state.py`, `tools.py`, `tool_catalog.py`, `delegation.py`, and middleware modules.
+- [x] 1.2 Rename runtime symbols to `StockAgent...`, `create_stock_agent`, `get_stock_agent_*`, and `STOCK_AGENT_*` while preserving lead-agent-equivalent behavior.
+- [x] 1.3 Add `app/prompts/system/stock_agent.py` with stock-agent-specific prompt functions for base, todo, orchestration, worker, and summarization prompts.
+- [x] 1.4 Update stock-agent middleware imports so all prompt, state, constants, and helper references point to stock-agent modules.
+- [x] 1.5 Update stock-agent delegation executor to compile worker runtimes with `create_stock_agent` and stock-agent runtime config.
+- [x] 1.6 Add stock-agent runtime unit tests mirroring lead-agent agent, runtime, middleware, tool catalog, tools, and delegation coverage.
 
 ## 2. Stock-Agent Checkpoint Persistence
 
