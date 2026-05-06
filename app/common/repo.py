@@ -22,6 +22,10 @@ from app.repo.sheet_connection_repo import SheetConnectionRepository
 from app.repo.sheet_data_repo import SheetDataRepository
 from app.repo.sheet_sync_state_repo import SheetSyncStateRepository
 from app.repo.stock_symbol_repo import StockSymbolRepository
+from app.repo.stock_agent_conversation_repo import StockAgentConversationRepository
+from app.repo.stock_agent_message_repo import StockAgentMessageRepository
+from app.repo.stock_agent_skill_repo import StockAgentSkillRepository
+from app.repo.stock_agent_skill_access_repo import StockAgentSkillAccessRepository
 from app.repo.stock_research_report_repo import StockResearchReportRepository
 from app.repo.stock_research_schedule_repo import StockResearchScheduleRepository
 from app.repo.stock_research_schedule_run_repo import (
@@ -122,6 +126,34 @@ def get_lead_agent_skill_access_repo() -> LeadAgentSkillAccessRepository:
     """Get singleton lead-agent skill access repository instance."""
     db = MongoDB.get_db()
     return LeadAgentSkillAccessRepository(db)
+
+
+@lru_cache
+def get_stock_agent_conversation_repo() -> StockAgentConversationRepository:
+    """Get singleton stock-agent conversation repository instance."""
+    db = MongoDB.get_db()
+    return StockAgentConversationRepository(db)
+
+
+@lru_cache
+def get_stock_agent_message_repo() -> StockAgentMessageRepository:
+    """Get singleton stock-agent message repository instance."""
+    db = MongoDB.get_db()
+    return StockAgentMessageRepository(db)
+
+
+@lru_cache
+def get_stock_agent_skill_repo() -> StockAgentSkillRepository:
+    """Get singleton stock-agent skill repository instance."""
+    db = MongoDB.get_db()
+    return StockAgentSkillRepository(db)
+
+
+@lru_cache
+def get_stock_agent_skill_access_repo() -> StockAgentSkillAccessRepository:
+    """Get singleton stock-agent skill access repository instance."""
+    db = MongoDB.get_db()
+    return StockAgentSkillAccessRepository(db)
 
 
 @lru_cache

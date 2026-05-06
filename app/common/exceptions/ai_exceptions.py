@@ -43,3 +43,45 @@ class LeadAgentRunError(AppException):
 
     default_message = "Lead-agent run did not return a final assistant response"
     status_code = 502
+
+
+class InvalidStockAgentThreadError(AppException):
+    """Raised when a stock-agent thread identifier is malformed."""
+
+    default_message = "Invalid stock-agent thread ID"
+    status_code = 400
+
+
+class StockAgentThreadNotFoundError(AppException):
+    """Raised when a stock-agent thread is missing or outside caller scope."""
+
+    default_message = "Stock-agent thread not found"
+    status_code = 404
+
+
+class StockAgentConversationNotFoundError(AppException):
+    """Raised when a stock-agent conversation is missing or outside caller scope."""
+
+    default_message = "Stock-agent conversation not found"
+    status_code = 404
+
+
+class StockAgentSkillNotFoundError(AppException):
+    """Raised when a stock-agent skill is missing or outside caller scope."""
+
+    default_message = "Stock-agent skill not found"
+    status_code = 404
+
+
+class InvalidStockAgentSkillConfigurationError(AppException):
+    """Raised when a stock-agent skill request is invalid."""
+
+    default_message = "Invalid stock-agent skill configuration"
+    status_code = 400
+
+
+class StockAgentRunError(AppException):
+    """Raised when a stock-agent run does not yield a usable response."""
+
+    default_message = "Stock-agent run did not return a final assistant response"
+    status_code = 502

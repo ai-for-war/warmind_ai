@@ -57,6 +57,10 @@ from app.domain.models.sheet_connection import (
     SheetSyncState,
 )
 from app.domain.models.stock import StockSymbol
+from app.domain.models.stock_agent_conversation import StockAgentConversation
+from app.domain.models.stock_agent_message import StockAgentMessage
+from app.domain.models.stock_agent_skill import StockAgentSkill
+from app.domain.models.stock_agent_skill_access import StockAgentSkillAccess
 from app.domain.models.stock_research_report import (
     StockResearchReport,
     StockResearchReportFailure,
@@ -122,6 +126,10 @@ __all__ = [
     "SheetRawData",
     "SheetSyncState",
     "StockSymbol",
+    "StockAgentConversation",
+    "StockAgentMessage",
+    "StockAgentSkill",
+    "StockAgentSkillAccess",
     "StockResearchReport",
     "StockResearchReportFailure",
     "StockResearchReportRuntimeConfig",

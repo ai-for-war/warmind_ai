@@ -1,11 +1,22 @@
 from __future__ import annotations
 
+import sys
 from datetime import datetime, timezone
+from types import ModuleType, SimpleNamespace
 
 import pytest
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from httpx import ASGITransport, AsyncClient
+
+checkpointer_module = ModuleType("app.infrastructure.langgraph.checkpointer")
+checkpointer_module.get_langgraph_checkpointer = lambda: object()
+checkpointer_module.get_stock_agent_langgraph_checkpointer = lambda: object()
+sys.modules.setdefault("app.infrastructure.langgraph.checkpointer", checkpointer_module)
+
+socket_gateway_module = ModuleType("app.socket_gateway")
+socket_gateway_module.gateway = SimpleNamespace(emit_to_user=None)
+sys.modules.setdefault("app.socket_gateway", socket_gateway_module)
 
 from app.agents.implementations.lead_agent.tool_catalog import (
     LeadAgentSelectableToolDescriptor,
