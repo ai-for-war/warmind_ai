@@ -26,13 +26,13 @@
 
 ## 4. Stock-Agent Services
 
-- [ ] 4.1 Add `StockAgentSkillAccessResolver` that resolves enabled stock-agent skills from stock-agent repositories only.
-- [ ] 4.2 Add `StockAgentSkillService` with selectable tool listing, skill CRUD, and enablement behavior equivalent to `LeadAgentSkillService`.
-- [ ] 4.3 Add `StockAgentService` with runtime configuration, conversation creation, message persistence, background runtime processing, streaming, history reads, plan reads, and caller-scope validation equivalent to `LeadAgentService`.
-- [ ] 4.4 Ensure `StockAgentService` uses stock-agent repositories, stock-agent exceptions, stock-agent runtime factories, stock-agent skill resolver, and stock-agent checkpointer state.
-- [ ] 4.5 Add service factory helpers in `app/common/repo.py` and `app/common/service.py` for stock-agent repositories, skill resolver, skill service, and agent service.
-- [ ] 4.6 Add stock-agent exception classes for invalid thread, thread not found, conversation not found, skill not found, invalid skill configuration, and run failure.
-- [ ] 4.7 Add service tests mirroring lead-agent service and skill-service behavior, including cross-scope rejection and storage isolation.
+- [x] 4.1 Add `StockAgentSkillAccessResolver` that resolves enabled stock-agent skills from stock-agent repositories only.
+- [x] 4.2 Add `StockAgentSkillService` with selectable tool listing, skill CRUD, and enablement behavior equivalent to `LeadAgentSkillService`.
+- [x] 4.3 Add `StockAgentService` with runtime configuration, conversation creation, message persistence, background runtime processing, streaming, history reads, plan reads, and caller-scope validation equivalent to `LeadAgentService`.
+- [x] 4.4 Ensure `StockAgentService` uses stock-agent repositories, stock-agent exceptions, stock-agent runtime factories, stock-agent skill resolver, and stock-agent checkpointer state.
+- [x] 4.5 Add service factory helpers in `app/common/repo.py` and `app/common/service.py` for stock-agent repositories, skill resolver, skill service, and agent service.
+- [x] 4.6 Add stock-agent exception classes for invalid thread, thread not found, conversation not found, skill not found, invalid skill configuration, and run failure.
+- [x] 4.7 Add service tests mirroring lead-agent service and skill-service behavior, including cross-scope rejection and storage isolation.
 
 ## 5. Stock-Agent API
 

@@ -23,6 +23,10 @@ from app.common.repo import (
     get_sheet_connection_repo,
     get_sheet_data_repo,
     get_sheet_sync_state_repo,
+    get_stock_agent_conversation_repo,
+    get_stock_agent_message_repo,
+    get_stock_agent_skill_repo,
+    get_stock_agent_skill_access_repo,
     get_stock_research_report_repo,
     get_stock_research_schedule_repo,
     get_stock_research_schedule_run_repo,
@@ -51,6 +55,14 @@ from app.services.ai.lead_agent_skill_access_resolver import (
 )
 from app.services.ai.lead_agent_skill_service import LeadAgentSkillService
 from app.services.ai.pipeline_validator import PipelineValidator
+from app.services.ai.stock_agent_conversation_service import (
+    StockAgentConversationService,
+)
+from app.services.ai.stock_agent_service import StockAgentService
+from app.services.ai.stock_agent_skill_access_resolver import (
+    StockAgentSkillAccessResolver,
+)
+from app.services.ai.stock_agent_skill_service import StockAgentSkillService
 from app.services.analytics.analytics_service import AnalyticsService
 from app.services.analytics.cache_manager import AnalyticsCacheManager
 from app.services.auth.auth_service import AuthService
@@ -461,6 +473,41 @@ def get_lead_agent_service() -> LeadAgentService:
     return LeadAgentService(
         conversation_service=get_conversation_service(),
         skill_access_resolver=get_lead_agent_skill_access_resolver(),
+    )
+
+
+@lru_cache
+def get_stock_agent_conversation_service() -> StockAgentConversationService:
+    """Get singleton stock-agent conversation service instance."""
+    return StockAgentConversationService(
+        conversation_repo=get_stock_agent_conversation_repo(),
+        message_repo=get_stock_agent_message_repo(),
+    )
+
+
+@lru_cache
+def get_stock_agent_skill_access_resolver() -> StockAgentSkillAccessResolver:
+    """Get singleton stock-agent skill access resolver instance."""
+    return StockAgentSkillAccessResolver(
+        repository=get_stock_agent_skill_access_repo(),
+        skill_repository=get_stock_agent_skill_repo(),
+    )
+
+
+@lru_cache
+def get_stock_agent_skill_service() -> StockAgentSkillService:
+    """Get singleton stock-agent skill management service instance."""
+    return StockAgentSkillService(
+        skill_repository=get_stock_agent_skill_repo(),
+        access_repository=get_stock_agent_skill_access_repo(),
+    )
+
+
+def get_stock_agent_service() -> StockAgentService:
+    """Get one StockAgentService instance."""
+    return StockAgentService(
+        conversation_service=get_stock_agent_conversation_service(),
+        skill_access_resolver=get_stock_agent_skill_access_resolver(),
     )
 
 
