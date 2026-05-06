@@ -154,6 +154,39 @@ class MongoDB:
         )
         logger.info("Created index: idx_lead_agent_skill_access_user_org_unique")
 
+        # Indexes for persisted stock-agent skills collection
+        await cls.db.stock_agent_skills.create_index(
+            [
+                ("created_by", ASCENDING),
+                ("organization_id", ASCENDING),
+                ("skill_id", ASCENDING),
+            ],
+            name="idx_stock_agent_skills_creator_org_skill_unique",
+            unique=True,
+            background=True,
+        )
+        logger.info("Created index: idx_stock_agent_skills_creator_org_skill_unique")
+
+        await cls.db.stock_agent_skills.create_index(
+            [
+                ("created_by", ASCENDING),
+                ("organization_id", ASCENDING),
+                ("updated_at", DESCENDING),
+            ],
+            name="idx_stock_agent_skills_creator_org_updated",
+            background=True,
+        )
+        logger.info("Created index: idx_stock_agent_skills_creator_org_updated")
+
+        # Index for stock-agent skill access collection
+        await cls.db.stock_agent_skill_access.create_index(
+            [("user_id", ASCENDING), ("organization_id", ASCENDING)],
+            name="idx_stock_agent_skill_access_user_org_unique",
+            unique=True,
+            background=True,
+        )
+        logger.info("Created index: idx_stock_agent_skill_access_user_org_unique")
+
         # Index for conversations collection
         # Supports: get_by_user() with pagination ordered by updated_at DESC
         # Requirements: 1.2 (retrieve by user_id), 1.6 (order by updated_at)
@@ -181,6 +214,37 @@ class MongoDB:
             background=True,
         )
         logger.info("Created index: idx_conversations_user_org_deleted_thread_updated")
+
+        # Indexes for stock-agent conversations collection
+        await cls.db.stock_agent_conversations.create_index(
+            [
+                ("user_id", ASCENDING),
+                ("organization_id", ASCENDING),
+                ("deleted_at", ASCENDING),
+                ("updated_at", DESCENDING),
+            ],
+            name="idx_stock_agent_conversations_user_org_deleted_updated",
+            background=True,
+        )
+        logger.info(
+            "Created index: idx_stock_agent_conversations_user_org_deleted_updated"
+        )
+
+        await cls.db.stock_agent_conversations.create_index(
+            [
+                ("user_id", ASCENDING),
+                ("organization_id", ASCENDING),
+                ("deleted_at", ASCENDING),
+                ("thread_id", ASCENDING),
+                ("updated_at", DESCENDING),
+            ],
+            name="idx_stock_agent_conversations_user_org_deleted_thread_updated",
+            background=True,
+        )
+        logger.info(
+            "Created index: "
+            "idx_stock_agent_conversations_user_org_deleted_thread_updated"
+        )
 
         # Index for interview conversations collection
         # Supports: stable lookup by conversation_id during interview session flows
@@ -418,6 +482,20 @@ class MongoDB:
             background=True,
         )
         logger.info("Created index: idx_messages_conversation_deleted_created")
+
+        # Index for stock-agent messages collection
+        await cls.db.stock_agent_messages.create_index(
+            [
+                ("conversation_id", ASCENDING),
+                ("deleted_at", ASCENDING),
+                ("created_at", ASCENDING),
+            ],
+            name="idx_stock_agent_messages_conversation_deleted_created",
+            background=True,
+        )
+        logger.info(
+            "Created index: idx_stock_agent_messages_conversation_deleted_created"
+        )
 
         # Indexes for interview_utterances collection
         # Supports: recovery queries by created_at and timeline ordering by turn_closed_at

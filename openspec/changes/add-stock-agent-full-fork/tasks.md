@@ -16,13 +16,13 @@
 
 ## 3. Stock-Agent Domain Models and Repositories
 
-- [ ] 3.1 Add stock-agent conversation and message domain models or stock-agent-specific repository model mappings that preserve the lead-agent conversation/message API shape.
-- [ ] 3.2 Add `StockAgentConversationRepository` backed by `stock_agent_conversations`.
-- [ ] 3.3 Add `StockAgentMessageRepository` backed by `stock_agent_messages`.
-- [ ] 3.4 Add stock-agent skill and skill-access domain models backed by `stock_agent_skills` and `stock_agent_skill_access`.
-- [ ] 3.5 Add `StockAgentSkillRepository` and `StockAgentSkillAccessRepository` with behavior equivalent to lead-agent skill repositories.
-- [ ] 3.6 Add MongoDB indexes for stock-agent conversations, messages, skills, and skill access without modifying lead-agent indexes.
-- [ ] 3.7 Add repository tests that verify reads and writes target only stock-agent collections.
+- [x] 3.1 Add stock-agent conversation and message domain models or stock-agent-specific repository model mappings that preserve the lead-agent conversation/message API shape.
+- [x] 3.2 Add `StockAgentConversationRepository` backed by `stock_agent_conversations`.
+- [x] 3.3 Add `StockAgentMessageRepository` backed by `stock_agent_messages`.
+- [x] 3.4 Add stock-agent skill and skill-access domain models backed by `stock_agent_skills` and `stock_agent_skill_access`.
+- [x] 3.5 Add `StockAgentSkillRepository` and `StockAgentSkillAccessRepository` with behavior equivalent to lead-agent skill repositories.
+- [x] 3.6 Add MongoDB indexes for stock-agent conversations, messages, skills, and skill access without modifying lead-agent indexes.
+- [x] 3.7 Add repository tests that verify reads and writes target only stock-agent collections.
 
 ## 4. Stock-Agent Services
 
