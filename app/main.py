@@ -15,7 +15,10 @@ from app.config.mcp import MCP_SERVERS
 from app.config.settings import get_settings
 from app.infrastructure.cloudinary.client import CloudinaryClient
 from app.infrastructure.database.mongodb import MongoDB
-from app.infrastructure.langgraph.checkpointer import LangGraphCheckpointer
+from app.infrastructure.langgraph.checkpointer import (
+    LangGraphCheckpointer,
+    StockAgentLangGraphCheckpointer,
+)
 from app.infrastructure.mcp.manager import get_mcp_tools_manager
 from app.infrastructure.redis.client import RedisClient
 from app.socket_gateway import sio
@@ -43,6 +46,10 @@ async def lifespan(_app: FastAPI):
         settings.MONGODB_URI,
         settings.MONGODB_DB_NAME,
     )
+    await StockAgentLangGraphCheckpointer.connect(
+        settings.MONGODB_URI,
+        settings.MONGODB_DB_NAME,
+    )
     await RedisClient.connect(settings.REDIS_URL)
 
     # Initialize MCP Tools Manager
@@ -51,6 +58,7 @@ async def lifespan(_app: FastAPI):
     yield
     # Shutdown
     await RedisClient.disconnect()
+    await StockAgentLangGraphCheckpointer.disconnect()
     await LangGraphCheckpointer.disconnect()
     await MongoDB.disconnect()
 

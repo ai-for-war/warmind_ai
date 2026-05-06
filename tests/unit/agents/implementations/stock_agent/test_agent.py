@@ -11,7 +11,7 @@ def test_create_stock_agent_registers_skill_support_tool_surface(
     monkeypatch,
 ) -> None:
     checkpointer_module = ModuleType("app.infrastructure.langgraph.checkpointer")
-    checkpointer_module.get_langgraph_checkpointer = lambda: object()
+    checkpointer_module.get_stock_agent_langgraph_checkpointer = lambda: object()
     monkeypatch.setitem(
         sys.modules,
         "app.infrastructure.langgraph.checkpointer",
@@ -40,7 +40,7 @@ def test_create_stock_agent_registers_skill_support_tool_surface(
     )
     monkeypatch.setattr(
         stock_agent_module,
-        "get_langgraph_checkpointer",
+        "get_stock_agent_langgraph_checkpointer",
         lambda: fake_checkpointer,
     )
     monkeypatch.setattr(
@@ -81,7 +81,7 @@ def test_create_stock_agent_can_render_subagent_enabled_base_prompt(
     monkeypatch,
 ) -> None:
     checkpointer_module = ModuleType("app.infrastructure.langgraph.checkpointer")
-    checkpointer_module.get_langgraph_checkpointer = lambda: object()
+    checkpointer_module.get_stock_agent_langgraph_checkpointer = lambda: object()
     monkeypatch.setitem(
         sys.modules,
         "app.infrastructure.langgraph.checkpointer",
@@ -101,7 +101,7 @@ def test_create_stock_agent_can_render_subagent_enabled_base_prompt(
     )
     monkeypatch.setattr(
         stock_agent_module,
-        "get_langgraph_checkpointer",
+        "get_stock_agent_langgraph_checkpointer",
         lambda: object(),
     )
     monkeypatch.setattr(

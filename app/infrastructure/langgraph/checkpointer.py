@@ -7,6 +7,8 @@ from pymongo import MongoClient
 
 CHECKPOINT_COLLECTION_NAME = "langgraph_checkpoints"
 WRITES_COLLECTION_NAME = "langgraph_checkpoint_writes"
+STOCK_AGENT_CHECKPOINT_COLLECTION_NAME = "stock_agent_langgraph_checkpoints"
+STOCK_AGENT_WRITES_COLLECTION_NAME = "stock_agent_langgraph_checkpoint_writes"
 
 
 class LangGraphCheckpointer:
@@ -57,6 +59,59 @@ class LangGraphCheckpointer:
         return cls._checkpointer
 
 
+class StockAgentLangGraphCheckpointer:
+    """Lifecycle-managed stock-agent LangGraph checkpointer."""
+
+    _checkpointer: MongoDBSaver | None = None
+
+    @classmethod
+    async def connect(cls, uri: str, db_name: str) -> None:
+        """Initialize the stock-agent MongoDB-backed LangGraph checkpointer."""
+        if cls._checkpointer is not None:
+            return
+
+        cls._checkpointer = await asyncio.to_thread(
+            cls._create_checkpointer,
+            uri,
+            db_name,
+        )
+
+    @staticmethod
+    def _create_checkpointer(uri: str, db_name: str) -> MongoDBSaver:
+        """Build a MongoDBSaver using stock-agent checkpoint collections."""
+        client = MongoClient(uri)
+        return MongoDBSaver(
+            client=client,
+            db_name=db_name,
+            checkpoint_collection_name=STOCK_AGENT_CHECKPOINT_COLLECTION_NAME,
+            writes_collection_name=STOCK_AGENT_WRITES_COLLECTION_NAME,
+        )
+
+    @classmethod
+    async def disconnect(cls) -> None:
+        """Close the stock-agent LangGraph checkpointer."""
+        if cls._checkpointer is None:
+            return
+
+        checkpointer = cls._checkpointer
+        cls._checkpointer = None
+        await asyncio.to_thread(checkpointer.close)
+
+    @classmethod
+    def get_checkpointer(cls) -> MongoDBSaver:
+        """Return the initialized stock-agent LangGraph checkpointer."""
+        if cls._checkpointer is None:
+            raise RuntimeError(
+                "Stock-agent LangGraph checkpointer not initialized. Call connect() first."
+            )
+        return cls._checkpointer
+
+
 def get_langgraph_checkpointer() -> MongoDBSaver:
     """Expose the shared LangGraph checkpointer."""
     return LangGraphCheckpointer.get_checkpointer()
+
+
+def get_stock_agent_langgraph_checkpointer() -> MongoDBSaver:
+    """Expose the stock-agent LangGraph checkpointer."""
+    return StockAgentLangGraphCheckpointer.get_checkpointer()

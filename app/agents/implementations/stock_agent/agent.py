@@ -12,7 +12,9 @@ from app.agents.implementations.stock_agent.runtime import (
 )
 from app.agents.implementations.stock_agent.state import StockAgentState
 from app.agents.implementations.stock_agent.tool_catalog import get_stock_agent_tools
-from app.infrastructure.langgraph.checkpointer import get_langgraph_checkpointer
+from app.infrastructure.langgraph.checkpointer import (
+    get_stock_agent_langgraph_checkpointer,
+)
 from app.prompts.system.stock_agent import get_stock_agent_system_prompt
 
 
@@ -32,5 +34,5 @@ def create_stock_agent(
         ),
         middleware=build_stock_agent_middleware(llm),
         state_schema=StockAgentState,
-        checkpointer=get_langgraph_checkpointer(),
+        checkpointer=get_stock_agent_langgraph_checkpointer(),
     )

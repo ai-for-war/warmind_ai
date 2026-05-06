@@ -9,10 +9,10 @@
 
 ## 2. Stock-Agent Checkpoint Persistence
 
-- [ ] 2.1 Add stock-agent LangGraph checkpointer infrastructure using `stock_agent_langgraph_checkpoints` and `stock_agent_langgraph_checkpoint_writes`.
-- [ ] 2.2 Wire application startup and shutdown to initialize and disconnect the stock-agent checkpointer alongside the existing checkpointer lifecycle.
-- [ ] 2.3 Update `create_stock_agent` to use the stock-agent checkpointer instead of the shared lead-agent checkpointer.
-- [ ] 2.4 Add tests that verify stock-agent checkpoint configuration uses stock-agent collection names and does not use lead-agent/shared collection names.
+- [x] 2.1 Add stock-agent LangGraph checkpointer infrastructure using `stock_agent_langgraph_checkpoints` and `stock_agent_langgraph_checkpoint_writes`.
+- [x] 2.2 Wire application startup and shutdown to initialize and disconnect the stock-agent checkpointer alongside the existing checkpointer lifecycle.
+- [x] 2.3 Update `create_stock_agent` to use the stock-agent checkpointer instead of the shared lead-agent checkpointer.
+- [x] 2.4 Add tests that verify stock-agent checkpoint configuration uses stock-agent collection names and does not use lead-agent/shared collection names.
 
 ## 3. Stock-Agent Domain Models and Repositories
 
