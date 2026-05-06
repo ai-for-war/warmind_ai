@@ -53,9 +53,9 @@
 
 ## 7. Isolation and Regression Verification
 
-- [ ] 7.1 Add tests proving lead-agent API calls do not return stock-agent conversations or messages.
-- [ ] 7.2 Add tests proving legacy chat browsing does not return stock-agent conversations or messages.
-- [ ] 7.3 Add tests proving stock-agent API calls do not return lead-agent conversations, messages, skills, or skill access records.
-- [ ] 7.4 Run the stock-agent-focused unit and integration test suite.
-- [ ] 7.5 Run existing lead-agent unit and integration tests to verify the fork did not regress lead-agent behavior.
-- [ ] 7.6 Run OpenSpec validation/status for `add-stock-agent-full-fork` and fix any artifact or requirement issues.
+- [x] 7.1 Add tests proving lead-agent API calls do not return stock-agent conversations or messages.
+- [x] 7.2 Add tests proving legacy chat browsing does not return stock-agent conversations or messages.
+- [x] 7.3 Add tests proving stock-agent API calls do not return lead-agent conversations, messages, skills, or skill access records.
+- [x] 7.4 Run the stock-agent-focused unit and integration test suite.
+- [x] 7.5 Run existing lead-agent unit and integration tests to verify the fork did not regress lead-agent behavior.
+- [x] 7.6 Run OpenSpec validation/status for `add-stock-agent-full-fork` and fix any artifact or requirement issues.
