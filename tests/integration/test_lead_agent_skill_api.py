@@ -18,26 +18,6 @@ socket_gateway_module = ModuleType("app.socket_gateway")
 socket_gateway_module.gateway = SimpleNamespace(emit_to_user=None)
 sys.modules.setdefault("app.socket_gateway", socket_gateway_module)
 
-common_service_module = ModuleType("app.common.service")
-
-
-def get_auth_service():
-    raise RuntimeError("Auth service should be overridden in this test")
-
-
-def get_lead_agent_service():
-    raise RuntimeError("Lead-agent service should be overridden in this test")
-
-
-def get_lead_agent_skill_service():
-    raise RuntimeError("Lead-agent skill service should be overridden in this test")
-
-
-common_service_module.get_auth_service = get_auth_service
-common_service_module.get_lead_agent_service = get_lead_agent_service
-common_service_module.get_lead_agent_skill_service = get_lead_agent_skill_service
-sys.modules["app.common.service"] = common_service_module
-
 from app.agents.implementations.lead_agent.tool_catalog import (
     LeadAgentSelectableToolDescriptor,
 )

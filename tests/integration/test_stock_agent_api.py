@@ -56,26 +56,6 @@ checkpointer_module.get_langgraph_checkpointer = lambda: object()
 checkpointer_module.get_stock_agent_langgraph_checkpointer = lambda: object()
 sys.modules.setdefault("app.infrastructure.langgraph.checkpointer", checkpointer_module)
 
-common_service_module = ModuleType("app.common.service")
-
-
-def get_auth_service():
-    raise RuntimeError("Auth service should be overridden in this test")
-
-
-def get_stock_agent_skill_service():
-    raise RuntimeError("Stock-agent skill service should be overridden in this test")
-
-
-def get_stock_agent_service():
-    raise RuntimeError("Stock-agent service should be overridden in this test")
-
-
-common_service_module.get_auth_service = get_auth_service
-common_service_module.get_stock_agent_skill_service = get_stock_agent_skill_service
-common_service_module.get_stock_agent_service = get_stock_agent_service
-sys.modules["app.common.service"] = common_service_module
-
 from app.agents.implementations.stock_agent.tool_catalog import (
     StockAgentSelectableToolDescriptor,
 )
