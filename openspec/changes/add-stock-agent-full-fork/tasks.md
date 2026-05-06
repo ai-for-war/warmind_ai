@@ -36,12 +36,12 @@
 
 ## 5. Stock-Agent API
 
-- [ ] 5.1 Add stock-agent request and response schemas equivalent to lead-agent schemas under a stock-agent schema module.
-- [ ] 5.2 Add `app/api/v1/ai/stock_agent.py` with `/stock-agent/catalog`, `/stock-agent/tools`, `/stock-agent/skills`, `/stock-agent/messages`, `/stock-agent/conversations`, `/stock-agent/conversations/{conversation_id}/messages`, and `/stock-agent/conversations/{conversation_id}/plan`.
-- [ ] 5.3 Register the stock-agent router in the v1 API router without changing lead-agent route registration.
-- [ ] 5.4 Ensure `/stock-agent/messages` configures stock-agent runtime overrides, persists the user message, returns IDs immediately, and schedules stock-agent background processing.
-- [ ] 5.5 Ensure stock-agent list/history/plan endpoints read from stock-agent storage and reject lead-agent or legacy chat conversation IDs.
-- [ ] 5.6 Add integration tests mirroring lead-agent conversation and skill API coverage for `/stock-agent`.
+- [x] 5.1 Add stock-agent request and response schemas equivalent to lead-agent schemas under a stock-agent schema module.
+- [x] 5.2 Add `app/api/v1/ai/stock_agent.py` with `/stock-agent/catalog`, `/stock-agent/tools`, `/stock-agent/skills`, `/stock-agent/messages`, `/stock-agent/conversations`, `/stock-agent/conversations/{conversation_id}/messages`, and `/stock-agent/conversations/{conversation_id}/plan`.
+- [x] 5.3 Register the stock-agent router in the v1 API router without changing lead-agent route registration.
+- [x] 5.4 Ensure `/stock-agent/messages` configures stock-agent runtime overrides, persists the user message, returns IDs immediately, and schedules stock-agent background processing.
+- [x] 5.5 Ensure stock-agent list/history/plan endpoints read from stock-agent storage and reject lead-agent or legacy chat conversation IDs.
+- [x] 5.6 Add integration tests mirroring lead-agent conversation and skill API coverage for `/stock-agent`.
 
 ## 6. Streaming, Metadata, and Planning Parity
 
