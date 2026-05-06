@@ -326,6 +326,128 @@ class MongoDB:
             "idx_stock_research_schedule_runs_schedule_occurrence_unique"
         )
 
+        # Indexes for sandbox trade-agent session collections
+        await cls.db.sandbox_trade_sessions.create_index(
+            [
+                ("user_id", ASCENDING),
+                ("organization_id", ASCENDING),
+                ("status", ASCENDING),
+                ("created_at", DESCENDING),
+            ],
+            name="idx_sandbox_trade_sessions_user_org_status_created_desc",
+            background=True,
+        )
+        logger.info(
+            "Created index: idx_sandbox_trade_sessions_user_org_status_created_desc"
+        )
+
+        await cls.db.sandbox_trade_sessions.create_index(
+            [
+                ("user_id", ASCENDING),
+                ("organization_id", ASCENDING),
+                ("created_at", DESCENDING),
+            ],
+            name="idx_sandbox_trade_sessions_user_org_created_desc",
+            background=True,
+        )
+        logger.info(
+            "Created index: idx_sandbox_trade_sessions_user_org_created_desc"
+        )
+
+        await cls.db.sandbox_trade_sessions.create_index(
+            [
+                ("status", ASCENDING),
+                ("next_run_at", ASCENDING),
+            ],
+            name="idx_sandbox_trade_sessions_status_next_run",
+            background=True,
+        )
+        logger.info("Created index: idx_sandbox_trade_sessions_status_next_run")
+
+        await cls.db.sandbox_trade_ticks.create_index(
+            [
+                ("session_id", ASCENDING),
+                ("tick_at", ASCENDING),
+            ],
+            name="idx_sandbox_trade_ticks_session_tick_unique",
+            unique=True,
+            background=True,
+        )
+        logger.info("Created index: idx_sandbox_trade_ticks_session_tick_unique")
+
+        await cls.db.sandbox_trade_ticks.create_index(
+            [
+                ("session_id", ASCENDING),
+                ("tick_at", DESCENDING),
+            ],
+            name="idx_sandbox_trade_ticks_session_tick_desc",
+            background=True,
+        )
+        logger.info("Created index: idx_sandbox_trade_ticks_session_tick_desc")
+
+        await cls.db.sandbox_trade_ticks.create_index(
+            [
+                ("status", ASCENDING),
+                ("lock_expires_at", ASCENDING),
+            ],
+            name="idx_sandbox_trade_ticks_status_lock_expires",
+            background=True,
+        )
+        logger.info("Created index: idx_sandbox_trade_ticks_status_lock_expires")
+
+        await cls.db.sandbox_trade_orders.create_index(
+            [
+                ("session_id", ASCENDING),
+                ("created_at", DESCENDING),
+            ],
+            name="idx_sandbox_trade_orders_session_created_desc",
+            background=True,
+        )
+        logger.info("Created index: idx_sandbox_trade_orders_session_created_desc")
+
+        await cls.db.sandbox_trade_positions.create_index(
+            [("session_id", ASCENDING)],
+            name="idx_sandbox_trade_positions_session_unique",
+            unique=True,
+            background=True,
+        )
+        logger.info("Created index: idx_sandbox_trade_positions_session_unique")
+
+        await cls.db.sandbox_trade_settlements.create_index(
+            [
+                ("session_id", ASCENDING),
+                ("status", ASCENDING),
+                ("settle_at", ASCENDING),
+            ],
+            name="idx_sandbox_trade_settlements_session_status_settle",
+            background=True,
+        )
+        logger.info(
+            "Created index: idx_sandbox_trade_settlements_session_status_settle"
+        )
+
+        await cls.db.sandbox_trade_settlements.create_index(
+            [
+                ("session_id", ASCENDING),
+                ("created_at", DESCENDING),
+            ],
+            name="idx_sandbox_trade_settlements_session_created_desc",
+            background=True,
+        )
+        logger.info(
+            "Created index: idx_sandbox_trade_settlements_session_created_desc"
+        )
+
+        await cls.db.sandbox_trade_portfolio_snapshots.create_index(
+            [
+                ("session_id", ASCENDING),
+                ("created_at", DESCENDING),
+            ],
+            name="idx_sandbox_trade_snapshots_session_created_desc",
+            background=True,
+        )
+        logger.info("Created index: idx_sandbox_trade_snapshots_session_created_desc")
+
         # Indexes for stock_watchlists collection
         await cls.db.stock_watchlists.create_index(
             [
