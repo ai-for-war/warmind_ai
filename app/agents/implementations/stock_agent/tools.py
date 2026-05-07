@@ -42,7 +42,7 @@ async def delegate_tasks(
     task: DelegatedTaskInput,
     runtime: ToolRuntime,
 ) -> dict[str, Any]:
-    """Delegate one independent subtask to a selected stock-agent subagent.
+    """Delegate one task with agent_id, objective, optional context; use general_worker or event_analyst.
 
     Args:
         task: One delegated subtask with required agent_id, objective, and optional context. Use agent_id="general_worker" for generic work and agent_id="event_analyst" for event, news, catalyst, policy, regulatory, macro, or industry impact research.

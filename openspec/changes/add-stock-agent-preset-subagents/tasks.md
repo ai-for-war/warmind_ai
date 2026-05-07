@@ -24,15 +24,15 @@
 
 ## 4. Tests
 
-- [ ] 4.1 Update delegation unit tests for the new input schema and missing `expected_output`.
-- [ ] 4.2 Add tests that `general_worker` preserves existing isolated worker payload behavior.
-- [ ] 4.3 Add tests that unsupported `agent_id` values are rejected without invoking a worker.
-- [ ] 4.4 Add tests for event analyst tool surface containing only `search` and `fetch_content`.
-- [ ] 4.5 Add tests for event analyst output validation and citation/source integrity.
-- [ ] 4.6 Add middleware/prompt tests confirming stock-agent orchestration guidance lists `general_worker` and `event_analyst`.
+- [x] 4.1 Update delegation unit tests for the new input schema and missing `expected_output`.
+- [x] 4.2 Add tests that `general_worker` preserves existing isolated worker payload behavior.
+- [x] 4.3 Add tests that unsupported `agent_id` values are rejected without invoking a worker.
+- [x] 4.4 Add tests for event analyst tool surface containing only `search` and `fetch_content`.
+- [x] 4.5 Add tests for event analyst output validation and citation/source integrity.
+- [x] 4.6 Add middleware/prompt tests confirming stock-agent orchestration guidance lists `general_worker` and `event_analyst`.
 
 ## 5. Verification
 
-- [ ] 5.1 Run targeted stock-agent unit tests.
-- [ ] 5.2 Run targeted event analyst unit tests.
-- [ ] 5.3 Run relevant integration tests for stock-agent message execution if local environment supports required services.
+- [x] 5.1 Run targeted stock-agent unit tests.
+- [x] 5.2 Run targeted event analyst unit tests.
+- [x] 5.3 Run relevant integration tests for stock-agent message execution if local environment supports required services.
