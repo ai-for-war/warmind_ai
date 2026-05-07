@@ -5,12 +5,14 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Mapping
+from dataclasses import dataclass
 from functools import lru_cache
-from typing import Any
+from types import MappingProxyType
+from typing import Any, Literal
 from uuid import uuid4
 
 from langgraph.graph.state import CompiledStateGraph
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.agents.implementations.stock_agent.runtime import (
     StockAgentRuntimeConfig,
@@ -28,21 +30,49 @@ DELEGATION_STATUS_REJECTED = "rejected"
 WORKER_STATUS_COMPLETED = "completed"
 WORKER_STATUS_FAILED = "failed"
 WORKER_STATUS_TIMEOUT = "timeout"
+GENERAL_WORKER_AGENT_ID = "general_worker"
+EVENT_ANALYST_AGENT_ID = "event_analyst"
+StockSubagentId = Literal["general_worker", "event_analyst"]
+
+
+@dataclass(frozen=True)
+class StockAgentSubagentDefinition:
+    """Registered stock-agent subagent metadata."""
+
+    agent_id: str
+    description: str
+
+
+STOCK_AGENT_SUBAGENT_REGISTRY: Mapping[str, StockAgentSubagentDefinition] = (
+    MappingProxyType(
+        {
+            GENERAL_WORKER_AGENT_ID: StockAgentSubagentDefinition(
+                agent_id=GENERAL_WORKER_AGENT_ID,
+                description="Generic isolated stock-agent worker for delegated tasks without a preset specialist.",
+            ),
+            EVENT_ANALYST_AGENT_ID: StockAgentSubagentDefinition(
+                agent_id=EVENT_ANALYST_AGENT_ID,
+                description="Preset event analyst for stock-relevant news, events, catalysts, policy, macro, and industry impact.",
+            ),
+        }
+    )
+)
 
 
 class DelegatedTaskInput(BaseModel):
     """Structured delegated task request accepted by the internal tool."""
 
+    model_config = ConfigDict(extra="forbid")
+
+    agent_id: StockSubagentId = Field(
+        ...,
+        description="Required target subagent id. Supported values: general_worker, event_analyst.",
+    )
     objective: str = Field(
         ...,
         min_length=1,
         max_length=4000,
         description="Required task objective for the worker. State exactly what the subagent must accomplish.",
-    )
-    expected_output: str | None = Field(
-        default=None,
-        max_length=2000,
-        description="Optional description of the expected deliverable, format, or success criteria the worker should return.",
     )
     context: str | None = Field(
         default=None,
@@ -110,12 +140,31 @@ class StockAgentDelegationExecutor:
                 "result": None,
             }
 
-        normalized_task = _normalize_task(task)
-        worker_agent = self._get_worker_agent()
-        result = await self._execute_one_task(
-            worker_agent=worker_agent,
-            task=normalized_task,
-        )
+        try:
+            normalized_task = _normalize_task(task)
+        except ValidationError as exc:
+            return {
+                "status": DELEGATION_STATUS_REJECTED,
+                "error": _validation_error_to_text(exc),
+                "result": None,
+            }
+
+        if normalized_task.agent_id not in STOCK_AGENT_SUBAGENT_REGISTRY:
+            return {
+                "status": DELEGATION_STATUS_REJECTED,
+                "error": f"Unsupported stock-agent subagent id: {normalized_task.agent_id}.",
+                "result": None,
+            }
+
+        if normalized_task.agent_id == GENERAL_WORKER_AGENT_ID:
+            worker_agent = self._get_worker_agent()
+            result = await self._execute_one_task(
+                worker_agent=worker_agent,
+                task=normalized_task,
+            )
+        else:
+            result = _unsupported_registered_subagent_result(normalized_task)
+
         if result["status"] == WORKER_STATUS_COMPLETED:
             status = DELEGATION_STATUS_COMPLETED
         else:
@@ -268,14 +317,34 @@ def _render_worker_task_message(
     sections = [
         f"Objective:\n{task.objective.strip()}",
     ]
-    if task.expected_output:
-        sections.append(f"Expected output:\n{task.expected_output.strip()}")
     if task.context:
         sections.append(f"Relevant context:\n{task.context.strip()}")
     sections.append(
         "Constraints:\nDo not ask the user for clarification. State assumptions or blockers explicitly and return a concise synthesis-ready result."
     )
     return "\n\n".join(sections)
+
+
+def _unsupported_registered_subagent_result(task: DelegatedTaskInput) -> dict[str, Any]:
+    """Return a bounded failure until a registered specialist runtime is wired in."""
+    return {
+        "status": WORKER_STATUS_FAILED,
+        "objective": _truncate_text(task.objective, max_chars=240),
+        "summary": None,
+        "error": f"Subagent '{task.agent_id}' is registered but its runtime is not implemented yet.",
+    }
+
+
+def _validation_error_to_text(exc: ValidationError) -> str:
+    """Convert delegated task validation errors into a bounded tool response."""
+    messages: list[str] = []
+    for error in exc.errors():
+        location = ".".join(str(part) for part in error.get("loc", ())) or "task"
+        message = str(error.get("msg") or "Invalid value.")
+        messages.append(f"{location}: {message}")
+    if not messages:
+        return "Invalid delegated task input."
+    return _truncate_text("; ".join(messages), max_chars=400) or "Invalid delegated task input."
 
 
 def _extract_final_response(result: Mapping[str, Any]) -> str:

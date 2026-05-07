@@ -1,10 +1,10 @@
 ## 1. Delegation Contract And Registry
 
-- [ ] 1.1 Update `DelegatedTaskInput` to require `agent_id` and remove `expected_output`.
-- [ ] 1.2 Add a stock-agent subagent registry with initial entries for `general_worker` and `event_analyst`.
-- [ ] 1.3 Route `general_worker` through the existing cached stock-agent worker runtime.
-- [ ] 1.4 Reject unknown `agent_id` values before invoking any worker runtime.
-- [ ] 1.5 Remove expected-output rendering from worker task message construction.
+- [x] 1.1 Update `DelegatedTaskInput` to require `agent_id` and remove `expected_output`.
+- [x] 1.2 Add a stock-agent subagent registry with initial entries for `general_worker` and `event_analyst`.
+- [x] 1.3 Route `general_worker` through the existing cached stock-agent worker runtime.
+- [x] 1.4 Reject unknown `agent_id` values before invoking any worker runtime.
+- [x] 1.5 Remove expected-output rendering from worker task message construction.
 
 ## 2. Event Analyst Runtime
 
