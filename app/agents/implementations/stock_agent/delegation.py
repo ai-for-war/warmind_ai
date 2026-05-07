@@ -184,6 +184,7 @@ class StockAgentDelegationExecutor:
 
         return {
             "status": status,
+            "subagent_id": normalized_task.agent_id,
             "worker_timeout_seconds": self.worker_timeout_seconds,
             "result": result,
         }
@@ -211,6 +212,7 @@ class StockAgentDelegationExecutor:
             )
             return {
                 "status": WORKER_STATUS_COMPLETED,
+                "subagent_id": task.agent_id,
                 "objective": _truncate_text(task.objective, max_chars=240),
                 "summary": _extract_final_response(final_state),
                 "error": None,
@@ -222,6 +224,7 @@ class StockAgentDelegationExecutor:
             )
             return {
                 "status": WORKER_STATUS_TIMEOUT,
+                "subagent_id": task.agent_id,
                 "objective": _truncate_text(task.objective, max_chars=240),
                 "summary": None,
                 "error": f"Worker timed out after {self.worker_timeout_seconds:.0f}s.",
@@ -233,6 +236,7 @@ class StockAgentDelegationExecutor:
             )
             return {
                 "status": WORKER_STATUS_FAILED,
+                "subagent_id": task.agent_id,
                 "objective": _truncate_text(task.objective, max_chars=240),
                 "summary": None,
                 "error": _truncate_text(
@@ -269,6 +273,7 @@ class StockAgentDelegationExecutor:
             "delegation_parent_run_id": self.parent_tool_call_id,
             "delegated_execution_metadata": {
                 "parent_tool_call_id": self.parent_tool_call_id,
+                "subagent_id": task.agent_id,
             },
             "enabled_skill_ids": _normalize_string_list(
                 self.parent_state.get("enabled_skill_ids", [])
@@ -295,6 +300,12 @@ class StockAgentDelegationExecutor:
                     ),
                 }
             ],
+            "delegation_depth": 1,
+            "delegation_parent_run_id": self.parent_tool_call_id,
+            "delegated_execution_metadata": {
+                "parent_tool_call_id": self.parent_tool_call_id,
+                "subagent_id": task.agent_id,
+            },
         }
 
     def _get_worker_agent(self) -> CompiledStateGraph:
@@ -379,6 +390,7 @@ def _worker_setup_failed_result(
     error_message = str(exc).strip() or "Worker runtime setup failed."
     return {
         "status": WORKER_STATUS_FAILED,
+        "subagent_id": task.agent_id,
         "objective": _truncate_text(task.objective, max_chars=240),
         "summary": None,
         "error": _truncate_text(error_message, max_chars=400),

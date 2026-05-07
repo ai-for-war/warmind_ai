@@ -37,4 +37,3 @@ def create_event_analyst_agent(
         middleware=build_event_analyst_middleware(llm),
         response_format=EventAnalystOutput,
     )
-

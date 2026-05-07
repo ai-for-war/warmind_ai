@@ -16,11 +16,11 @@
 
 ## 3. Stock-Agent Orchestration Integration
 
-- [ ] 3.1 Update `delegate_tasks` tool documentation to describe `agent_id`, `objective`, and `context`.
-- [ ] 3.2 Update stock-agent orchestration prompt with available subagents and routing rules.
-- [ ] 3.3 Ensure worker payload/state records the selected delegated subagent id for observability.
-- [ ] 3.4 Ensure recursive delegation remains unavailable for both `general_worker` and `event_analyst`.
-- [ ] 3.5 Ensure event analyst execution failures return bounded delegation failure outcomes to the parent.
+- [x] 3.1 Update `delegate_tasks` tool documentation to describe `agent_id`, `objective`, and `context`.
+- [x] 3.2 Update stock-agent orchestration prompt with available subagents and routing rules.
+- [x] 3.3 Ensure worker payload/state records the selected delegated subagent id for observability.
+- [x] 3.4 Ensure recursive delegation remains unavailable for both `general_worker` and `event_analyst`.
+- [x] 3.5 Ensure event analyst execution failures return bounded delegation failure outcomes to the parent.
 
 ## 4. Tests
 
