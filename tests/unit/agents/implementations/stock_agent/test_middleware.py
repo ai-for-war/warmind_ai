@@ -99,6 +99,20 @@ def _build_runtime_middleware(
     )
 
 
+def test_stock_agent_system_prompt_defines_vietnam_stock_context_gate() -> None:
+    prompt = get_stock_agent_system_prompt()
+
+    assert "You only support Vietnam-listed equities on HOSE, HNX, and UPCoM" in prompt
+    assert "Stock Context Gate" in prompt
+    assert 'for example "analyze FPT"' in prompt
+    assert "The user requests technical analysis and does not provide a timeframe" in prompt
+    assert "Do not default the timeframe" in prompt
+    assert "Write the stance label in the same language as the user" in prompt
+    assert "`Tích lũy`, `Theo dõi`, `Thận trọng`, or `Giảm tỷ trọng`" in prompt
+    assert "`Accumulate`, `Watch`, `Cautious`, or `Reduce Exposure`" in prompt
+    assert 'Do not add a generic "not financial advice" disclaimer' in prompt
+
+
 def _todo_middleware() -> StockAgentTodoMiddleware:
     middleware = next(
         item
