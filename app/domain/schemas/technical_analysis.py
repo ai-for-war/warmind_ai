@@ -10,9 +10,13 @@ from pydantic import Field, field_validator, model_validator
 from app.domain.schemas.backtest import (
     BacktestRunRequest,
     BacktestTemplateId,
+    BacktestTemplateParams,
     BacktestTimeframe,
+    BuyAndHoldTemplateParams,
     DEFAULT_BACKTEST_INITIAL_CAPITAL,
     DEFAULT_BACKTEST_TIMEFRAME,
+    IchimokuCloudTemplateParams,
+    SmaCrossoverTemplateParams,
 )
 from app.domain.schemas.stock import StockSchemaBase
 from app.domain.schemas.stock_price import (
@@ -45,9 +49,21 @@ class TechnicalAnalysisSchema(StockSchemaBase):
 class TechnicalMacdConfig(TechnicalAnalysisSchema):
     """Custom MACD window configuration."""
 
-    fast_window: int = Field(default=12, ge=1)
-    slow_window: int = Field(default=26, ge=1)
-    signal_window: int = Field(default=9, ge=1)
+    fast_window: int = Field(
+        default=12,
+        ge=1,
+        description="Fast EMA window used by MACD, measured in daily bars.",
+    )
+    slow_window: int = Field(
+        default=26,
+        ge=1,
+        description="Slow EMA window used by MACD, measured in daily bars.",
+    )
+    signal_window: int = Field(
+        default=9,
+        ge=1,
+        description="Signal-line EMA window used by MACD, measured in daily bars.",
+    )
 
     @model_validator(mode="after")
     def validate_window_order(self) -> "TechnicalMacdConfig":
@@ -60,23 +76,63 @@ class TechnicalMacdConfig(TechnicalAnalysisSchema):
 class TechnicalBollingerConfig(TechnicalAnalysisSchema):
     """Custom Bollinger Bands configuration."""
 
-    window: int = Field(default=20, ge=1)
-    window_dev: float = Field(default=2.0, gt=0)
+    window: int = Field(
+        default=20,
+        ge=1,
+        description="Moving-average window for Bollinger Bands, measured in daily bars.",
+    )
+    window_dev: float = Field(
+        default=2.0,
+        gt=0,
+        description="Standard deviation multiplier used for upper and lower bands.",
+    )
 
 
 class TechnicalIndicatorConfig(TechnicalAnalysisSchema):
     """Custom technical indicator configuration requested by the analyst."""
 
-    sma_windows: list[int] = Field(default_factory=list)
-    ema_windows: list[int] = Field(default_factory=list)
-    rsi_windows: list[int] = Field(default_factory=list)
-    macd: TechnicalMacdConfig | None = None
-    bollinger: TechnicalBollingerConfig | None = None
-    atr_window: int | None = Field(default=None, ge=1)
-    adx_window: int | None = Field(default=None, ge=1)
-    volume_average_windows: list[int] = Field(default_factory=list)
-    include_obv: bool = False
-    include_support_resistance: bool = False
+    sma_windows: list[int] = Field(
+        default_factory=list,
+        description="SMA windows to compute, each measured in daily bars.",
+    )
+    ema_windows: list[int] = Field(
+        default_factory=list,
+        description="EMA windows to compute, each measured in daily bars.",
+    )
+    rsi_windows: list[int] = Field(
+        default_factory=list,
+        description="RSI windows to compute, each measured in daily bars.",
+    )
+    macd: TechnicalMacdConfig | None = Field(
+        default=None,
+        description="MACD configuration. Omit when MACD is not requested.",
+    )
+    bollinger: TechnicalBollingerConfig | None = Field(
+        default=None,
+        description="Bollinger Bands configuration. Omit when bands are not requested.",
+    )
+    atr_window: int | None = Field(
+        default=None,
+        ge=1,
+        description="ATR window measured in daily bars. Use null when ATR is not requested.",
+    )
+    adx_window: int | None = Field(
+        default=None,
+        ge=1,
+        description="ADX/+DI/-DI window measured in daily bars. Use null when ADX is not requested.",
+    )
+    volume_average_windows: list[int] = Field(
+        default_factory=list,
+        description="Volume moving-average windows to compute, each measured in daily bars.",
+    )
+    include_obv: bool = Field(
+        default=False,
+        description="Whether to compute On-Balance Volume from close and volume.",
+    )
+    include_support_resistance: bool = Field(
+        default=False,
+        description="Whether to derive support and resistance levels from loaded daily bars.",
+    )
 
     @field_validator(
         "sma_windows",
@@ -131,12 +187,38 @@ class TechnicalIndicatorConfig(TechnicalAnalysisSchema):
 class TechnicalHistoryToolInput(TechnicalAnalysisSchema):
     """Base stock history query shape shared by technical-analysis tools."""
 
-    symbol: str = Field(..., min_length=1)
-    source: StockPriceSource = "VCI"
-    interval: TechnicalAnalysisInterval = DEFAULT_TECHNICAL_ANALYSIS_INTERVAL
-    length: int | None = Field(default=None, gt=0)
-    start: str | None = None
-    end: str | None = None
+    symbol: str = Field(
+        ...,
+        min_length=1,
+        description="Vietnam-listed stock symbol to analyze, for example FPT or HPG.",
+    )
+    source: StockPriceSource = Field(
+        default="VCI",
+        description="Canonical stock price source used by the existing price service.",
+    )
+    interval: TechnicalAnalysisInterval = Field(
+        default=DEFAULT_TECHNICAL_ANALYSIS_INTERVAL,
+        description="Technical-analysis interval. Phase one supports only 1D daily bars.",
+    )
+    length: int | None = Field(
+        default=None,
+        gt=0,
+        description=(
+            "Lookback length in daily bars. Provide this OR start, but not both. "
+            "The agent chooses the number based on requested indicators."
+        ),
+    )
+    start: str | None = Field(
+        default=None,
+        description=(
+            "Explicit history start date or datetime. Provide this OR length, but "
+            "not both. Use with optional end for date-range reads."
+        ),
+    )
+    end: str | None = Field(
+        default=None,
+        description="Optional explicit history end date or datetime; only valid with start.",
+    )
 
     @field_validator("symbol", mode="before")
     @classmethod
@@ -207,8 +289,21 @@ class TechnicalHistoryToolInput(TechnicalAnalysisSchema):
 class ComputeTechnicalIndicatorsInput(TechnicalHistoryToolInput):
     """Input schema for the self-contained technical indicator computation tool."""
 
-    indicator_set: TechnicalIndicatorSet = DEFAULT_TECHNICAL_INDICATOR_SET
-    config: TechnicalIndicatorConfig | None = None
+    indicator_set: TechnicalIndicatorSet = Field(
+        default=DEFAULT_TECHNICAL_INDICATOR_SET,
+        description=(
+            "Indicator package to compute. Use core for the default complete package; "
+            "trend, momentum, volatility, or volume for focused packages; custom "
+            "when config explicitly lists requested indicators."
+        ),
+    )
+    config: TechnicalIndicatorConfig | None = Field(
+        default=None,
+        description=(
+            "Custom indicator configuration. Required only when indicator_set is "
+            "custom; otherwise presets define the indicator windows."
+        ),
+    )
 
     @field_validator("indicator_set", mode="before")
     @classmethod
@@ -230,19 +325,48 @@ class ComputeTechnicalIndicatorsInput(TechnicalHistoryToolInput):
 
 
 class LoadPriceHistoryInput(TechnicalHistoryToolInput):
-    """Input schema for optional raw OHLCV inspection."""
+    """Input schema for optional raw OHLCV inspection.
+
+    This is not a prerequisite for compute_technical_indicators; the indicator tool
+    loads its own history.
+    """
 
 
 class RunTechnicalBacktestInput(TechnicalAnalysisSchema):
     """Input schema for technical analyst access to deterministic backtests."""
 
-    symbol: str = Field(..., min_length=1)
-    timeframe: BacktestTimeframe = DEFAULT_BACKTEST_TIMEFRAME
-    date_from: date
-    date_to: date
-    template_id: BacktestTemplateId
-    template_params: dict[str, Any] = Field(default_factory=dict)
-    initial_capital: int = Field(default=DEFAULT_BACKTEST_INITIAL_CAPITAL, gt=0)
+    symbol: str = Field(
+        ...,
+        min_length=1,
+        description="One Vietnam-listed stock symbol to backtest.",
+    )
+    timeframe: BacktestTimeframe = Field(
+        default=DEFAULT_BACKTEST_TIMEFRAME,
+        description="Backtest timeframe. Phase one supports only 1D daily bars.",
+    )
+    date_from: date = Field(description="First tradable date in the backtest window.")
+    date_to: date = Field(description="Last tradable date in the backtest window.")
+    template_id: BacktestTemplateId = Field(
+        description=(
+            "Supported deterministic strategy template: buy_and_hold, "
+            "sma_crossover, or ichimoku_cloud."
+        )
+    )
+    template_params: BacktestTemplateParams = Field(
+        default_factory=BuyAndHoldTemplateParams,
+        description=(
+            "Template-specific parameters. For buy_and_hold, pass an empty object "
+            "or omit this field. For sma_crossover, pass "
+            "{'fast_window': int, 'slow_window': int}. For ichimoku_cloud, pass "
+            "{'tenkan_window': int, 'kijun_window': int, 'senkou_b_window': int, "
+            "'displacement': int, 'warmup_bars': int}."
+        ),
+    )
+    initial_capital: int = Field(
+        default=DEFAULT_BACKTEST_INITIAL_CAPITAL,
+        gt=0,
+        description="Initial capital used for the deterministic backtest simulation.",
+    )
 
     @field_validator("symbol", mode="before")
     @classmethod
@@ -286,10 +410,24 @@ class RunTechnicalBacktestInput(TechnicalAnalysisSchema):
         return value
 
     @model_validator(mode="after")
-    def validate_date_range(self) -> "RunTechnicalBacktestInput":
-        """Reject inverted backtest date ranges before service execution."""
+    def validate_backtest_request(self) -> "RunTechnicalBacktestInput":
+        """Reject invalid backtest scope before service execution."""
         if self.date_to < self.date_from:
             raise ValueError("date_to must be on or after date_from")
+        if self.template_id == "buy_and_hold":
+            if not isinstance(self.template_params, BuyAndHoldTemplateParams):
+                raise ValueError("buy_and_hold does not accept template_params")
+        elif self.template_id == "sma_crossover":
+            if not isinstance(self.template_params, SmaCrossoverTemplateParams):
+                raise ValueError(
+                    "sma_crossover requires template_params with fast_window and slow_window"
+                )
+        elif not isinstance(self.template_params, IchimokuCloudTemplateParams):
+            raise ValueError(
+                "ichimoku_cloud requires template_params with tenkan_window, "
+                "kijun_window, senkou_b_window, displacement, and warmup_bars"
+            )
+        self.to_backtest_run_request()
         return self
 
     def to_backtest_run_request(self) -> BacktestRunRequest:

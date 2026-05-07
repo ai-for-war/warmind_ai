@@ -7,12 +7,12 @@
 
 ## 2. Indicator Engine And Tool Implementation
 
-- [ ] 2.1 Implement OHLCV loading for technical-analysis tools through `StockPriceService.get_history`.
-- [ ] 2.2 Implement `compute_technical_indicators` so it self-loads canonical OHLCV and computes preset indicator sets with `ta`.
-- [ ] 2.3 Implement custom indicator configuration for SMA, EMA, RSI, MACD, Bollinger Bands, ATR, ADX, OBV, volume average, and support/resistance inclusion.
-- [ ] 2.4 Normalize `ta` outputs into backend-owned structured indicator fields and report unavailable indicators without fabricating values.
-- [ ] 2.5 Implement `load_price_history` as optional raw OHLCV inspection using either `length` or `start` with optional `end`.
-- [ ] 2.6 Implement `run_backtest` as a wrapper around the existing internal backtest service and registered templates.
+- [x] 2.1 Implement OHLCV loading for technical-analysis tools through `StockPriceService.get_history`.
+- [x] 2.2 Implement `compute_technical_indicators` so it self-loads canonical OHLCV and computes preset indicator sets with `ta`.
+- [x] 2.3 Implement custom indicator configuration for SMA, EMA, RSI, MACD, Bollinger Bands, ATR, ADX, OBV, volume average, and support/resistance inclusion.
+- [x] 2.4 Normalize `ta` outputs into backend-owned structured indicator fields and report unavailable indicators without fabricating values.
+- [x] 2.5 Implement `load_price_history` as optional raw OHLCV inspection using either `length` or `start` with optional `end`.
+- [x] 2.6 Implement `run_backtest` as a wrapper around the existing internal backtest service and registered templates.
 
 ## 3. Technical Analyst Runtime
 
