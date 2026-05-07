@@ -15,9 +15,6 @@ from app.agents.implementations.stock_agent.middleware.constants import (
     STOCK_AGENT_SUMMARIZATION_TOKEN_TRIGGER,
     STOCK_AGENT_SUMMARIZATION_TRIM_TOKENS,
 )
-from app.agents.implementations.stock_agent.middleware.delegation_limit import (
-    StockAgentDelegationLimitMiddleware,
-)
 from app.agents.implementations.stock_agent.middleware.orchestration import (
     StockAgentOrchestrationPromptMiddleware,
 )
@@ -65,7 +62,6 @@ def build_stock_agent_middleware(
         StockAgentOrchestrationPromptMiddleware(),
         StockAgentSkillPromptMiddleware(),
         StockAgentTodoMiddleware(),
-        StockAgentDelegationLimitMiddleware(),
         StockAgentToolSelectionMiddleware(),
         ToolOutputLimitMiddleware(),
         StockAgentToolErrorMiddleware(),

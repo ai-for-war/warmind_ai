@@ -126,13 +126,21 @@ async def test_delegate_tasks_result_uses_supplied_executor() -> None:
     )
 
     result = await _delegate_tasks_result(
-        task={"objective": "Investigate the runtime"},
+        task={
+            "agent_id": "general_worker",
+            "objective": "Investigate the runtime",
+        },
         runtime=_runtime(),
         executor=executor,
     )
 
     assert result["status"] == "completed"
-    executor.execute.assert_awaited_once_with({"objective": "Investigate the runtime"})
+    executor.execute.assert_awaited_once_with(
+        {
+            "agent_id": "general_worker",
+            "objective": "Investigate the runtime",
+        }
+    )
 
 
 def test_stock_agent_tools_register_internal_load_skill_tool() -> None:
@@ -140,3 +148,13 @@ def test_stock_agent_tools_register_internal_load_skill_tool() -> None:
         "load_skill",
         "delegate_tasks",
     ]
+
+
+def test_delegate_tasks_tool_description_documents_agent_id_contract() -> None:
+    delegate_tool = STOCK_AGENT_INTERNAL_TOOLS[1]
+
+    assert "agent_id" in delegate_tool.description
+    assert "objective" in delegate_tool.description
+    assert "context" in delegate_tool.description
+    assert "general_worker" in delegate_tool.description
+    assert "event_analyst" in delegate_tool.description
