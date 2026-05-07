@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 
 import pytest
-from pydantic import ValidationError
 
 from app.agents.implementations.stock_agent.delegation import (
     DELEGATION_STATUS_COMPLETED,
@@ -65,16 +64,12 @@ async def test_delegation_executor_builds_isolated_worker_payload() -> None:
         result_max_chars=200,
     )
 
-    result = await executor.execute(
-        DelegatedTaskInput(agent_id="general_worker", objective="Research option A")
-    )
+    result = await executor.execute(DelegatedTaskInput(objective="Research option A"))
 
     assert result["status"] == DELEGATION_STATUS_COMPLETED
-    assert result["subagent_id"] == "general_worker"
     worker_result = result["result"]
     assert isinstance(worker_result, dict)
     assert worker_result["status"] == "completed"
-    assert worker_result["subagent_id"] == "general_worker"
     assert len(worker_agent.calls) == 1
 
     first_payload = worker_agent.calls[0]["payload"]
@@ -91,16 +86,10 @@ async def test_delegation_executor_builds_isolated_worker_payload() -> None:
     assert first_payload["orchestration_mode"] == WORKER_ORCHESTRATION_MODE
     assert first_payload["delegation_depth"] == 1
     assert first_payload["delegation_parent_run_id"] == "tool-parent-1"
-    assert first_payload["delegated_execution_metadata"] == {
-        "parent_tool_call_id": "tool-parent-1",
-        "subagent_id": "general_worker",
-    }
     assert first_payload["loaded_skills"] == []
     assert first_payload["todos_revision"] == 0
     assert len(first_payload["messages"]) == 1
-    worker_message = str(first_payload["messages"][0]["content"])
-    assert "Parent request" not in worker_message
-    assert "Expected output" not in worker_message
+    assert "Parent request" not in str(first_payload["messages"][0]["content"])
 
 
 @pytest.mark.asyncio
@@ -115,10 +104,7 @@ async def test_delegation_executor_captures_worker_failure() -> None:
     )
 
     result = await executor.execute(
-        DelegatedTaskInput(
-            agent_id="general_worker",
-            objective="FAIL_WORKER delegated task",
-        )
+        DelegatedTaskInput(objective="FAIL_WORKER delegated task")
     )
 
     assert result["status"] == DELEGATION_STATUS_FAILED
@@ -136,111 +122,8 @@ async def test_delegation_executor_rejects_recursive_worker_delegation() -> None
         worker_agent=worker_agent,
     )
 
-    result = await executor.execute(
-        DelegatedTaskInput(agent_id="general_worker", objective="Should be rejected")
-    )
+    result = await executor.execute(DelegatedTaskInput(objective="Should be rejected"))
 
     assert result["status"] == DELEGATION_STATUS_REJECTED
     assert result["result"] is None
     assert worker_agent.calls == []
-
-
-@pytest.mark.asyncio
-async def test_delegation_executor_rejects_expected_output_without_worker_invocation() -> None:
-    worker_agent = _FakeWorkerAgent()
-    executor = StockAgentDelegationExecutor(
-        parent_state=_parent_state(),
-        parent_tool_call_id="tool-parent-4",
-        worker_agent=worker_agent,
-    )
-
-    result = await executor.execute(
-        {
-            "agent_id": "general_worker",
-            "objective": "Research option A",
-            "expected_output": "Do not accept parent-defined output formats.",
-        }
-    )
-
-    assert result["status"] == DELEGATION_STATUS_REJECTED
-    assert "expected_output" in result["error"]
-    assert result["result"] is None
-    assert worker_agent.calls == []
-
-
-@pytest.mark.asyncio
-async def test_delegation_executor_rejects_unknown_agent_id_without_worker_invocation() -> None:
-    worker_agent = _FakeWorkerAgent()
-    event_analyst_agent = _FakeWorkerAgent()
-    executor = StockAgentDelegationExecutor(
-        parent_state=_parent_state(),
-        parent_tool_call_id="tool-parent-5",
-        worker_agent=worker_agent,
-        event_analyst_agent=event_analyst_agent,
-    )
-
-    result = await executor.execute(
-        {
-            "agent_id": "technical_analyst",
-            "objective": "Analyze chart setup",
-        }
-    )
-
-    assert result["status"] == DELEGATION_STATUS_REJECTED
-    assert "agent_id" in result["error"]
-    assert result["result"] is None
-    assert worker_agent.calls == []
-    assert event_analyst_agent.calls == []
-
-
-@pytest.mark.asyncio
-async def test_delegation_executor_routes_event_analyst_to_specialist_runtime() -> None:
-    worker_agent = _FakeWorkerAgent()
-    event_analyst_agent = _FakeWorkerAgent()
-    executor = StockAgentDelegationExecutor(
-        parent_state=_parent_state(),
-        parent_tool_call_id="tool-parent-6",
-        worker_agent=worker_agent,
-        event_analyst_agent=event_analyst_agent,
-        worker_timeout_seconds=1.0,
-    )
-
-    result = await executor.execute(
-        {
-            "agent_id": "event_analyst",
-            "objective": "Review recent FPT event catalysts",
-            "context": "Vietnam-listed equity: FPT.",
-        }
-    )
-
-    assert result["status"] == DELEGATION_STATUS_COMPLETED
-    assert result["subagent_id"] == "event_analyst"
-    assert worker_agent.calls == []
-    assert len(event_analyst_agent.calls) == 1
-    event_payload = event_analyst_agent.calls[0]["payload"]
-    assert isinstance(event_payload, dict)
-    assert list(event_payload.keys()) == [
-        "messages",
-        "delegation_depth",
-        "delegation_parent_run_id",
-        "delegated_execution_metadata",
-    ]
-    assert event_payload["delegation_depth"] == 1
-    assert event_payload["delegation_parent_run_id"] == "tool-parent-6"
-    assert event_payload["delegated_execution_metadata"] == {
-        "parent_tool_call_id": "tool-parent-6",
-        "subagent_id": "event_analyst",
-    }
-    assert "FPT" in str(event_payload["messages"][0]["content"])
-
-
-def test_delegated_task_input_requires_agent_id_and_rejects_extra_fields() -> None:
-    with pytest.raises(ValidationError):
-        DelegatedTaskInput(objective="Research option A")
-
-    with pytest.raises(ValidationError):
-        DelegatedTaskInput(
-            agent_id="general_worker",
-            objective="Research option A",
-            expected_output="not accepted",
-        )
