@@ -16,12 +16,12 @@
 
 ## 3. Technical Analyst Runtime
 
-- [ ] 3.1 Create `app/agents/implementations/technical_analyst/` module structure.
-- [ ] 3.2 Add technical analyst runtime model builder with stock-agent-compatible runtime config.
-- [ ] 3.3 Add technical analyst tool surface exposing only `compute_technical_indicators`, `load_price_history`, and `run_backtest`.
-- [ ] 3.4 Add technical analyst system prompt covering `technical_read`, `trading_plan`, daily interval scope, tool usage, and parent-synthesis boundaries.
-- [ ] 3.5 Add technical analyst middleware for summarization, tool-output limiting, and bounded tool-error conversion.
-- [ ] 3.6 Create `create_technical_analyst_agent` with structured response format and the dedicated tool surface.
+- [x] 3.1 Create `app/agents/implementations/technical_analyst/` module structure.
+- [x] 3.2 Add technical analyst runtime model builder with stock-agent-compatible runtime config.
+- [x] 3.3 Add technical analyst tool surface exposing only `compute_technical_indicators`, `load_price_history`, and `run_backtest`.
+- [x] 3.4 Add technical analyst system prompt covering `technical_read`, `trading_plan`, daily interval scope, tool usage, and parent-synthesis boundaries.
+- [x] 3.5 Add technical analyst middleware for summarization, tool-output limiting, and bounded tool-error conversion.
+- [x] 3.6 Create `create_technical_analyst_agent` with structured response format and the dedicated tool surface.
 
 ## 4. Stock-Agent Delegation Integration
 
