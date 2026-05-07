@@ -8,11 +8,11 @@
 
 ## 2. Event Analyst Runtime
 
-- [ ] 2.1 Create a new `event_analyst` agent implementation module.
-- [ ] 2.2 Resolve the event analyst tool surface from normalized MCP `search` and `fetch_content` only.
-- [ ] 2.3 Add event analyst system prompt focused on Vietnam-listed equity events, news, catalysts, policy/regulatory, macro, and industry impact.
-- [ ] 2.4 Add structured event analyst output validation for event impact package and sources.
-- [ ] 2.5 Add runtime caching for event analyst workers by resolved runtime config.
+- [x] 2.1 Create a new `event_analyst` agent implementation module.
+- [x] 2.2 Resolve the event analyst tool surface from normalized MCP `search` and `fetch_content` only.
+- [x] 2.3 Add event analyst system prompt focused on Vietnam-listed equity events, news, catalysts, policy/regulatory, macro, and industry impact.
+- [x] 2.4 Add structured event analyst output validation for event impact package and sources.
+- [x] 2.5 Add runtime caching for event analyst workers by resolved runtime config.
 
 ## 3. Stock-Agent Orchestration Integration
 

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
 from types import MappingProxyType
@@ -91,6 +92,7 @@ class StockAgentDelegationExecutor:
         parent_tool_call_id: str,
         runtime_config: StockAgentRuntimeConfig | None = None,
         worker_agent: CompiledStateGraph | None = None,
+        event_analyst_agent: CompiledStateGraph | None = None,
         worker_timeout_seconds: float | None = None,
         result_max_chars: int | None = None,
     ) -> None:
@@ -101,6 +103,7 @@ class StockAgentDelegationExecutor:
             parent_state
         )
         self.worker_agent = worker_agent
+        self.event_analyst_agent = event_analyst_agent
         self.worker_timeout_seconds = max(
             1.0,
             float(
@@ -163,7 +166,16 @@ class StockAgentDelegationExecutor:
                 task=normalized_task,
             )
         else:
-            result = _unsupported_registered_subagent_result(normalized_task)
+            try:
+                event_analyst_agent = self._get_event_analyst_agent()
+            except Exception as exc:
+                result = _worker_setup_failed_result(normalized_task, exc)
+            else:
+                result = await self._execute_one_task(
+                    worker_agent=event_analyst_agent,
+                    task=normalized_task,
+                    payload=self._build_event_analyst_payload(task=normalized_task),
+                )
 
         if result["status"] == WORKER_STATUS_COMPLETED:
             status = DELEGATION_STATUS_COMPLETED
@@ -181,16 +193,15 @@ class StockAgentDelegationExecutor:
         *,
         worker_agent: CompiledStateGraph,
         task: DelegatedTaskInput,
+        payload: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Execute one delegated worker task with timeout and failure capture."""
-        payload = self._build_worker_payload(
-            task=task,
-        )
+        execution_payload = dict(payload or self._build_worker_payload(task=task))
         thread_id = str(uuid4())
         try:
             final_state = await asyncio.wait_for(
                 worker_agent.ainvoke(
-                    payload,
+                    execution_payload,
                     config={
                         "configurable": {"thread_id": thread_id},
                         "recursion_limit": STOCK_AGENT_WORKER_RECURSION_LIMIT,
@@ -269,11 +280,34 @@ class StockAgentDelegationExecutor:
             "todos_revision": 0,
         }
 
+    def _build_event_analyst_payload(
+        self,
+        *,
+        task: DelegatedTaskInput,
+    ) -> dict[str, Any]:
+        """Build the minimal event analyst execution payload."""
+        return {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": _render_worker_task_message(
+                        task=task,
+                    ),
+                }
+            ],
+        }
+
     def _get_worker_agent(self) -> CompiledStateGraph:
         """Return the compiled worker runtime for the current runtime config."""
         if self.worker_agent is not None:
             return self.worker_agent
         return _get_cached_worker_agent(self.runtime_config)
+
+    def _get_event_analyst_agent(self) -> CompiledStateGraph:
+        """Return the compiled event analyst runtime for the current runtime config."""
+        if self.event_analyst_agent is not None:
+            return self.event_analyst_agent
+        return _get_cached_event_analyst_agent(self.runtime_config)
 
 
 def _normalize_task(task: DelegatedTaskInput | Mapping[str, Any]) -> DelegatedTaskInput:
@@ -291,6 +325,18 @@ def _get_cached_worker_agent(
     from app.agents.implementations.stock_agent.agent import create_stock_agent
 
     return create_stock_agent(runtime_config, subagent_enabled=False)
+
+
+@lru_cache(maxsize=8)
+def _get_cached_event_analyst_agent(
+    runtime_config: StockAgentRuntimeConfig,
+) -> CompiledStateGraph:
+    """Compile and cache event analyst runtimes by resolved stock-agent config."""
+    from app.agents.implementations.event_analyst.agent import (
+        create_event_analyst_agent,
+    )
+
+    return create_event_analyst_agent(runtime_config)
 
 
 def _resolve_runtime_config_from_state(
@@ -325,13 +371,17 @@ def _render_worker_task_message(
     return "\n\n".join(sections)
 
 
-def _unsupported_registered_subagent_result(task: DelegatedTaskInput) -> dict[str, Any]:
-    """Return a bounded failure until a registered specialist runtime is wired in."""
+def _worker_setup_failed_result(
+    task: DelegatedTaskInput,
+    exc: Exception,
+) -> dict[str, Any]:
+    """Return a bounded failure when a registered worker runtime cannot be built."""
+    error_message = str(exc).strip() or "Worker runtime setup failed."
     return {
         "status": WORKER_STATUS_FAILED,
         "objective": _truncate_text(task.objective, max_chars=240),
         "summary": None,
-        "error": f"Subagent '{task.agent_id}' is registered but its runtime is not implemented yet.",
+        "error": _truncate_text(error_message, max_chars=400),
     }
 
 
@@ -349,6 +399,12 @@ def _validation_error_to_text(exc: ValidationError) -> str:
 
 def _extract_final_response(result: Mapping[str, Any]) -> str:
     """Extract the final assistant response from one worker result state."""
+    structured_response = (
+        result.get("structured_response") if isinstance(result, Mapping) else None
+    )
+    if structured_response is not None:
+        return _structured_response_to_text(structured_response)
+
     messages = result.get("messages") if isinstance(result, Mapping) else None
     if not messages:
         raise RuntimeError("Worker did not produce any messages.")
@@ -363,6 +419,17 @@ def _extract_final_response(result: Mapping[str, Any]) -> str:
     if fallback_response:
         return fallback_response
     raise RuntimeError("Worker did not produce a usable final response.")
+
+
+def _structured_response_to_text(response: Any) -> str:
+    """Serialize one structured worker response into a parent-readable string."""
+    if hasattr(response, "model_dump_json"):
+        return str(response.model_dump_json())
+    if isinstance(response, Mapping):
+        return json.dumps(dict(response), ensure_ascii=False)
+    if isinstance(response, list):
+        return json.dumps(response, ensure_ascii=False)
+    return str(response).strip()
 
 
 def _is_assistant_message(message: Any) -> bool:
