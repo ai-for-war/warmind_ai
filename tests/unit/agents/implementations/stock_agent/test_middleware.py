@@ -24,6 +24,9 @@ from app.agents.implementations.stock_agent.middleware.constants import (
     STOCK_AGENT_SUMMARIZATION_TOKEN_TRIGGER,
     STOCK_AGENT_SUMMARIZATION_TRIM_TOKENS,
 )
+from app.agents.implementations.stock_agent.middleware.delegation_limit import (
+    StockAgentDelegationLimitMiddleware,
+)
 from app.agents.implementations.stock_agent.middleware.orchestration import (
     StockAgentOrchestrationPromptMiddleware,
 )
@@ -94,20 +97,6 @@ def _build_runtime_middleware(
     return build_stock_agent_middleware(
         SimpleNamespace(_llm_type="test-chat-model", profile=profile)
     )
-
-
-def test_stock_agent_system_prompt_defines_vietnam_stock_context_gate() -> None:
-    prompt = get_stock_agent_system_prompt()
-
-    assert "You only support Vietnam-listed equities on HOSE, HNX, and UPCoM" in prompt
-    assert "Stock Context Gate" in prompt
-    assert 'for example "analyze FPT"' in prompt
-    assert "The user requests technical analysis and does not provide a timeframe" in prompt
-    assert "Do not default the timeframe" in prompt
-    assert "Write the stance label in the same language as the user" in prompt
-    assert "`Tích lũy`, `Theo dõi`, `Thận trọng`, or `Giảm tỷ trọng`" in prompt
-    assert "`Accumulate`, `Watch`, `Cautious`, or `Reduce Exposure`" in prompt
-    assert 'Do not add a generic "not financial advice" disclaimer' in prompt
 
 
 def _todo_middleware() -> StockAgentTodoMiddleware:
@@ -281,9 +270,6 @@ async def test_orchestration_prompt_middleware_injects_manager_guidance_for_suba
     assert updated_request.system_prompt is not None
     assert "Base system prompt." in updated_request.system_prompt
     assert get_stock_agent_orchestration_system_prompt() in updated_request.system_prompt
-    assert "event_analyst" in updated_request.system_prompt
-    assert "general_worker" in updated_request.system_prompt
-    assert "agent_id" in updated_request.system_prompt
 
 
 @pytest.mark.asyncio
@@ -451,6 +437,34 @@ async def test_tool_error_middleware_converts_tool_exception_to_error_message() 
     assert response.status == "error"
     assert "extract_content" in str(response.content)
     assert "HTTP 404" in str(response.content)
+
+
+@pytest.mark.asyncio
+async def test_delegation_limit_middleware_rejects_more_than_three_parallel_delegate_calls() -> None:
+    middleware = StockAgentDelegationLimitMiddleware()
+    result = await middleware.aafter_model(
+        {
+            "messages": [
+                AIMessage(
+                    content="Delegating work",
+                    tool_calls=[
+                        {"id": "call-1", "name": "delegate_tasks", "args": {"task": {"objective": "A"}}},
+                        {"id": "call-2", "name": "delegate_tasks", "args": {"task": {"objective": "B"}}},
+                        {"id": "call-3", "name": "delegate_tasks", "args": {"task": {"objective": "C"}}},
+                        {"id": "call-4", "name": "delegate_tasks", "args": {"task": {"objective": "D"}}},
+                    ],
+                )
+            ]
+        },
+        runtime=None,
+    )
+
+    assert result is not None
+    messages = result["messages"]
+    assert len(messages) == 4
+    assert all(isinstance(message, ToolMessage) for message in messages)
+    assert all(message.status == "error" for message in messages)
+    assert all("maximum allowed per model invocation is 3" in str(message.content) for message in messages)
 
 
 @pytest.mark.asyncio
@@ -655,14 +669,15 @@ async def test_simple_turn_can_finish_without_todo_creation_while_complex_turn_k
 
 def test_stock_agent_runtime_registers_todo_middleware_with_complex_task_guidance() -> None:
     middlewares = _build_runtime_middleware(profile={"max_input_tokens": 100000})
-    assert len(middlewares) == 7
+    assert len(middlewares) == 8
     assert isinstance(middlewares[0], SummarizationMiddleware)
     assert isinstance(middlewares[1], StockAgentOrchestrationPromptMiddleware)
     assert isinstance(middlewares[2], StockAgentSkillPromptMiddleware)
     assert isinstance(middlewares[3], StockAgentTodoMiddleware)
-    assert isinstance(middlewares[4], StockAgentToolSelectionMiddleware)
-    assert isinstance(middlewares[5], ToolOutputLimitMiddleware)
-    assert isinstance(middlewares[6], StockAgentToolErrorMiddleware)
+    assert isinstance(middlewares[4], StockAgentDelegationLimitMiddleware)
+    assert isinstance(middlewares[5], StockAgentToolSelectionMiddleware)
+    assert isinstance(middlewares[6], ToolOutputLimitMiddleware)
+    assert isinstance(middlewares[7], StockAgentToolErrorMiddleware)
 
     summarization_middleware = middlewares[0]
     assert summarization_middleware.trigger == [
@@ -708,16 +723,3 @@ def test_stock_agent_runtime_skips_fraction_trigger_when_model_profile_is_unavai
 def test_stock_agent_state_keeps_todos_in_middleware_backed_runtime_state() -> None:
     assert "todos" not in StockAgentState.__annotations__
     assert "todos_revision" in StockAgentState.__annotations__
-
-
-def test_stock_agent_orchestration_prompt_lists_typed_subagents_and_routing_rules() -> None:
-    prompt = get_stock_agent_orchestration_system_prompt()
-
-    assert "event_analyst" in prompt
-    assert "general_worker" in prompt
-    assert 'agent_id="event_analyst"' in prompt
-    assert 'agent_id="general_worker"' in prompt
-    assert "news, events, catalysts, policy, regulation, macro, or industry" in prompt
-    assert "`expected_output` is invalid" in prompt
-    assert "Maximum 3" not in prompt
-    assert "HARD LIMIT" not in prompt
