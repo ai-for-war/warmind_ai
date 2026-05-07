@@ -158,3 +158,4 @@ def test_delegate_tasks_tool_description_documents_agent_id_contract() -> None:
     assert "context" in delegate_tool.description
     assert "general_worker" in delegate_tool.description
     assert "event_analyst" in delegate_tool.description
+    assert "technical_analyst" in delegate_tool.description

@@ -172,17 +172,19 @@ async def test_delegation_executor_rejects_expected_output_without_worker_invoca
 async def test_delegation_executor_rejects_unknown_agent_id_without_worker_invocation() -> None:
     worker_agent = _FakeWorkerAgent()
     event_analyst_agent = _FakeWorkerAgent()
+    technical_analyst_agent = _FakeWorkerAgent()
     executor = StockAgentDelegationExecutor(
         parent_state=_parent_state(),
         parent_tool_call_id="tool-parent-5",
         worker_agent=worker_agent,
         event_analyst_agent=event_analyst_agent,
+        technical_analyst_agent=technical_analyst_agent,
     )
 
     result = await executor.execute(
         {
-            "agent_id": "technical_analyst",
-            "objective": "Analyze chart setup",
+            "agent_id": "unsupported_agent",
+            "objective": "Analyze unsupported setup",
         }
     )
 
@@ -191,6 +193,7 @@ async def test_delegation_executor_rejects_unknown_agent_id_without_worker_invoc
     assert result["result"] is None
     assert worker_agent.calls == []
     assert event_analyst_agent.calls == []
+    assert technical_analyst_agent.calls == []
 
 
 @pytest.mark.asyncio
@@ -232,6 +235,50 @@ async def test_delegation_executor_routes_event_analyst_to_specialist_runtime() 
         "subagent_id": "event_analyst",
     }
     assert "FPT" in str(event_payload["messages"][0]["content"])
+
+
+@pytest.mark.asyncio
+async def test_delegation_executor_routes_technical_analyst_to_specialist_runtime() -> None:
+    worker_agent = _FakeWorkerAgent()
+    event_analyst_agent = _FakeWorkerAgent()
+    technical_analyst_agent = _FakeWorkerAgent()
+    executor = StockAgentDelegationExecutor(
+        parent_state=_parent_state(),
+        parent_tool_call_id="tool-parent-7",
+        worker_agent=worker_agent,
+        event_analyst_agent=event_analyst_agent,
+        technical_analyst_agent=technical_analyst_agent,
+        worker_timeout_seconds=1.0,
+    )
+
+    result = await executor.execute(
+        {
+            "agent_id": "technical_analyst",
+            "objective": "Analyze FPT daily technical trend and support/resistance",
+            "context": "Vietnam-listed equity: FPT. Use 1D interval.",
+        }
+    )
+
+    assert result["status"] == DELEGATION_STATUS_COMPLETED
+    assert result["subagent_id"] == "technical_analyst"
+    assert worker_agent.calls == []
+    assert event_analyst_agent.calls == []
+    assert len(technical_analyst_agent.calls) == 1
+    technical_payload = technical_analyst_agent.calls[0]["payload"]
+    assert isinstance(technical_payload, dict)
+    assert list(technical_payload.keys()) == [
+        "messages",
+        "delegation_depth",
+        "delegation_parent_run_id",
+        "delegated_execution_metadata",
+    ]
+    assert technical_payload["delegation_depth"] == 1
+    assert technical_payload["delegation_parent_run_id"] == "tool-parent-7"
+    assert technical_payload["delegated_execution_metadata"] == {
+        "parent_tool_call_id": "tool-parent-7",
+        "subagent_id": "technical_analyst",
+    }
+    assert "FPT" in str(technical_payload["messages"][0]["content"])
 
 
 def test_delegated_task_input_requires_agent_id_and_rejects_extra_fields() -> None:

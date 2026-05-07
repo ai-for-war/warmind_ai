@@ -25,12 +25,12 @@
 
 ## 4. Stock-Agent Delegation Integration
 
-- [ ] 4.1 Extend the stock-agent subagent registry and `DelegatedTaskInput` literal to include `technical_analyst`.
-- [ ] 4.2 Add cached technical analyst runtime creation by resolved stock-agent runtime config.
-- [ ] 4.3 Route delegated `technical_analyst` tasks through the specialist runtime with minimal isolated payload.
-- [ ] 4.4 Preserve recursive delegation guardrails for technical analyst executions.
-- [ ] 4.5 Update stock-agent orchestration prompt to describe `technical_analyst` routing rules and examples.
-- [ ] 4.6 Update tool descriptions and prompt tests so parent stock agent does not invent unsupported subagent IDs.
+- [x] 4.1 Extend the stock-agent subagent registry and `DelegatedTaskInput` literal to include `technical_analyst`.
+- [x] 4.2 Add cached technical analyst runtime creation by resolved stock-agent runtime config.
+- [x] 4.3 Route delegated `technical_analyst` tasks through the specialist runtime with minimal isolated payload.
+- [x] 4.4 Preserve recursive delegation guardrails for technical analyst executions.
+- [x] 4.5 Update stock-agent orchestration prompt to describe `technical_analyst` routing rules and examples.
+- [x] 4.6 Update tool descriptions and prompt tests so parent stock agent does not invent unsupported subagent IDs.
 
 ## 5. Tests
 
