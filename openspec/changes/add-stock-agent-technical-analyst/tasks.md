@@ -1,9 +1,9 @@
 ## 1. Dependency And Technical Analysis Models
 
-- [ ] 1.1 Add the `ta` dependency to backend dependency files.
-- [ ] 1.2 Create technical analyst output schemas for `TechnicalAnalystOutput`, indicator snapshots, trading plans, backtest summaries, signals, risks, and uncertainties.
-- [ ] 1.3 Create input schemas for `compute_technical_indicators`, `load_price_history`, and `run_backtest`.
-- [ ] 1.4 Add validation helpers that parse structured technical analyst output and reject malformed payloads.
+- [x] 1.1 Add the `ta` dependency to backend dependency files.
+- [x] 1.2 Create technical analyst output schemas for `TechnicalAnalystOutput`, indicator snapshots, trading plans, backtest summaries, signals, risks, and uncertainties.
+- [x] 1.3 Create input schemas for `compute_technical_indicators`, `load_price_history`, and `run_backtest`.
+- [x] 1.4 Add validation helpers that parse structured technical analyst output and reject malformed payloads.
 
 ## 2. Indicator Engine And Tool Implementation
 
