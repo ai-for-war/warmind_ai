@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Any, Literal
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from app.domain.schemas.backtest import (
     BacktestRunRequest,
@@ -42,8 +42,21 @@ DEFAULT_TECHNICAL_ANALYSIS_INTERVAL: TechnicalAnalysisInterval = "1D"
 DEFAULT_TECHNICAL_INDICATOR_SET: TechnicalIndicatorSet = "core"
 
 
+def _require_all_json_schema_properties(schema: dict[str, Any]) -> None:
+    """Make generated JSON Schema acceptable to strict tool-call providers."""
+    properties = schema.get("properties")
+    if isinstance(properties, dict) and properties:
+        schema["required"] = list(properties)
+
+
 class TechnicalAnalysisSchema(StockSchemaBase):
     """Base schema for stock technical-analysis payloads."""
+
+    model_config = ConfigDict(
+        extra="forbid",
+        str_strip_whitespace=True,
+        json_schema_extra=_require_all_json_schema_properties,
+    )
 
 
 class TechnicalMacdConfig(TechnicalAnalysisSchema):
@@ -193,15 +206,15 @@ class TechnicalHistoryToolInput(TechnicalAnalysisSchema):
         description="Vietnam-listed stock symbol to analyze, for example FPT or HPG.",
     )
     source: StockPriceSource = Field(
-        default="VCI",
+        ...,
         description="Canonical stock price source used by the existing price service.",
     )
     interval: TechnicalAnalysisInterval = Field(
-        default=DEFAULT_TECHNICAL_ANALYSIS_INTERVAL,
+        ...,
         description="Technical-analysis interval. Phase one supports only 1D daily bars.",
     )
     length: int | None = Field(
-        default=None,
+        ...,
         gt=0,
         description=(
             "Lookback length in daily bars. Provide this OR start, but not both. "
@@ -209,16 +222,30 @@ class TechnicalHistoryToolInput(TechnicalAnalysisSchema):
         ),
     )
     start: str | None = Field(
-        default=None,
+        ...,
         description=(
             "Explicit history start date or datetime. Provide this OR length, but "
             "not both. Use with optional end for date-range reads."
         ),
     )
     end: str | None = Field(
-        default=None,
+        ...,
         description="Optional explicit history end date or datetime; only valid with start.",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_history_defaults(cls, value: object) -> object:
+        """Keep runtime defaults while exposing strict required tool schemas."""
+        if not isinstance(value, dict):
+            return value
+        data = dict(value)
+        data.setdefault("source", "VCI")
+        data.setdefault("interval", DEFAULT_TECHNICAL_ANALYSIS_INTERVAL)
+        data.setdefault("length", None)
+        data.setdefault("start", None)
+        data.setdefault("end", None)
+        return data
 
     @field_validator("symbol", mode="before")
     @classmethod
@@ -290,7 +317,7 @@ class ComputeTechnicalIndicatorsInput(TechnicalHistoryToolInput):
     """Input schema for the self-contained technical indicator computation tool."""
 
     indicator_set: TechnicalIndicatorSet = Field(
-        default=DEFAULT_TECHNICAL_INDICATOR_SET,
+        ...,
         description=(
             "Indicator package to compute. Use core for the default complete package; "
             "trend, momentum, volatility, or volume for focused packages; custom "
@@ -298,12 +325,23 @@ class ComputeTechnicalIndicatorsInput(TechnicalHistoryToolInput):
         ),
     )
     config: TechnicalIndicatorConfig | None = Field(
-        default=None,
+        ...,
         description=(
             "Custom indicator configuration. Required only when indicator_set is "
             "custom; otherwise presets define the indicator windows."
         ),
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_indicator_defaults(cls, value: object) -> object:
+        """Keep preset defaults while making the provider-facing schema strict."""
+        if not isinstance(value, dict):
+            return value
+        data = dict(value)
+        data.setdefault("indicator_set", DEFAULT_TECHNICAL_INDICATOR_SET)
+        data.setdefault("config", None)
+        return data
 
     @field_validator("indicator_set", mode="before")
     @classmethod
@@ -341,7 +379,7 @@ class RunTechnicalBacktestInput(TechnicalAnalysisSchema):
         description="One Vietnam-listed stock symbol to backtest.",
     )
     timeframe: BacktestTimeframe = Field(
-        default=DEFAULT_BACKTEST_TIMEFRAME,
+        ...,
         description="Backtest timeframe. Phase one supports only 1D daily bars.",
     )
     date_from: date = Field(description="First tradable date in the backtest window.")
@@ -353,7 +391,7 @@ class RunTechnicalBacktestInput(TechnicalAnalysisSchema):
         )
     )
     template_params: BacktestTemplateParams = Field(
-        default_factory=BuyAndHoldTemplateParams,
+        ...,
         description=(
             "Template-specific parameters. For buy_and_hold, pass an empty object "
             "or omit this field. For sma_crossover, pass "
@@ -363,10 +401,22 @@ class RunTechnicalBacktestInput(TechnicalAnalysisSchema):
         ),
     )
     initial_capital: int = Field(
-        default=DEFAULT_BACKTEST_INITIAL_CAPITAL,
+        ...,
         gt=0,
         description="Initial capital used for the deterministic backtest simulation.",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_backtest_defaults(cls, value: object) -> object:
+        """Keep runtime defaults while exposing a strict provider-facing schema."""
+        if not isinstance(value, dict):
+            return value
+        data = dict(value)
+        data.setdefault("timeframe", DEFAULT_BACKTEST_TIMEFRAME)
+        data.setdefault("template_params", {})
+        data.setdefault("initial_capital", DEFAULT_BACKTEST_INITIAL_CAPITAL)
+        return data
 
     @field_validator("symbol", mode="before")
     @classmethod

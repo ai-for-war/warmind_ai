@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date
 
 import pytest
+from langchain_core.utils.function_calling import convert_to_openai_tool
 
 from app.agents.implementations.technical_analyst.tools.backtest import (
     run_technical_backtest_result,
@@ -101,6 +102,29 @@ def test_technical_analyst_tool_surface_exposes_only_dedicated_tools() -> None:
         "load_price_history",
         "run_backtest",
     ]
+
+
+def test_technical_analyst_tool_schemas_are_strict_provider_compatible() -> None:
+    missing_required: list[tuple[str, list[str]]] = []
+
+    def check_object_schema(node: object, path: str) -> None:
+        if isinstance(node, dict):
+            properties = node.get("properties")
+            if isinstance(properties, dict) and properties:
+                required = set(node.get("required") or [])
+                missing = sorted(set(properties) - required)
+                if missing:
+                    missing_required.append((path, missing))
+            for key, value in node.items():
+                check_object_schema(value, f"{path}/{key}")
+        elif isinstance(node, list):
+            for index, value in enumerate(node):
+                check_object_schema(value, f"{path}/{index}")
+
+    for tool in get_technical_analyst_tool_surface().tools:
+        check_object_schema(convert_to_openai_tool(tool), tool.name)
+
+    assert missing_required == []
 
 
 @pytest.mark.asyncio
