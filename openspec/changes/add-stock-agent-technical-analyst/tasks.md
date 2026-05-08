@@ -34,18 +34,18 @@
 
 ## 5. Tests
 
-- [ ] 5.1 Add unit tests for technical indicator input schema variants: `length`, `start`/`end`, preset indicator sets, and custom config.
-- [ ] 5.2 Add unit tests for `compute_technical_indicators` using fake stock price history and verifying normalized indicator snapshot output.
-- [ ] 5.3 Add unit tests for unavailable indicator reporting when price history is insufficient for a requested indicator.
-- [ ] 5.4 Add unit tests for `load_price_history` confirming it returns raw canonical OHLCV and is not required before indicator computation.
-- [ ] 5.5 Add unit tests for `run_backtest` confirming supported templates route to the existing backtest service and unsupported scope is rejected.
-- [ ] 5.6 Add technical analyst structured output validation tests for `technical_read` and `trading_plan`.
-- [ ] 5.7 Add delegation tests proving `technical_analyst` routes to the specialist runtime and unknown IDs remain rejected.
-- [ ] 5.8 Add stock-agent prompt/middleware tests confirming technical-analysis routing guidance is present.
+- [x] 5.1 Add unit tests for technical indicator input schema variants: `length`, `start`/`end`, preset indicator sets, and custom config.
+- [x] 5.2 Add unit tests for `compute_technical_indicators` using fake stock price history and verifying normalized indicator snapshot output.
+- [x] 5.3 Add unit tests for unavailable indicator reporting when price history is insufficient for a requested indicator.
+- [x] 5.4 Add unit tests for `load_price_history` confirming it returns raw canonical OHLCV and is not required before indicator computation.
+- [x] 5.5 Add unit tests for `run_backtest` confirming supported templates route to the existing backtest service and unsupported scope is rejected.
+- [x] 5.6 Add technical analyst structured output validation tests for `technical_read` and `trading_plan`.
+- [x] 5.7 Add delegation tests proving `technical_analyst` routes to the specialist runtime and unknown IDs remain rejected.
+- [x] 5.8 Add stock-agent prompt/middleware tests confirming technical-analysis routing guidance is present.
 
 ## 6. Verification
 
-- [ ] 6.1 Run targeted technical analyst unit tests.
-- [ ] 6.2 Run targeted stock-agent delegation and middleware tests.
-- [ ] 6.3 Run targeted stock price and backtest tests touched by the technical-analysis tool integration.
-- [ ] 6.4 Run OpenSpec validation for `add-stock-agent-technical-analyst`.
+- [x] 6.1 Run targeted technical analyst unit tests.
+- [x] 6.2 Run targeted stock-agent delegation and middleware tests.
+- [x] 6.3 Run targeted stock price and backtest tests touched by the technical-analysis tool integration.
+- [x] 6.4 Run OpenSpec validation for `add-stock-agent-technical-analyst`.
