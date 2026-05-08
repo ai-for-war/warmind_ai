@@ -6,13 +6,29 @@ from functools import lru_cache
 
 from app.agents.runtime import (
     AGENT_OPENAI_REASONING_OPTIONS as LEAD_AGENT_OPENAI_REASONING_OPTIONS,
+)
+from app.agents.runtime import (
     AGENT_PROVIDER_AZURA as LEAD_AGENT_PROVIDER_AZURA,
+)
+from app.agents.runtime import (
     AGENT_PROVIDER_MINIMAX as LEAD_AGENT_PROVIDER_MINIMAX,
+)
+from app.agents.runtime import (
     AGENT_PROVIDER_OPENAI as LEAD_AGENT_PROVIDER_OPENAI,
+)
+from app.agents.runtime import (
     AGENT_PROVIDER_ZAI as LEAD_AGENT_PROVIDER_ZAI,
+)
+from app.agents.runtime import (
     AgentModelCatalogEntry as LeadAgentModelCatalogEntry,
+)
+from app.agents.runtime import (
     AgentProviderCatalogEntry as LeadAgentProviderCatalogEntry,
+)
+from app.agents.runtime import (
     AgentRuntimeConfig as LeadAgentRuntimeConfig,
+)
+from app.agents.runtime import (
     build_chat_model,
     build_runtime_catalog,
     get_default_runtime_config,
@@ -50,6 +66,12 @@ def get_lead_agent_runtime_catalog() -> tuple[LeadAgentProviderCatalogEntry, ...
         ),
         openai_models=(
             LeadAgentModelCatalogEntry(
+                model="gpt-5.5",
+                reasoning_options=LEAD_AGENT_OPENAI_REASONING_OPTIONS,
+                default_reasoning="medium",
+                is_default=True,
+            ),
+            LeadAgentModelCatalogEntry(
                 model="gpt-5.2",
                 reasoning_options=LEAD_AGENT_OPENAI_REASONING_OPTIONS,
                 default_reasoning="medium",
@@ -65,7 +87,7 @@ def get_lead_agent_runtime_catalog() -> tuple[LeadAgentProviderCatalogEntry, ...
                 model="gpt-5.4",
                 reasoning_options=LEAD_AGENT_OPENAI_REASONING_OPTIONS,
                 default_reasoning="medium",
-                is_default=True,
+                is_default=False,
             ),
             LeadAgentModelCatalogEntry(
                 model="gpt-5.4-mini",

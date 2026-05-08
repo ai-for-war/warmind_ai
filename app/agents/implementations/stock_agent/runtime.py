@@ -6,13 +6,29 @@ from functools import lru_cache
 
 from app.agents.runtime import (
     AGENT_OPENAI_REASONING_OPTIONS as STOCK_AGENT_OPENAI_REASONING_OPTIONS,
+)
+from app.agents.runtime import (
     AGENT_PROVIDER_AZURA as STOCK_AGENT_PROVIDER_AZURA,
+)
+from app.agents.runtime import (
     AGENT_PROVIDER_MINIMAX as STOCK_AGENT_PROVIDER_MINIMAX,
+)
+from app.agents.runtime import (
     AGENT_PROVIDER_OPENAI as STOCK_AGENT_PROVIDER_OPENAI,
+)
+from app.agents.runtime import (
     AGENT_PROVIDER_ZAI as STOCK_AGENT_PROVIDER_ZAI,
+)
+from app.agents.runtime import (
     AgentModelCatalogEntry as StockAgentModelCatalogEntry,
+)
+from app.agents.runtime import (
     AgentProviderCatalogEntry as StockAgentProviderCatalogEntry,
+)
+from app.agents.runtime import (
     AgentRuntimeConfig as StockAgentRuntimeConfig,
+)
+from app.agents.runtime import (
     build_chat_model,
     build_runtime_catalog,
     get_default_runtime_config,
@@ -50,6 +66,12 @@ def get_stock_agent_runtime_catalog() -> tuple[StockAgentProviderCatalogEntry, .
         ),
         openai_models=(
             StockAgentModelCatalogEntry(
+                model="gpt-5.5",
+                reasoning_options=STOCK_AGENT_OPENAI_REASONING_OPTIONS,
+                default_reasoning="medium",
+                is_default=True,
+            ),
+            StockAgentModelCatalogEntry(
                 model="gpt-5.2",
                 reasoning_options=STOCK_AGENT_OPENAI_REASONING_OPTIONS,
                 default_reasoning="medium",
@@ -65,7 +87,7 @@ def get_stock_agent_runtime_catalog() -> tuple[StockAgentProviderCatalogEntry, .
                 model="gpt-5.4",
                 reasoning_options=STOCK_AGENT_OPENAI_REASONING_OPTIONS,
                 default_reasoning="medium",
-                is_default=True,
+                is_default=False,
             ),
             StockAgentModelCatalogEntry(
                 model="gpt-5.4-mini",

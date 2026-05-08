@@ -6,13 +6,29 @@ from functools import lru_cache
 
 from app.agents.runtime import (
     AGENT_OPENAI_REASONING_OPTIONS as STOCK_RESEARCH_OPENAI_REASONING_OPTIONS,
+)
+from app.agents.runtime import (
     AGENT_PROVIDER_AZURA as STOCK_RESEARCH_PROVIDER_AZURA,
+)
+from app.agents.runtime import (
     AGENT_PROVIDER_MINIMAX as STOCK_RESEARCH_PROVIDER_MINIMAX,
+)
+from app.agents.runtime import (
     AGENT_PROVIDER_OPENAI as STOCK_RESEARCH_PROVIDER_OPENAI,
+)
+from app.agents.runtime import (
     AGENT_PROVIDER_ZAI as STOCK_RESEARCH_PROVIDER_ZAI,
+)
+from app.agents.runtime import (
     AgentModelCatalogEntry as StockResearchAgentModelCatalogEntry,
+)
+from app.agents.runtime import (
     AgentProviderCatalogEntry as StockResearchAgentProviderCatalogEntry,
+)
+from app.agents.runtime import (
     AgentRuntimeConfig as StockResearchAgentRuntimeConfig,
+)
+from app.agents.runtime import (
     build_chat_model,
     build_runtime_catalog,
     get_default_runtime_config,
@@ -25,9 +41,9 @@ STOCK_RESEARCH_TEMPERATURE = 0.2
 
 
 @lru_cache
-def get_stock_research_runtime_catalog() -> (
-    tuple[StockResearchAgentProviderCatalogEntry, ...]
-):
+def get_stock_research_runtime_catalog() -> tuple[
+    StockResearchAgentProviderCatalogEntry, ...
+]:
     """Return the server-side stock-research runtime catalog."""
     settings = get_settings()
     return build_runtime_catalog(
@@ -67,6 +83,12 @@ def get_stock_research_runtime_catalog() -> (
         ),
         openai_models=(
             StockResearchAgentModelCatalogEntry(
+                model="gpt-5.5",
+                reasoning_options=STOCK_RESEARCH_OPENAI_REASONING_OPTIONS,
+                default_reasoning="medium",
+                is_default=True,
+            ),
+            StockResearchAgentModelCatalogEntry(
                 model="gpt-5.2",
                 reasoning_options=STOCK_RESEARCH_OPENAI_REASONING_OPTIONS,
                 default_reasoning="medium",
@@ -76,7 +98,7 @@ def get_stock_research_runtime_catalog() -> (
                 model="gpt-5.4",
                 reasoning_options=STOCK_RESEARCH_OPENAI_REASONING_OPTIONS,
                 default_reasoning="medium",
-                is_default=True,
+                is_default=False,
             ),
             StockResearchAgentModelCatalogEntry(
                 model="gpt-5.4-mini",
