@@ -1,0 +1,1 @@
+"""Technical analyst tool package."""

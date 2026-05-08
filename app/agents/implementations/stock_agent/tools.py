@@ -42,10 +42,10 @@ async def delegate_tasks(
     task: DelegatedTaskInput,
     runtime: ToolRuntime,
 ) -> dict[str, Any]:
-    """Delegate one task with agent_id, objective, optional context; use general_worker or event_analyst.
+    """Delegate one task with agent_id, objective, optional context; use general_worker, event_analyst, or technical_analyst.
 
     Args:
-        task: One delegated subtask with required agent_id, objective, and optional context. Use agent_id="general_worker" for generic work and agent_id="event_analyst" for event, news, catalyst, policy, regulatory, macro, or industry impact research.
+        task: One delegated subtask with required agent_id, objective, and optional context. Use agent_id="general_worker" for generic work, agent_id="event_analyst" for event, news, catalyst, policy, regulatory, macro, or industry impact research, and agent_id="technical_analyst" for chart, indicator, trend, support/resistance, entry, stop loss, target, setup, risk/reward, or technical backtest work.
     """
     return await _delegate_tasks_result(task=task, runtime=runtime)
 

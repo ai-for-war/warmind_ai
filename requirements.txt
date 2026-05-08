@@ -28,6 +28,8 @@ redis
 
 # Stock Catalog
 vnstock3
+ta
+pandas
 
 # Image Upload
 cloudinary
