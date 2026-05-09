@@ -20,14 +20,14 @@ from langchain_core.messages import (
 from pydantic import BaseModel, Field
 
 from app.domain.models.conversation import ConversationStatus
-from app.domain.models.stock_agent_conversation import StockAgentConversation
 from app.domain.models.message import (
     Attachment,
     Message,
     MessageMetadata,
     MessageRole,
 )
-from app.infrastructure.llm.factory import get_chat_azure_openai_legacy
+from app.domain.models.stock_agent_conversation import StockAgentConversation
+from app.infrastructure.llm.factory import get_chat_openai_legacy
 from app.repo.stock_agent_conversation_repo import (
     StockAgentConversationRepository,
     StockAgentConversationSearchResult,
@@ -255,7 +255,8 @@ class StockAgentConversationService:
     @staticmethod
     def _default_title_llm_factory() -> Any:
         """Create a small non-streaming model for title generation."""
-        return get_chat_azure_openai_legacy(
+        return get_chat_openai_legacy(
+            model="gpt-5.4-mini",
             temperature=0.2,
             streaming=False,
             max_tokens=32,
