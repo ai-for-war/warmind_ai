@@ -34,7 +34,13 @@ WORKER_STATUS_TIMEOUT = "timeout"
 GENERAL_WORKER_AGENT_ID = "general_worker"
 EVENT_ANALYST_AGENT_ID = "event_analyst"
 TECHNICAL_ANALYST_AGENT_ID = "technical_analyst"
-StockSubagentId = Literal["general_worker", "event_analyst", "technical_analyst"]
+FUNDAMENTAL_ANALYST_AGENT_ID = "fundamental_analyst"
+StockSubagentId = Literal[
+    "general_worker",
+    "event_analyst",
+    "technical_analyst",
+    "fundamental_analyst",
+]
 
 
 @dataclass(frozen=True)
@@ -60,6 +66,10 @@ STOCK_AGENT_SUBAGENT_REGISTRY: Mapping[str, StockAgentSubagentDefinition] = (
                 agent_id=TECHNICAL_ANALYST_AGENT_ID,
                 description="Preset technical analyst for chart state, indicators, trend, support/resistance, entry, stop loss, targets, risk/reward, and technical backtests.",
             ),
+            FUNDAMENTAL_ANALYST_AGENT_ID: StockAgentSubagentDefinition(
+                agent_id=FUNDAMENTAL_ANALYST_AGENT_ID,
+                description="Preset fundamental analyst for business profile, growth, profitability, financial health, cash-flow quality, reported ratios, and valuation-ratio evidence.",
+            ),
         }
     )
 )
@@ -72,7 +82,7 @@ class DelegatedTaskInput(BaseModel):
 
     agent_id: StockSubagentId = Field(
         ...,
-        description="Required target subagent id. Supported values: general_worker, event_analyst, technical_analyst.",
+        description="Required target subagent id. Supported values: general_worker, event_analyst, technical_analyst, fundamental_analyst.",
     )
     objective: str = Field(
         ...,
@@ -99,6 +109,7 @@ class StockAgentDelegationExecutor:
         worker_agent: CompiledStateGraph | None = None,
         event_analyst_agent: CompiledStateGraph | None = None,
         technical_analyst_agent: CompiledStateGraph | None = None,
+        fundamental_analyst_agent: CompiledStateGraph | None = None,
         worker_timeout_seconds: float | None = None,
         result_max_chars: int | None = None,
     ) -> None:
@@ -111,6 +122,7 @@ class StockAgentDelegationExecutor:
         self.worker_agent = worker_agent
         self.event_analyst_agent = event_analyst_agent
         self.technical_analyst_agent = technical_analyst_agent
+        self.fundamental_analyst_agent = fundamental_analyst_agent
         self.worker_timeout_seconds = max(
             1.0,
             float(
@@ -183,7 +195,7 @@ class StockAgentDelegationExecutor:
                     task=normalized_task,
                     payload=self._build_specialist_payload(task=normalized_task),
                 )
-        else:
+        elif normalized_task.agent_id == TECHNICAL_ANALYST_AGENT_ID:
             try:
                 technical_analyst_agent = self._get_technical_analyst_agent()
             except Exception as exc:
@@ -191,6 +203,17 @@ class StockAgentDelegationExecutor:
             else:
                 result = await self._execute_one_task(
                     worker_agent=technical_analyst_agent,
+                    task=normalized_task,
+                    payload=self._build_specialist_payload(task=normalized_task),
+                )
+        else:
+            try:
+                fundamental_analyst_agent = self._get_fundamental_analyst_agent()
+            except Exception as exc:
+                result = _worker_setup_failed_result(normalized_task, exc)
+            else:
+                result = await self._execute_one_task(
+                    worker_agent=fundamental_analyst_agent,
                     task=normalized_task,
                     payload=self._build_specialist_payload(task=normalized_task),
                 )
@@ -344,6 +367,12 @@ class StockAgentDelegationExecutor:
             return self.technical_analyst_agent
         return _get_cached_technical_analyst_agent(self.runtime_config)
 
+    def _get_fundamental_analyst_agent(self) -> CompiledStateGraph:
+        """Return the compiled fundamental analyst runtime for the current runtime config."""
+        if self.fundamental_analyst_agent is not None:
+            return self.fundamental_analyst_agent
+        return _get_cached_fundamental_analyst_agent(self.runtime_config)
+
 
 def _normalize_task(task: DelegatedTaskInput | Mapping[str, Any]) -> DelegatedTaskInput:
     """Normalize delegated tool input into one validated task model."""
@@ -384,6 +413,18 @@ def _get_cached_technical_analyst_agent(
     )
 
     return create_technical_analyst_agent(runtime_config)
+
+
+@lru_cache(maxsize=8)
+def _get_cached_fundamental_analyst_agent(
+    runtime_config: StockAgentRuntimeConfig,
+) -> CompiledStateGraph:
+    """Compile and cache fundamental analyst runtimes by resolved stock-agent config."""
+    from app.agents.implementations.fundamental_analyst.agent import (
+        create_fundamental_analyst_agent,
+    )
+
+    return create_fundamental_analyst_agent(runtime_config)
 
 
 def _resolve_runtime_config_from_state(

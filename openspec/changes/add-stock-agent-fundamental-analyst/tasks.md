@@ -26,12 +26,12 @@
 
 ## 4. Stock-Agent Delegation Integration
 
-- [ ] 4.1 Extend stock-agent subagent constants, registry, and `StockSubagentId` literal to include `fundamental_analyst`.
-- [ ] 4.2 Add cached fundamental analyst runtime construction to the stock-agent delegation executor.
-- [ ] 4.3 Route delegated `fundamental_analyst` tasks through the specialist payload path.
-- [ ] 4.4 Update `delegate_tasks` tool documentation to include `fundamental_analyst` and its intended scope.
-- [ ] 4.5 Update stock-agent orchestration prompt to list `fundamental_analyst`, define routing rules, and replace generic-worker financial examples with the specialist.
-- [ ] 4.6 Ensure recursive delegation remains unavailable to the fundamental analyst runtime.
+- [x] 4.1 Extend stock-agent subagent constants, registry, and `StockSubagentId` literal to include `fundamental_analyst`.
+- [x] 4.2 Add cached fundamental analyst runtime construction to the stock-agent delegation executor.
+- [x] 4.3 Route delegated `fundamental_analyst` tasks through the specialist payload path.
+- [x] 4.4 Update `delegate_tasks` tool documentation to include `fundamental_analyst` and its intended scope.
+- [x] 4.5 Update stock-agent orchestration prompt to list `fundamental_analyst`, define routing rules, and replace generic-worker financial examples with the specialist.
+- [x] 4.6 Ensure recursive delegation remains unavailable to the fundamental analyst runtime.
 
 ## 5. Unit Tests
 
