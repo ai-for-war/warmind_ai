@@ -6,7 +6,7 @@
 
 Backend service built with FastAPI, Socket.IO, MongoDB, Redis, LangChain, and LangGraph.
 
-This repository is the API and realtime backend for a multi-tenant AI application. It combines classic business endpoints with AI-powered workflows such as chat, lead-agent orchestration, stock data, meeting transcription, voice cloning, TTS, image generation, and Google Sheets sync.
+This repository is the API and realtime backend for a multi-tenant AI application. It combines classic business endpoints with AI-powered workflows such as chat, lead-agent orchestration, stock-agent orchestration, stock data and research, meeting transcription, voice cloning, TTS, image generation, and Google Sheets sync.
 
 ## What the service does
 
@@ -14,7 +14,8 @@ This repository is the API and realtime backend for a multi-tenant AI applicatio
 - Multi-organization access control using `X-Organization-ID`
 - AI chat conversations with background response processing
 - Lead-agent conversations with runtime selection, skills, tools, and plan retrieval
-- Stock catalog, company data, price history, intraday data, watchlists, and backtests
+- Stock-agent conversations with isolated LangGraph state, runtime selection, user-managed skills, planning snapshots, and specialist subagent delegation
+- Stock catalog, company data, financial reports, price history, intraday data, watchlists, research reports, schedules, and backtests
 - Google Sheets connection management and async sheet sync
 - Meeting management plus realtime speech-to-text and note generation
 - Voice cloning and text-to-speech generation
@@ -27,7 +28,7 @@ This repository is the API and realtime backend for a multi-tenant AI applicatio
 - Realtime transport: Socket.IO mounted on the same ASGI app
 - Persistence: MongoDB for application data and LangGraph checkpointing
 - Queue and fan-out: Redis for queues and optional Socket.IO scaling
-- AI orchestration: LangChain and LangGraph
+- AI orchestration: LangChain and LangGraph, with separate lead-agent and stock-agent runtimes/checkpoint collections
 - External providers:
   - OpenAI and Azure OpenAI for LLM access
   - Deepgram for speech-to-text
@@ -35,7 +36,7 @@ This repository is the API and realtime backend for a multi-tenant AI applicatio
   - Cloudinary for media storage
   - Google Sheets service account for sheet sync
   - vnstock for Vietnam stock market data
-  - DDGS MCP server for web research tools
+  - DDGS MCP server for normalized web research tools used by research-oriented stock workflows
 
 ## Runtime requirements
 
@@ -174,7 +175,7 @@ pytest
 
 ## MCP web search setup
 
-The application uses MCP for web research tools. The default provider is the official DDGS MCP server launched from the app environment via:
+The application uses MCP for normalized web research tools. The default provider is the official DDGS MCP server launched from the app environment via:
 
 ```bash
 ddgs mcp
@@ -197,6 +198,7 @@ ddgs mcp -pr socks5h://127.0.0.1:9150
 ```
 
 - The application-level research contract remains `search` and `fetch_content`, while the underlying MCP provider can change later if tool normalization is preserved
+- Stock research and the stock-agent `event_analyst` depend on these normalized tools for current source-backed event/news/catalyst research
 
 ## API conventions
 
@@ -221,28 +223,51 @@ If `X-Organization-ID` is missing, the API returns `400`.
 
 Routes under `/api/v1/internal` are intended for internal automation or scheduler use and require the `X-API-Key` header to match `INTERNAL_API_KEY`.
 
+## Stock-agent runtime
+
+The stock-agent API is separate from the generic lead-agent API. It uses its own repositories and LangGraph checkpoint collections so stock-agent conversations, messages, skills, skill access, and runtime thread state do not share lead-agent storage.
+
+Stock-agent turns support:
+
+- Runtime catalog selection through `/api/v1/stock-agent/catalog`
+- User-selectable tool discovery through `/api/v1/stock-agent/tools`
+- Caller-owned stock-agent skill CRUD and per-organization enablement
+- Async message submission through `/api/v1/stock-agent/messages`
+- Conversation history and latest plan snapshot retrieval
+
+The parent stock agent can delegate synthesis-ready subtasks through validated subagent IDs:
+
+- `general_worker`: generic isolated stock-agent worker for delegated work that has no specialist runtime
+- `event_analyst`: specialist for Vietnam-listed equity events, news, catalysts, policy/regulatory developments, macro developments, and industry developments; uses only normalized MCP `search` and `fetch_content`
+- `technical_analyst`: specialist for daily (`1D`) technical reads and technical trading-plan evidence; uses deterministic tools for indicator computation, optional OHLCV inspection, and supported backtest templates
+
+Specialist subagents return evidence packages to the parent stock agent. They do not own the final user-facing all-factor recommendation.
+
 ## Main route groups
 
 
-| Route group                 | Purpose                                                              |
-| --------------------------- | -------------------------------------------------------------------- |
-| `/api/v1/health`            | Basic health check                                                   |
-| `/api/v1/auth`              | Login, password change, bootstrap super admin                        |
-| `/api/v1/users`             | User management and current-user queries                             |
-| `/api/v1/organizations`     | Organization CRUD and membership management                          |
-| `/api/v1/chat`              | AI conversation messaging and history                                |
-| `/api/v1/lead-agent`        | Lead-agent messaging, plan retrieval, skills, tools, runtime catalog |
-| `/api/v1/sheet-connections` | Google Sheets connection CRUD, preview, data access, sync status     |
-| `/api/v1/stocks`            | Stock catalog, company tabs, price history, intraday data            |
-| `/api/v1/stocks/watchlists` | Watchlist CRUD and watchlist items                                   |
-| `/api/v1/backtests`         | Backtest templates and execution                                     |
-| `/api/v1/analytics`         | Analytics endpoints over synchronized data                           |
-| `/api/v1/images`            | Image upload and asset management                                    |
-| `/api/v1/image-generations` | Async image generation jobs                                          |
-| `/api/v1/voices`            | Voice clone, voice list, preview, delete                             |
-| `/api/v1/tts`               | Generate audio, stream audio, list audio assets                      |
-| `/api/v1/meetings`          | Meeting listing, metadata updates, utterances, note chunks           |
-| `/api/v1/internal`          | Internal triggers such as sync kickoff                               |
+| Route group                       | Purpose                                                              |
+| --------------------------------- | -------------------------------------------------------------------- |
+| `/api/v1/health`                  | Basic health check                                                   |
+| `/api/v1/auth`                    | Login, password change, bootstrap super admin                        |
+| `/api/v1/users`                   | User management and current-user queries                             |
+| `/api/v1/organizations`           | Organization CRUD and membership management                          |
+| `/api/v1/chat`                    | AI conversation messaging and history                                |
+| `/api/v1/lead-agent`              | Lead-agent messaging, plan retrieval, skills, tools, runtime catalog |
+| `/api/v1/stock-agent`             | Stock-agent messaging, plan retrieval, skills, tools, runtime catalog |
+| `/api/v1/sheet-connections`       | Google Sheets connection CRUD, preview, data access, sync status     |
+| `/api/v1/stocks`                  | Stock catalog, company tabs, financial reports, prices, intraday data |
+| `/api/v1/stocks/watchlists`       | Watchlist CRUD and watchlist items                                   |
+| `/api/v1/stock-research/reports`  | Async stock research report catalog, creation, detail, and history   |
+| `/api/v1/stock-research/schedules` | Recurring stock research schedule CRUD and manual run trigger        |
+| `/api/v1/backtests`               | Backtest templates and execution                                     |
+| `/api/v1/analytics`               | Analytics endpoints over synchronized data                           |
+| `/api/v1/images`                  | Image upload and asset management                                    |
+| `/api/v1/image-generations`       | Async image generation jobs                                          |
+| `/api/v1/voices`                  | Voice clone, voice list, preview, delete                             |
+| `/api/v1/tts`                     | Generate audio, stream audio, list audio assets                      |
+| `/api/v1/meetings`                | Meeting listing, metadata updates, utterances, note chunks           |
+| `/api/v1/internal`                | Internal triggers such as sync kickoff and stock research dispatch   |
 
 
 ## Realtime behavior
@@ -251,7 +276,7 @@ The ASGI entrypoint is `app.main:combined_app`, which combines FastAPI and Socke
 
 Socket.IO is used for:
 
-- Streaming AI responses back to the client
+- Streaming chat, lead-agent, and stock-agent responses back to the client
 - Live speech-to-text sessions
 - Meeting recording and note-generation workflows
 - Realtime TTS streaming
@@ -265,7 +290,7 @@ ai_service_kiro/
 |-- app/
 |   |-- main.py                 # FastAPI + Socket.IO entrypoint
 |   |-- api/                    # REST routers and dependencies
-|   |-- agents/                 # AI agents, including lead-agent
+|   |-- agents/                 # AI agents, including lead-agent and stock-agent runtimes
 |   |-- services/               # Application and domain services
 |   |-- infrastructure/         # External providers and integrations
 |   |-- repo/                   # Data-access repositories
@@ -290,7 +315,9 @@ The `doc/feature` directory contains integration notes for consumers of this bac
 - [Live STT frontend guide](doc/feature/s2t/live_speech_to_text_frontend_guide.md)
 - [Stocks frontend guide](doc/feature/stocks/frontend_integration_guide.md)
 - [Stock company guide](doc/feature/stocks/stock_company_frontend_guide.md)
+- [Stock financial report guide](doc/feature/stocks/stock_financial_report_frontend_guide.md)
 - [Stock price guide](doc/feature/stocks/stock_price_frontend_guide.md)
+- [Stock research frontend guide](doc/feature/stocks/stock_research_frontend_guide.md)
 - [Stock research runtime metadata guide](doc/feature/stocks/stock_research_runtime_metadata_frontend_guide.md)
 - [Stock watchlist guide](doc/feature/stocks/stock_watchlist_frontend_guide.md)
 - [Lead-agent skill guide](doc/feature/skill/lead_agent_skill_frontend_guide.md)
