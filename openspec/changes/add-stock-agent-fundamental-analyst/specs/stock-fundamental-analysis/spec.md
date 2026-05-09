@@ -85,18 +85,18 @@ Each financial report tool SHALL default to `period="quarter"` when the analyst 
 - **THEN** the tool returns a bounded validation failure
 - **AND** the system MUST NOT make an upstream financial report read for that unsupported period
 
-### Requirement: Fundamental tools return compact selected evidence and data gaps
-Fundamental analyst tools SHALL return compact selected evidence rows, period labels, raw item names, values by period, source metadata, and data gaps. The tools MUST NOT require or return full unbounded financial report tables for phase-one analysis.
+### Requirement: Fundamental tools preserve service item payloads and data gaps
+Fundamental analyst tools SHALL preserve the existing service payload shape by returning VCI overview `item` data and KBS financial report `items` data, plus source metadata and data gaps. The tools MUST NOT remap service rows into a separate evidence-row shape for phase-one analysis.
 
-#### Scenario: Return compact row evidence
+#### Scenario: Return raw service item payloads
 - **WHEN** a financial report tool successfully loads report data
-- **THEN** the tool returns selected evidence rows with raw `item` and `values`
-- **AND** the tool preserves provider period labels in `periods`
-- **AND** the tool includes source metadata including symbol, source, report type, period, and cache state when available
+- **THEN** the tool returns the service `items` list with each row's raw `item`, `item_id`, and `values`
+- **AND** the tool preserves provider period labels in top-level `periods`
+- **AND** the tool includes metadata including symbol, source, report type, and period
 
 #### Scenario: Report missing expected evidence
 - **WHEN** a financial report tool cannot find rows relevant to a requested fundamental job
-- **THEN** the tool returns missing expected items or data gaps instead of fabricating row values
+- **THEN** the tool returns service failures or missing evidence as data gaps instead of fabricating row values
 - **AND** the analyst includes those gaps in its structured output
 
 #### Scenario: Preserve partial failures

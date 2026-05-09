@@ -10,7 +10,7 @@ The codebase already has validated stock data service boundaries:
 - `StockFinancialReportService.get_report()` uses KBS `Finance` methods for income statement, balance sheet, cash flow, and ratio reports.
 - The financial report service validates symbols, uses per-symbol/report/period caching, supports `quarter` and `year`, preserves provider period labels, and returns stable row items with `item`, `item_id`, and period-keyed `values`.
 
-Phase one must avoid speculative broad field mappings. The financial statement item contract is not stable enough for deterministic metric computation, so the analyst should work from compact selected reported rows and explicit data gaps.
+Phase one must avoid speculative broad field mappings. The financial statement item contract is not stable enough for deterministic metric computation, so the analyst tools should preserve the service `item`/`items` payloads and let the analyst report explicit data gaps.
 
 ## Goals / Non-Goals
 
@@ -143,7 +143,7 @@ Alternatives considered:
 
 - **Risk: The analyst omits one required report tool for a broad fundamental task** → Mitigation: prompt routing guidance must require all relevant tools for full fundamental tasks and require data gaps when evidence is missing.
 - **Risk: Five separate tools increase latency compared with one aggregate fetch** → Mitigation: each tool can be called only when relevant, and service-level caching reduces repeated provider cost.
-- **Risk: Large financial report outputs bloat model context** → Mitigation: tools should return compact selected evidence rows and metadata, not full unbounded report tables.
+- **Risk: Large financial report outputs bloat model context** → Mitigation: preserve the existing service payload shape first; add deterministic truncation later only if measured context usage requires it.
 - **Risk: KBS row names vary across sectors or report types** → Mitigation: do not hard-code speculative broad aliases; preserve raw `item`, `periods`, and values, and report missing expected evidence explicitly.
 - **Risk: Ratio evidence is interpreted as intrinsic valuation** → Mitigation: prompt and schema must state that reported valuation ratios are evidence only and do not authorize target price or DCF output.
 - **Risk: Existing active stock-agent subagent changes are complete but not archived** → Mitigation: implement this change on top of the current registry pattern and archive changes in an order that preserves the complete subagent set.

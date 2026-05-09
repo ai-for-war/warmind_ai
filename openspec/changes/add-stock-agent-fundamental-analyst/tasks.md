@@ -7,15 +7,15 @@
 
 ## 2. Fundamental Tool Surface
 
-- [ ] 2.1 Add lazy tool dependency helpers for `StockCompanyService` and `StockFinancialReportService`.
-- [ ] 2.2 Implement `load_company_profile` using `StockCompanyService.get_overview()` and returning compact VCI profile evidence plus source metadata and gaps.
-- [ ] 2.3 Implement `load_income_statement` using `StockFinancialReportService.get_report()` with report type `income-statement`.
-- [ ] 2.4 Implement `load_balance_sheet` using `StockFinancialReportService.get_report()` with report type `balance-sheet`.
-- [ ] 2.5 Implement `load_cash_flow` using `StockFinancialReportService.get_report()` with report type `cash-flow`.
-- [ ] 2.6 Implement `load_financial_ratios` using `StockFinancialReportService.get_report()` with report type `ratio` and no VCI ratio-summary fallback.
-- [ ] 2.7 Ensure all financial report tools default to `period="quarter"` and accept `period="year"` while preserving service validation for unsupported periods.
-- [ ] 2.8 Add compact row-selection and data-gap helpers that preserve raw `item`, `periods`, and values without broad speculative item aliases.
-- [ ] 2.9 Add a fundamental analyst tool surface builder exposing exactly the five phase-one tools.
+- [x] 2.1 Add lazy tool dependency helpers for `StockCompanyService` and `StockFinancialReportService`.
+- [x] 2.2 Implement `load_company_profile` using `StockCompanyService.get_overview()` and returning the VCI overview `item` plus metadata and gaps.
+- [x] 2.3 Implement `load_income_statement` using `StockFinancialReportService.get_report()` with report type `income-statement`.
+- [x] 2.4 Implement `load_balance_sheet` using `StockFinancialReportService.get_report()` with report type `balance-sheet`.
+- [x] 2.5 Implement `load_cash_flow` using `StockFinancialReportService.get_report()` with report type `cash-flow`.
+- [x] 2.6 Implement `load_financial_ratios` using `StockFinancialReportService.get_report()` with report type `ratio` and no VCI ratio-summary fallback.
+- [x] 2.7 Ensure all financial report tools default to `period="quarter"` and accept `period="year"` while preserving service validation for unsupported periods.
+- [x] 2.8 Add shared validation and data-gap helpers while preserving service `item`/`items` payloads without broad speculative item aliases.
+- [x] 2.9 Add a fundamental analyst tool surface builder exposing exactly the five phase-one tools.
 
 ## 3. Fundamental Runtime And Prompt
 
@@ -38,7 +38,7 @@
 - [ ] 5.1 Add validation tests for successful and invalid `FundamentalAnalystOutput` payloads.
 - [ ] 5.2 Add tests proving `technical_read`-style final recommendations, target prices, or unsupported final recommendation labels are rejected or prevented by schema/prompt contract where enforceable.
 - [ ] 5.3 Add tool tests for `load_company_profile` verifying it calls the company service path and reports VCI metadata.
-- [ ] 5.4 Add tool tests for each KBS financial report tool verifying the correct report type, default quarterly period, annual override, source metadata, selected rows, and data gaps.
+- [ ] 5.4 Add tool tests for each KBS financial report tool verifying the correct report type, default quarterly period, annual override, raw `items`, and data gaps.
 - [ ] 5.5 Add a test proving `load_financial_ratios` does not call VCI ratio-summary dependencies.
 - [ ] 5.6 Add runtime creation tests verifying the fundamental analyst exposes exactly the five phase-one tools and structured response format.
 - [ ] 5.7 Add delegation tests proving `fundamental_analyst` routes to the specialist runtime and unknown IDs remain rejected.
