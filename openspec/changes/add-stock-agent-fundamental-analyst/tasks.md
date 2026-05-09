@@ -35,14 +35,14 @@
 
 ## 5. Unit Tests
 
-- [ ] 5.1 Add validation tests for successful and invalid `FundamentalAnalystOutput` payloads.
-- [ ] 5.2 Add tests proving `technical_read`-style final recommendations, target prices, or unsupported final recommendation labels are rejected or prevented by schema/prompt contract where enforceable.
-- [ ] 5.3 Add tool tests for `load_company_profile` verifying it calls the company service path and reports VCI metadata.
-- [ ] 5.4 Add tool tests for each KBS financial report tool verifying the correct report type, default quarterly period, annual override, raw `items`, and data gaps.
-- [ ] 5.5 Add a test proving `load_financial_ratios` does not call VCI ratio-summary dependencies.
-- [ ] 5.6 Add runtime creation tests verifying the fundamental analyst exposes exactly the five phase-one tools and structured response format.
-- [ ] 5.7 Add delegation tests proving `fundamental_analyst` routes to the specialist runtime and unknown IDs remain rejected.
-- [ ] 5.8 Add stock-agent prompt/orchestration tests proving fundamental routing rules are present and generic-worker financial examples are removed or replaced.
+- [x] 5.1 Add validation tests for successful and invalid `FundamentalAnalystOutput` payloads.
+- [x] 5.2 Add tests proving `technical_read`-style final recommendations, target prices, or unsupported final recommendation labels are rejected or prevented by schema/prompt contract where enforceable.
+- [x] 5.3 Add tool tests for `load_company_profile` verifying it calls the company service path and reports VCI metadata.
+- [x] 5.4 Add tool tests for each KBS financial report tool verifying the correct report type, default quarterly period, annual override, raw `items`, and data gaps.
+- [x] 5.5 Add a test proving `load_financial_ratios` does not call VCI ratio-summary dependencies.
+- [x] 5.6 Add runtime creation tests verifying the fundamental analyst exposes exactly the five phase-one tools and structured response format.
+- [x] 5.7 Add delegation tests proving `fundamental_analyst` routes to the specialist runtime and unknown IDs remain rejected.
+- [x] 5.8 Add stock-agent prompt/orchestration tests proving fundamental routing rules are present and generic-worker financial examples are removed or replaced.
 
 ## 6. Verification
 

@@ -173,12 +173,14 @@ async def test_delegation_executor_rejects_unknown_agent_id_without_worker_invoc
     worker_agent = _FakeWorkerAgent()
     event_analyst_agent = _FakeWorkerAgent()
     technical_analyst_agent = _FakeWorkerAgent()
+    fundamental_analyst_agent = _FakeWorkerAgent()
     executor = StockAgentDelegationExecutor(
         parent_state=_parent_state(),
         parent_tool_call_id="tool-parent-5",
         worker_agent=worker_agent,
         event_analyst_agent=event_analyst_agent,
         technical_analyst_agent=technical_analyst_agent,
+        fundamental_analyst_agent=fundamental_analyst_agent,
     )
 
     result = await executor.execute(
@@ -194,6 +196,7 @@ async def test_delegation_executor_rejects_unknown_agent_id_without_worker_invoc
     assert worker_agent.calls == []
     assert event_analyst_agent.calls == []
     assert technical_analyst_agent.calls == []
+    assert fundamental_analyst_agent.calls == []
 
 
 @pytest.mark.asyncio
@@ -279,6 +282,53 @@ async def test_delegation_executor_routes_technical_analyst_to_specialist_runtim
         "subagent_id": "technical_analyst",
     }
     assert "FPT" in str(technical_payload["messages"][0]["content"])
+
+
+@pytest.mark.asyncio
+async def test_delegation_executor_routes_fundamental_analyst_to_specialist_runtime() -> None:
+    worker_agent = _FakeWorkerAgent()
+    event_analyst_agent = _FakeWorkerAgent()
+    technical_analyst_agent = _FakeWorkerAgent()
+    fundamental_analyst_agent = _FakeWorkerAgent()
+    executor = StockAgentDelegationExecutor(
+        parent_state=_parent_state(),
+        parent_tool_call_id="tool-parent-8",
+        worker_agent=worker_agent,
+        event_analyst_agent=event_analyst_agent,
+        technical_analyst_agent=technical_analyst_agent,
+        fundamental_analyst_agent=fundamental_analyst_agent,
+        worker_timeout_seconds=1.0,
+    )
+
+    result = await executor.execute(
+        {
+            "agent_id": "fundamental_analyst",
+            "objective": "Analyze FPT business profile, profitability, cash flow, balance sheet health, and valuation-ratio evidence",
+            "context": "Vietnam-listed equity: FPT. Use quarterly evidence.",
+        }
+    )
+
+    assert result["status"] == DELEGATION_STATUS_COMPLETED
+    assert result["subagent_id"] == "fundamental_analyst"
+    assert worker_agent.calls == []
+    assert event_analyst_agent.calls == []
+    assert technical_analyst_agent.calls == []
+    assert len(fundamental_analyst_agent.calls) == 1
+    fundamental_payload = fundamental_analyst_agent.calls[0]["payload"]
+    assert isinstance(fundamental_payload, dict)
+    assert list(fundamental_payload.keys()) == [
+        "messages",
+        "delegation_depth",
+        "delegation_parent_run_id",
+        "delegated_execution_metadata",
+    ]
+    assert fundamental_payload["delegation_depth"] == 1
+    assert fundamental_payload["delegation_parent_run_id"] == "tool-parent-8"
+    assert fundamental_payload["delegated_execution_metadata"] == {
+        "parent_tool_call_id": "tool-parent-8",
+        "subagent_id": "fundamental_analyst",
+    }
+    assert "FPT" in str(fundamental_payload["messages"][0]["content"])
 
 
 def test_delegated_task_input_requires_agent_id_and_rejects_extra_fields() -> None:

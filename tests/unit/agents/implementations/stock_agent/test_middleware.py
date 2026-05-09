@@ -283,6 +283,7 @@ async def test_orchestration_prompt_middleware_injects_manager_guidance_for_suba
     assert get_stock_agent_orchestration_system_prompt() in updated_request.system_prompt
     assert "event_analyst" in updated_request.system_prompt
     assert "technical_analyst" in updated_request.system_prompt
+    assert "fundamental_analyst" in updated_request.system_prompt
     assert "general_worker" in updated_request.system_prompt
     assert "agent_id" in updated_request.system_prompt
 
@@ -716,12 +717,21 @@ def test_stock_agent_orchestration_prompt_lists_typed_subagents_and_routing_rule
 
     assert "event_analyst" in prompt
     assert "technical_analyst" in prompt
+    assert "fundamental_analyst" in prompt
     assert "general_worker" in prompt
     assert 'agent_id="event_analyst"' in prompt
     assert 'agent_id="technical_analyst"' in prompt
+    assert 'agent_id="fundamental_analyst"' in prompt
     assert 'agent_id="general_worker"' in prompt
     assert "news, events, catalysts, policy, regulation, macro, or industry" in prompt
     assert "chart state, indicators, technical trend" in prompt
+    assert "financial statements, fundamentals, business profile" in prompt
+    assert (
+        "Never use `general_worker` as a shortcut for fundamental-analysis work"
+        in prompt
+    )
+    assert '"agent_id": "fundamental_analyst", "objective": "Analyze FPT business profile' in prompt
+    assert '"agent_id": "general_worker", "objective": "Analyze FPT financial' not in prompt
     assert "`expected_output` is invalid" in prompt
     assert "Maximum 3" not in prompt
     assert "HARD LIMIT" not in prompt
