@@ -22,9 +22,11 @@ def test_compute_indicators_input_accepts_length_history_query() -> None:
 
     assert payload.symbol == "FPT"
     assert payload.interval == "1D"
+    assert payload.source == "KBS"
     assert payload.indicator_set == "core"
     history_query = payload.to_stock_price_history_query()
     assert history_query.length == 260
+    assert history_query.source == "KBS"
     assert history_query.start is None
 
 
@@ -105,6 +107,7 @@ def test_load_price_history_input_uses_same_history_query_shape() -> None:
 
     assert payload.symbol == "FPT"
     assert payload.to_stock_price_history_query().start == "2025-01-01"
+    assert payload.to_stock_price_history_query().source == "KBS"
 
 
 def test_run_backtest_input_documents_and_validates_template_params() -> None:

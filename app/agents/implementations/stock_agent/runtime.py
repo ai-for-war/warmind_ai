@@ -133,5 +133,5 @@ def build_stock_agent_model(
     return build_chat_model(
         runtime_config=resolved_config,
         agent_label="stock-agent",
-        max_tokens=16384,
+        max_tokens=8192,
     )

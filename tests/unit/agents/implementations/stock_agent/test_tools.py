@@ -159,3 +159,6 @@ def test_delegate_tasks_tool_description_documents_agent_id_contract() -> None:
     assert "general_worker" in delegate_tool.description
     assert "event_analyst" in delegate_tool.description
     assert "technical_analyst" in delegate_tool.description
+    assert "fundamental_analyst" in delegate_tool.description
+    assert "business profile" in delegate_tool.description
+    assert "valuation-ratio evidence" in delegate_tool.description

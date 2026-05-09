@@ -10,7 +10,9 @@ from typing import Any
 from app.config.settings import get_settings
 from app.domain.schemas.stock_price import (
     DEFAULT_HISTORY_INTERVAL,
+    DEFAULT_HISTORY_SOURCE,
     DEFAULT_INTRADAY_PAGE_SIZE,
+    DEFAULT_INTRADAY_SOURCE,
     StockPriceSource,
 )
 
@@ -34,7 +36,8 @@ INTRADAY_FIELDS: tuple[str, ...] = (
 class VnstockPriceGateway:
     """Thin wrapper around vnstock Quote for supported price sources."""
 
-    SOURCE = "VCI"
+    HISTORY_SOURCE = DEFAULT_HISTORY_SOURCE
+    INTRADAY_SOURCE = DEFAULT_INTRADAY_SOURCE
 
     def __init__(
         self,
@@ -54,7 +57,7 @@ class VnstockPriceGateway:
         self,
         symbol: str,
         *,
-        source: StockPriceSource = SOURCE,
+        source: StockPriceSource = HISTORY_SOURCE,
         start: str | None = None,
         end: str | None = None,
         interval: str = DEFAULT_HISTORY_INTERVAL,
@@ -77,7 +80,7 @@ class VnstockPriceGateway:
         self,
         symbol: str,
         *,
-        source: StockPriceSource = SOURCE,
+        source: StockPriceSource = INTRADAY_SOURCE,
         page_size: int = DEFAULT_INTRADAY_PAGE_SIZE,
         last_time: str | None = None,
         last_time_format: str | None = None,
@@ -100,7 +103,12 @@ class VnstockPriceGateway:
             transform_record=self._normalize_intraday_record,
         )
 
-    def _build_quote(self, symbol: str, *, source: StockPriceSource = SOURCE) -> Any:
+    def _build_quote(
+        self,
+        symbol: str,
+        *,
+        source: StockPriceSource = DEFAULT_INTRADAY_SOURCE,
+    ) -> Any:
         normalized_symbol = self._normalize_symbol(symbol)
 
         if self._quote_factory is not None:

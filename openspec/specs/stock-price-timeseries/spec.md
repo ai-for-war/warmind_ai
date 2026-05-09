@@ -31,12 +31,12 @@ historical OHLCV endpoint and an intraday trade-timeseries endpoint.
 - **WHEN** the caller requests the stock intraday endpoint for one valid stock symbol
 - **THEN** the system returns only the intraday trade-timeseries payload for that request
 
-### Requirement: Stock price timeseries reads use vnstock Quote with source VCI only
-The system SHALL fetch stock price timeseries using `vnstock` quote methods with an explicit supported source. The supported sources MUST be `VCI` and `KBS`. When the caller does not provide a source, the system MUST use `VCI` to preserve existing behavior. The backend MUST NOT rotate to or fallback to another source provider automatically for this capability.
+### Requirement: Stock price timeseries reads use vnstock Quote with explicit supported sources
+The system SHALL fetch stock price timeseries using `vnstock` quote methods with an explicit supported source. The supported sources MUST be `VCI` and `KBS`. When the caller does not provide a source for historical OHLCV, the system MUST use `KBS`. When the caller does not provide a source for intraday reads, the system MUST use `VCI` to preserve cursor-capable intraday behavior. The backend MUST NOT rotate to or fallback to another source provider automatically for this capability.
 
 #### Scenario: Fetch historical price data from the default source
 - **WHEN** the backend serves a stock price history request without an explicit source
-- **THEN** the system fetches upstream data using the `vnstock` quote integration configured with source `VCI`
+- **THEN** the system fetches upstream data using the `vnstock` quote integration configured with source `KBS`
 
 #### Scenario: Fetch intraday data from the default source
 - **WHEN** the backend serves a stock intraday request without an explicit source
@@ -52,10 +52,10 @@ The system SHALL fetch stock price timeseries using `vnstock` quote methods with
 
 #### Scenario: Do not automatically substitute providers
 - **WHEN** the backend serves any stock price timeseries endpoint
-- **THEN** the system MUST use the requested source or the default `VCI` source
+- **THEN** the system MUST use the requested source or the endpoint-specific default source
 - **AND** the system MUST NOT automatically substitute `KBS`, `VCI`, or another provider on behalf of the caller
 
-### Requirement: Stock price timeseries responses preserve canonical VCI raw fields
+### Requirement: Stock price timeseries responses preserve canonical raw fields
 The system SHALL normalize each stock price timeseries endpoint to a stable backend contract derived from the documented shared fields for the selected `vnstock` source and method scope in use. Historical price responses MUST preserve raw OHLCV timeseries fields, and intraday responses MUST preserve raw trade-timeseries fields. The backend MUST NOT add speculative cross-provider alias mappings or backend-derived analytics.
 
 #### Scenario: Return canonical historical OHLCV fields
@@ -149,4 +149,3 @@ other query variants of the same stock symbol.
 - **WHEN** an upstream failure occurs while serving one query variant of a stock price timeseries endpoint for a stock symbol
 - **THEN** the failure applies only to that requested query variant
 - **AND** the system continues to allow later requests for other query variants of that same endpoint and stock symbol
-

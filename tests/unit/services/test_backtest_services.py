@@ -27,7 +27,7 @@ class _FakeStockPriceService:
         self.calls.append((symbol, query))
         return StockPriceHistoryResponse(
             symbol=symbol,
-            source="VCI",
+            source=query.source,
             cache_hit=False,
             interval="1D",
             items=self.items,
@@ -118,6 +118,7 @@ async def test_backtest_data_service_loads_ordered_daily_bars_from_stock_history
     assert query.start == "2023-12-30"
     assert query.end == "2024-01-31"
     assert query.interval == "1D"
+    assert query.source == "KBS"
 
 
 @pytest.mark.asyncio
