@@ -19,10 +19,10 @@
 
 ## 3. Fundamental Runtime And Prompt
 
-- [ ] 3.1 Add `app/prompts/system/fundamental_analyst.py` with role, scope, tool routing guidance, evidence-only boundaries, output requirements, and summarization prompt.
-- [ ] 3.2 Add fundamental analyst runtime config/model builder aligned with stock-agent runtime config patterns.
-- [ ] 3.3 Add middleware for summarization, bounded tool output, and tool error conversion that instructs the analyst to report gaps instead of fabricating values.
-- [ ] 3.4 Implement `create_fundamental_analyst_agent` with the dedicated model, five-tool surface, middleware, system prompt, and structured response format.
+- [x] 3.1 Add `app/prompts/system/fundamental_analyst.py` with role, scope, tool routing guidance, evidence-only boundaries, output requirements, and summarization prompt.
+- [x] 3.2 Add fundamental analyst runtime config/model builder aligned with stock-agent runtime config patterns.
+- [x] 3.3 Add middleware for summarization, bounded tool output, and tool error conversion that instructs the analyst to report gaps instead of fabricating values.
+- [x] 3.4 Implement `create_fundamental_analyst_agent` with the dedicated model, five-tool surface, middleware, system prompt, and structured response format.
 
 ## 4. Stock-Agent Delegation Integration
 

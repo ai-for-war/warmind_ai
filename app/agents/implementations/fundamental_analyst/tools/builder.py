@@ -9,10 +9,16 @@ from langchain_core.tools import BaseTool
 from app.agents.implementations.fundamental_analyst.tools.company_profile import (
     load_company_profile,
 )
-from app.agents.implementations.fundamental_analyst.tools.financial_reports import (
+from app.agents.implementations.fundamental_analyst.tools.balance_sheet import (
     load_balance_sheet,
+)
+from app.agents.implementations.fundamental_analyst.tools.cash_flow import (
     load_cash_flow,
+)
+from app.agents.implementations.fundamental_analyst.tools.financial_ratios import (
     load_financial_ratios,
+)
+from app.agents.implementations.fundamental_analyst.tools.income_statement import (
     load_income_statement,
 )
 
@@ -45,4 +51,3 @@ def get_fundamental_analyst_tool_surface() -> FundamentalAnalystToolSurface:
             load_financial_ratios,
         ),
     )
-
