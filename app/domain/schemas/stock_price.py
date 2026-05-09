@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import ClassVar, Literal
 
 from pydantic import Field, field_validator, model_validator
 
@@ -11,6 +11,8 @@ from app.domain.schemas.stock import StockSchemaBase
 StockPriceSource = Literal["VCI", "KBS"]
 HistoryInterval = Literal["1m", "5m", "15m", "30m", "1H", "1D", "1W", "1M"]
 
+DEFAULT_HISTORY_SOURCE: StockPriceSource = "KBS"
+DEFAULT_INTRADAY_SOURCE: StockPriceSource = "VCI"
 DEFAULT_HISTORY_INTERVAL: HistoryInterval = "1D"
 DEFAULT_INTRADAY_PAGE_SIZE = 100
 MAX_INTRADAY_PAGE_SIZE = 30_000
@@ -19,23 +21,28 @@ MAX_INTRADAY_PAGE_SIZE = 30_000
 class StockPriceQueryBase(StockSchemaBase):
     """Base schema for stock price query parameters."""
 
-    source: StockPriceSource = "VCI"
+    DEFAULT_SOURCE: ClassVar[StockPriceSource] = DEFAULT_INTRADAY_SOURCE
+
+    source: StockPriceSource = DEFAULT_INTRADAY_SOURCE
 
     @field_validator("source", mode="before")
     @classmethod
     def normalize_source(cls, value: str | None) -> StockPriceSource:
         """Normalize source text to the supported vnstock source values."""
         if value is None:
-            return "VCI"
+            return cls.DEFAULT_SOURCE
         if not isinstance(value, str):
             raise TypeError("source must be a string")
         normalized = value.strip().upper()
-        return normalized or "VCI"  # type: ignore[return-value]
+        return normalized or cls.DEFAULT_SOURCE  # type: ignore[return-value]
 
 
 class StockPriceHistoryQuery(StockPriceQueryBase):
     """Public query parameters for the stock price history endpoint."""
 
+    DEFAULT_SOURCE: ClassVar[StockPriceSource] = DEFAULT_HISTORY_SOURCE
+
+    source: StockPriceSource = DEFAULT_HISTORY_SOURCE
     start: str | None = None
     end: str | None = None
     interval: HistoryInterval = DEFAULT_HISTORY_INTERVAL
@@ -104,6 +111,9 @@ class StockPriceHistoryQuery(StockPriceQueryBase):
 class StockPriceIntradayQuery(StockPriceQueryBase):
     """Public query parameters for the stock price intraday endpoint."""
 
+    DEFAULT_SOURCE: ClassVar[StockPriceSource] = DEFAULT_INTRADAY_SOURCE
+
+    source: StockPriceSource = DEFAULT_INTRADAY_SOURCE
     page_size: int = Field(
         default=DEFAULT_INTRADAY_PAGE_SIZE, ge=1, le=MAX_INTRADAY_PAGE_SIZE
     )
@@ -125,8 +135,10 @@ class StockPriceIntradayQuery(StockPriceQueryBase):
 class StockPriceResponseBase(StockSchemaBase):
     """Common response metadata for stock price payloads."""
 
+    DEFAULT_SOURCE: ClassVar[StockPriceSource] = DEFAULT_INTRADAY_SOURCE
+
     symbol: str = Field(..., min_length=1)
-    source: StockPriceSource = "VCI"
+    source: StockPriceSource = DEFAULT_INTRADAY_SOURCE
     cache_hit: bool = False
 
     @field_validator("symbol", mode="before")
@@ -145,11 +157,11 @@ class StockPriceResponseBase(StockSchemaBase):
     def normalize_source(cls, value: str | None) -> StockPriceSource:
         """Normalize response source text to the supported vnstock source values."""
         if value is None:
-            return "VCI"
+            return cls.DEFAULT_SOURCE
         if not isinstance(value, str):
             raise TypeError("source must be a string")
         normalized = value.strip().upper()
-        return normalized or "VCI"  # type: ignore[return-value]
+        return normalized or cls.DEFAULT_SOURCE  # type: ignore[return-value]
 
 
 class StockPriceHistoryItem(StockSchemaBase):
@@ -176,6 +188,9 @@ class StockPriceIntradayItem(StockSchemaBase):
 class StockPriceHistoryResponse(StockPriceResponseBase):
     """Response envelope for historical stock price reads."""
 
+    DEFAULT_SOURCE: ClassVar[StockPriceSource] = DEFAULT_HISTORY_SOURCE
+
+    source: StockPriceSource = DEFAULT_HISTORY_SOURCE
     interval: HistoryInterval = DEFAULT_HISTORY_INTERVAL
     items: list[StockPriceHistoryItem]
 
@@ -183,4 +198,7 @@ class StockPriceHistoryResponse(StockPriceResponseBase):
 class StockPriceIntradayResponse(StockPriceResponseBase):
     """Response envelope for intraday stock price reads."""
 
+    DEFAULT_SOURCE: ClassVar[StockPriceSource] = DEFAULT_INTRADAY_SOURCE
+
+    source: StockPriceSource = DEFAULT_INTRADAY_SOURCE
     items: list[StockPriceIntradayItem]

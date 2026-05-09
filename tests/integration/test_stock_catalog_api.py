@@ -552,13 +552,13 @@ async def test_get_stock_price_history_requires_org_auth_and_returns_metadata() 
     assert response.status_code == 200
     body = response.json()
     assert body["symbol"] == "FPT"
-    assert body["source"] == "VCI"
+    assert body["source"] == "KBS"
     assert body["cache_hit"] is False
     assert body["interval"] == "1D"
     assert body["items"][0]["close"] == 101.0
     assert price_service.history_calls[0][0] == "FPT"
     assert price_service.history_calls[0][1].start == "2026-04-01"
-    assert price_service.history_calls[0][1].source == "VCI"
+    assert price_service.history_calls[0][1].source == "KBS"
 
 
 @pytest.mark.asyncio

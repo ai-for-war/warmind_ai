@@ -141,7 +141,9 @@ async def test_compute_indicators_self_loads_history_and_returns_snapshot() -> N
     assert symbol == "FPT"
     assert query.length == 260
     assert query.interval == "1D"
+    assert query.source == "KBS"
     assert snapshot.symbol == "FPT"
+    assert snapshot.source == "KBS"
     assert snapshot.bars_loaded == 260
     assert snapshot.indicator_set == "core"
     assert {reading.name for reading in snapshot.trend} >= {
@@ -226,6 +228,7 @@ async def test_load_price_history_returns_raw_ohlcv_and_is_not_required_before_c
 
     assert snapshot.symbol == "FPT"
     assert raw["symbol"] == "FPT"
+    assert raw["source"] == "KBS"
     assert raw["interval"] == "1D"
     assert raw["bars_loaded"] == 30
     assert set(raw["items"][0]) == {"time", "open", "high", "low", "close", "volume"}

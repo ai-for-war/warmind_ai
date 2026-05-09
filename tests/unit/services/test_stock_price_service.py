@@ -76,7 +76,7 @@ class _StaleFallbackCache(_FakeCache):
 
 
 class _FakeGateway:
-    SOURCE = "VCI"
+    SOURCE = "KBS"
 
     def __init__(self) -> None:
         self.calls: list[tuple[str, str, dict[str, object | None]]] = []
@@ -89,7 +89,7 @@ class _FakeGateway:
         self,
         symbol: str,
         *,
-        source: str = "VCI",
+        source: str = "KBS",
         start: str | None = None,
         end: str | None = None,
         interval: str = "1D",
@@ -164,7 +164,7 @@ async def test_history_cache_hit_skips_upstream_and_marks_cache_hit() -> None:
     variant = StockPriceService._build_history_variant(query)  # noqa: SLF001
     cache.payloads[("FPT", "history", variant)] = StockPriceHistoryResponse(
         symbol="FPT",
-        source="VCI",
+        source="KBS",
         cache_hit=False,
         interval="1D",
         items=[{"time": "2026-04-15", "close": 101.0}],
@@ -198,7 +198,7 @@ async def test_history_cache_miss_fetches_upstream_and_caches_response() -> None
             "history",
             "FPT",
             {
-                "source": "VCI",
+                "source": "KBS",
                 "start": "2026-04-01",
                 "end": "2026-04-15",
                 "interval": "1D",
@@ -210,7 +210,7 @@ async def test_history_cache_miss_fetches_upstream_and_caches_response() -> None
         (
             "FPT",
             "history",
-            "source=VCI:interval=1D:start=2026-04-01:end=2026-04-15:length=",
+            "source=KBS:interval=1D:start=2026-04-01:end=2026-04-15:length=",
         )
     ]
 
@@ -264,7 +264,7 @@ async def test_stale_cache_is_returned_when_history_upstream_fails() -> None:
     gateway.fail_history = True
     stale_response = StockPriceHistoryResponse(
         symbol="FPT",
-        source="VCI",
+        source="KBS",
         cache_hit=False,
         interval="1D",
         items=[{"time": "2026-04-14", "close": 99.0}],
@@ -452,7 +452,7 @@ async def test_one_failing_variant_does_not_block_other_variants() -> None:
     assert exc_info.value.status_code == 502
     assert response.items[0].close == 101.0
     assert cache.set_calls == [
-        ("FPT", "history", "source=VCI:interval=1D:start=:end=:length=30"),
+        ("FPT", "history", "source=KBS:interval=1D:start=:end=:length=30"),
     ]
 
 

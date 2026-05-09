@@ -32,7 +32,8 @@ Danh sách endpoint:
 
 - `history`: trả về historical OHLCV timeseries
 - `intraday`: trả về intraday trade timeseries
-- source hiện tại của price data là cố định `VCI`
+- `history` mặc định dùng source `KBS`; `intraday` mặc định dùng source `VCI`
+- frontend có thể override source bằng `source=VCI` hoặc `source=KBS`
 - v1 chỉ trả raw timeseries, không trả analytics hay summary metrics
 
 ## 3. Điều kiện để gọi API thành công
@@ -86,6 +87,7 @@ Query params hỗ trợ:
 - `end`: optional string
 - `interval`: optional string, mặc định `1D`
 - `length`: optional number hoặc string
+- `source`: optional `VCI` hoặc `KBS`, mặc định `KBS`
 
 Giá trị hợp lệ của `interval`:
 
@@ -108,7 +110,7 @@ Semantics:
 
 - mode 1: explicit range dùng `start` và optional `end`
 - mode 2: lookback dùng `length`
-- `interval` được backend normalize theo contract VCI hiện tại
+- `interval` được backend normalize theo contract `vnstock` history cho source được chọn
 
 Ví dụ hợp lệ:
 
@@ -154,6 +156,7 @@ Query params hỗ trợ:
 - `page_size`: optional number, mặc định `100`, tối đa `30000`
 - `last_time`: optional string
 - `last_time_format`: optional string
+- `source`: optional `VCI` hoặc `KBS`, mặc định `VCI`
 
 Semantics:
 
@@ -184,7 +187,7 @@ Shape:
 ```json
 {
   "symbol": "FPT",
-  "source": "VCI",
+  "source": "KBS",
   "cache_hit": false,
   "interval": "1D",
   "items": []
@@ -196,7 +199,7 @@ Schema:
 ```ts
 type StockPriceHistoryResponse = {
   symbol: string;
-  source: "VCI";
+  source: "VCI" | "KBS";
   cache_hit: boolean;
   interval: "1m" | "5m" | "15m" | "30m" | "1H" | "1D" | "1W" | "1M";
   items: StockPriceHistoryItem[];
@@ -221,7 +224,7 @@ Schema:
 ```ts
 type StockPriceIntradayResponse = {
   symbol: string;
-  source: "VCI";
+  source: "VCI" | "KBS";
   cache_hit: boolean;
   items: StockPriceIntradayItem[];
 }
@@ -230,7 +233,7 @@ type StockPriceIntradayResponse = {
 Ý nghĩa các field metadata:
 
 - `symbol`: mã chứng khoán đã được backend normalize sang uppercase
-- `source`: nguồn dữ liệu giá. V1 cố định là `VCI`
+- `source`: nguồn dữ liệu giá. History mặc định `KBS`; intraday mặc định `VCI`
 - `cache_hit`: `true` nếu response được đọc từ cache, `false` nếu vừa fetch và normalize mới
 - `interval`: chỉ có ở history response, phản ánh interval backend dùng cho response đó
 
@@ -326,7 +329,7 @@ Ví dụ:
 ```json
 {
   "symbol": "FPT",
-  "source": "VCI",
+  "source": "KBS",
   "cache_hit": false,
   "interval": "1D",
   "items": [

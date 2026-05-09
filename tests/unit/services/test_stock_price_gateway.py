@@ -93,7 +93,7 @@ def _gateway_and_calls() -> tuple[
     return VnstockPriceGateway(quote_factory=factory), calls
 
 
-def test_fetch_history_returns_only_canonical_vci_fields() -> None:
+def test_fetch_history_defaults_to_kbs_and_returns_only_canonical_fields() -> None:
     gateway, calls = _gateway_and_calls()
 
     payload = gateway.fetch_history(
@@ -118,7 +118,7 @@ def test_fetch_history_returns_only_canonical_vci_fields() -> None:
             "history",
             "FPT",
             {
-                "source": "VCI",
+                "source": "KBS",
                 "start": "2026-04-01",
                 "end": "2026-04-15",
                 "interval": "1D",

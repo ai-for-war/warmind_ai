@@ -20,6 +20,7 @@ from app.domain.schemas.backtest import (
 )
 from app.domain.schemas.stock import StockSchemaBase
 from app.domain.schemas.stock_price import (
+    DEFAULT_HISTORY_SOURCE,
     DEFAULT_HISTORY_INTERVAL,
     StockPriceHistoryQuery,
     StockPriceSource,
@@ -240,7 +241,7 @@ class TechnicalHistoryToolInput(TechnicalAnalysisSchema):
         if not isinstance(value, dict):
             return value
         data = dict(value)
-        data.setdefault("source", "VCI")
+        data.setdefault("source", DEFAULT_HISTORY_SOURCE)
         data.setdefault("interval", DEFAULT_TECHNICAL_ANALYSIS_INTERVAL)
         data.setdefault("length", None)
         data.setdefault("start", None)
@@ -263,11 +264,11 @@ class TechnicalHistoryToolInput(TechnicalAnalysisSchema):
     def normalize_source(cls, value: str | None) -> StockPriceSource:
         """Normalize source text to the supported stock price source values."""
         if value is None:
-            return "VCI"
+            return DEFAULT_HISTORY_SOURCE
         if not isinstance(value, str):
             raise TypeError("source must be a string")
         normalized = value.strip().upper()
-        return normalized or "VCI"  # type: ignore[return-value]
+        return normalized or DEFAULT_HISTORY_SOURCE  # type: ignore[return-value]
 
     @field_validator("interval", mode="before")
     @classmethod
@@ -531,7 +532,7 @@ class TechnicalIndicatorSnapshot(TechnicalAnalysisSchema):
 
     symbol: str = Field(..., min_length=1)
     interval: TechnicalAnalysisInterval = DEFAULT_TECHNICAL_ANALYSIS_INTERVAL
-    source: StockPriceSource = "VCI"
+    source: StockPriceSource = DEFAULT_HISTORY_SOURCE
     bars_loaded: int = Field(..., ge=0)
     as_of: str | None = None
     indicator_set: TechnicalIndicatorSet = DEFAULT_TECHNICAL_INDICATOR_SET
