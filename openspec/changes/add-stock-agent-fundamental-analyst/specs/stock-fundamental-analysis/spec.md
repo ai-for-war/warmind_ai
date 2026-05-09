@@ -86,11 +86,11 @@ Each financial report tool SHALL default to `period="quarter"` when the analyst 
 - **AND** the system MUST NOT make an upstream financial report read for that unsupported period
 
 ### Requirement: Fundamental tools return compact selected evidence and data gaps
-Fundamental analyst tools SHALL return compact selected evidence rows, period labels, raw item names, raw item IDs, values by period, source metadata, and data gaps. The tools MUST NOT require or return full unbounded financial report tables for phase-one analysis.
+Fundamental analyst tools SHALL return compact selected evidence rows, period labels, raw item names, values by period, source metadata, and data gaps. The tools MUST NOT require or return full unbounded financial report tables for phase-one analysis.
 
 #### Scenario: Return compact row evidence
 - **WHEN** a financial report tool successfully loads report data
-- **THEN** the tool returns selected evidence rows with raw `item`, `item_id`, and `values`
+- **THEN** the tool returns selected evidence rows with raw `item` and `values`
 - **AND** the tool preserves provider period labels in `periods`
 - **AND** the tool includes source metadata including symbol, source, report type, period, and cache state when available
 
@@ -105,7 +105,7 @@ Fundamental analyst tools SHALL return compact selected evidence rows, period la
 - **AND** the fundamental analyst can still return an evidence package based on available evidence
 
 ### Requirement: Fundamental analyst output uses stable evidence sections
-The fundamental analyst structured output SHALL include `symbol`, `period`, `summary`, `confidence`, `business_profile`, `growth`, `profitability`, `financial_health`, `cash_flow_quality`, `valuation_ratios`, `bullish_fundamental_points`, `bearish_fundamental_risks`, `uncertainties`, `data_gaps`, and `source_metadata`.
+The fundamental analyst structured output SHALL include `symbol`, `period`, `summary`, `confidence`, `business_profile`, `growth`, `profitability`, `financial_health`, `cash_flow_quality`, `valuation_ratios`, `bullish_fundamental_points`, `bearish_fundamental_risks`, `uncertainties`, and `data_gaps`.
 
 #### Scenario: Return complete structured output envelope
 - **WHEN** the fundamental analyst completes a delegated task

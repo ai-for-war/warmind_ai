@@ -126,7 +126,6 @@ The output contract will include:
 - `bearish_fundamental_risks`
 - `uncertainties`
 - `data_gaps`
-- `source_metadata`
 
 Analysis sections should share a common shape with an assessment, raw evidence rows, interpretation, risks, and data gaps. The analyst may interpret reported rows, but it must not fabricate computed metrics or infer broad aliases when row identity is unclear.
 
@@ -145,6 +144,6 @@ Alternatives considered:
 - **Risk: The analyst omits one required report tool for a broad fundamental task** → Mitigation: prompt routing guidance must require all relevant tools for full fundamental tasks and require data gaps when evidence is missing.
 - **Risk: Five separate tools increase latency compared with one aggregate fetch** → Mitigation: each tool can be called only when relevant, and service-level caching reduces repeated provider cost.
 - **Risk: Large financial report outputs bloat model context** → Mitigation: tools should return compact selected evidence rows and metadata, not full unbounded report tables.
-- **Risk: KBS row names or item IDs vary across sectors or report types** → Mitigation: do not hard-code speculative broad aliases; preserve raw `item`, `item_id`, `periods`, and values, and report missing expected evidence explicitly.
+- **Risk: KBS row names vary across sectors or report types** → Mitigation: do not hard-code speculative broad aliases; preserve raw `item`, `periods`, and values, and report missing expected evidence explicitly.
 - **Risk: Ratio evidence is interpreted as intrinsic valuation** → Mitigation: prompt and schema must state that reported valuation ratios are evidence only and do not authorize target price or DCF output.
 - **Risk: Existing active stock-agent subagent changes are complete but not archived** → Mitigation: implement this change on top of the current registry pattern and archive changes in an order that preserves the complete subagent set.

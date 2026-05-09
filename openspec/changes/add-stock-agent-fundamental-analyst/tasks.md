@@ -1,9 +1,9 @@
 ## 1. Fundamental Analyst Contracts
 
-- [ ] 1.1 Create `app/agents/implementations/fundamental_analyst/` module structure with agent, runtime, middleware, validation, and tools packages.
-- [ ] 1.2 Define fundamental analyst output schemas covering `symbol`, `period`, `summary`, `confidence`, evidence sections, bullish points, bearish risks, uncertainties, data gaps, and source metadata.
-- [ ] 1.3 Define shared evidence-section schemas with assessment, evidence rows, interpretation, risks, and section-level data gaps.
-- [ ] 1.4 Add parser/validation helpers for fundamental analyst structured responses, including fenced JSON handling consistent with existing specialist validation helpers.
+- [x] 1.1 Create `app/agents/implementations/fundamental_analyst/` module structure with agent, runtime, middleware, validation, and tools packages.
+- [x] 1.2 Define fundamental analyst output schemas covering `symbol`, `period`, `summary`, `confidence`, evidence sections, bullish points, bearish risks, uncertainties, and data gaps.
+- [x] 1.3 Define shared evidence-section schemas with assessment, evidence rows, interpretation, risks, and section-level data gaps.
+- [x] 1.4 Add parser/validation helpers for fundamental analyst structured responses, including fenced JSON handling consistent with existing specialist validation helpers.
 
 ## 2. Fundamental Tool Surface
 
@@ -14,7 +14,7 @@
 - [ ] 2.5 Implement `load_cash_flow` using `StockFinancialReportService.get_report()` with report type `cash-flow`.
 - [ ] 2.6 Implement `load_financial_ratios` using `StockFinancialReportService.get_report()` with report type `ratio` and no VCI ratio-summary fallback.
 - [ ] 2.7 Ensure all financial report tools default to `period="quarter"` and accept `period="year"` while preserving service validation for unsupported periods.
-- [ ] 2.8 Add compact row-selection and data-gap helpers that preserve raw `item`, `item_id`, `periods`, and values without broad speculative item aliases.
+- [ ] 2.8 Add compact row-selection and data-gap helpers that preserve raw `item`, `periods`, and values without broad speculative item aliases.
 - [ ] 2.9 Add a fundamental analyst tool surface builder exposing exactly the five phase-one tools.
 
 ## 3. Fundamental Runtime And Prompt
