@@ -17,7 +17,6 @@ click==8.3.1
 cloudinary==1.44.1
 cryptography==46.0.6
 dataclasses-json==0.6.7
-deepagents==0.4.12
 deepgram-sdk==6.1.0
 distro==1.9.0
 dnspython==2.8.0
