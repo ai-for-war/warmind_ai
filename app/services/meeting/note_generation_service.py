@@ -11,7 +11,7 @@ from app.domain.schemas.meeting import (
     MeetingGeneratedNoteBatch,
     MeetingPendingUtterancePayload,
 )
-from app.infrastructure.llm.factory import get_chat_azure_openai_legacy
+from app.infrastructure.llm.factory import get_chat_openai
 from app.prompts.system.meeting_note_chunk import (
     MEETING_NOTE_CHUNK_SYSTEM_PROMPT,
 )
@@ -79,9 +79,10 @@ class MeetingNoteGenerationService:
 
     @staticmethod
     def _default_llm_factory() -> Any:
-        return get_chat_azure_openai_legacy(
-            model="gpt-4.1",
+        return get_chat_openai(
+            model="gpt-5.4-mini",
             temperature=0.2,
             streaming=False,
             max_tokens=1024,
+            reasoning_effort="medium",
         )

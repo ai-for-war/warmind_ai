@@ -16,7 +16,7 @@ from app.domain.schemas.stt import (
     InterviewAnswerStartedPayload,
     InterviewAnswerTokenPayload,
 )
-from app.infrastructure.llm.factory import get_chat_openai_legacy
+from app.infrastructure.llm.factory import get_chat_openai
 from app.prompts.system.interview_answer import INTERVIEW_ANSWER_SYSTEM_PROMPT
 from app.repo.interview_conversation_repo import InterviewConversationRepository
 from app.repo.interview_utterance_repo import InterviewUtteranceRepository
@@ -130,7 +130,7 @@ class InterviewAnswerService:
                     HumanMessage(content=prompt),
                 ]
             ):
-                token = self._extract_stream_token(getattr(chunk, "content", ""))
+                token = self._extract_stream_token(chunk)
                 if not token:
                     continue
                 full_content += token
@@ -264,7 +264,26 @@ class InterviewAnswerService:
         return str(content).strip()
 
     @staticmethod
-    def _extract_stream_token(content: Any) -> str:
+    def _extract_stream_token(chunk_or_content: Any) -> str:
+        text = getattr(chunk_or_content, "text", None)
+        if text is not None:
+            text_value = str(text)
+            if text_value:
+                return text_value
+
+        content_blocks = getattr(chunk_or_content, "content_blocks", None)
+        if isinstance(content_blocks, list):
+            block_text = InterviewAnswerService._extract_text_from_blocks(
+                content_blocks
+            )
+            if block_text:
+                return block_text
+
+        content = getattr(chunk_or_content, "content", chunk_or_content)
+        return InterviewAnswerService._extract_text_from_content(content)
+
+    @staticmethod
+    def _extract_text_from_content(content: Any) -> str:
         if isinstance(content, str):
             return content
         if isinstance(content, list):
@@ -273,11 +292,25 @@ class InterviewAnswerService:
                 if isinstance(item, str):
                     parts.append(item)
                     continue
+                if isinstance(item, dict):
+                    if item.get("type") == "text" and isinstance(item.get("text"), str):
+                        parts.append(item["text"])
+                    continue
                 text = getattr(item, "text", None)
                 if isinstance(text, str):
                     parts.append(text)
             return "".join(parts)
-        return str(content)
+        return ""
+
+    @staticmethod
+    def _extract_text_from_blocks(blocks: list[Any]) -> str:
+        parts: list[str] = []
+        for block in blocks:
+            if not isinstance(block, dict):
+                continue
+            if block.get("type") == "text" and isinstance(block.get("text"), str):
+                parts.append(block["text"])
+        return "".join(parts)
 
     def _get_llm(self) -> Any:
         """Create the LLM client lazily once per service instance."""
@@ -287,9 +320,10 @@ class InterviewAnswerService:
 
     @staticmethod
     def _default_llm_factory() -> Any:
-        return get_chat_openai_legacy(
+        return get_chat_openai(
             model="gpt-5.4-mini",
             temperature=0.5,
             streaming=True,
             max_tokens=1024,
+            reasoning_effort="medium",
         )
