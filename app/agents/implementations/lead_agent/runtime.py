@@ -72,6 +72,12 @@ def get_lead_agent_runtime_catalog() -> tuple[LeadAgentProviderCatalogEntry, ...
                 is_default=True,
             ),
             LeadAgentModelCatalogEntry(
+                model="gpt-5.5-fast",
+                reasoning_options=LEAD_AGENT_OPENAI_REASONING_OPTIONS,
+                default_reasoning="medium",
+                is_default=False,
+            ),
+            LeadAgentModelCatalogEntry(
                 model="gpt-5.2",
                 reasoning_options=LEAD_AGENT_OPENAI_REASONING_OPTIONS,
                 default_reasoning="medium",

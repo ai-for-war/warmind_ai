@@ -6,6 +6,9 @@ from langchain_openai import AzureChatOpenAI, ChatOpenAI
 
 from app.config.settings import get_settings
 
+OPENAI_GPT_5_5_FAST_MODEL = "gpt-5.5-fast"
+OPENAI_GPT_5_5_FAST_BASE_MODEL = "gpt-5.5"
+
 
 def get_chat_openai(
     model: str = "gpt-5.2",
@@ -23,7 +26,7 @@ def get_chat_openai(
         streaming: Enable streaming responses. Defaults to True.
         max_tokens: Maximum number of tokens to generate. Defaults to 2048.
         base_url: Custom API base URL. Defaults to settings value or None.
-        reasoning_effort: OpenAI reasoning effort level. Defaults to "high".
+        reasoning_effort: OpenAI Responses API reasoning effort level. Defaults to "high".
 
     Returns:
         ChatOpenAI instance configured with the specified parameters.
@@ -33,17 +36,28 @@ def get_chat_openai(
     if not settings.OPENAI_API_KEY:
         raise ValueError("OPENAI_API_KEY is required")
 
-    return ChatOpenAI(
-        reasoning_effort=reasoning_effort,
-        store=False,
-        stream_usage=streaming,
-        api_key=settings.OPENAI_API_KEY,
-        base_url=api_base,
-        model=model,
-        max_tokens=max_tokens,
-        temperature=temperature,
-        streaming=streaming,
+    resolved_model = (
+        OPENAI_GPT_5_5_FAST_BASE_MODEL
+        if model == OPENAI_GPT_5_5_FAST_MODEL
+        else model
     )
+    kwargs: dict[str, object] = {
+        "use_responses_api": True,
+        # "store": False,
+        "stream_usage": streaming,
+        "api_key": settings.OPENAI_API_KEY,
+        "base_url": api_base,
+        "model": resolved_model,
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+        "streaming": streaming,
+    }
+    if model == OPENAI_GPT_5_5_FAST_MODEL:
+        kwargs["service_tier"] = "priority"
+    if reasoning_effort is not None:
+        kwargs["reasoning"] = {"effort": reasoning_effort}
+
+    return ChatOpenAI(**kwargs)
 
 
 def get_chat_openai_legacy(

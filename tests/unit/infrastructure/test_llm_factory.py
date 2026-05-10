@@ -28,6 +28,54 @@ def test_get_chat_openai_enables_stream_usage_when_streaming(monkeypatch) -> Non
     assert captured["streaming"] is True
 
 
+def test_get_chat_openai_uses_responses_api_reasoning(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    def _fake_chat_openai(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(**kwargs)
+
+    monkeypatch.setattr(factory, "ChatOpenAI", _fake_chat_openai)
+    monkeypatch.setattr(
+        factory,
+        "get_settings",
+        lambda: SimpleNamespace(
+            OPENAI_API_KEY="test-key",
+            OPENAI_API_BASE="https://example.test",
+        ),
+    )
+
+    factory.get_chat_openai(model="gpt-5.5", reasoning_effort="medium")
+
+    assert captured["use_responses_api"] is True
+    assert captured["reasoning"] == {"effort": "medium"}
+    assert "service_tier" not in captured
+    # assert "reasoning_effort" not in captured
+
+
+def test_get_chat_openai_maps_gpt_5_5_fast_to_priority_gpt_5_5(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    def _fake_chat_openai(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(**kwargs)
+
+    monkeypatch.setattr(factory, "ChatOpenAI", _fake_chat_openai)
+    monkeypatch.setattr(
+        factory,
+        "get_settings",
+        lambda: SimpleNamespace(
+            OPENAI_API_KEY="test-key",
+            OPENAI_API_BASE="https://example.test",
+        ),
+    )
+
+    factory.get_chat_openai(model="gpt-5.5-fast", reasoning_effort="medium")
+
+    assert captured["model"] == "gpt-5.5"
+    assert captured["service_tier"] == "priority"
+
+
 def test_get_chat_azure_openai_enables_stream_usage_when_streaming(
     monkeypatch,
 ) -> None:

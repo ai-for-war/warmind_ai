@@ -72,6 +72,12 @@ def get_stock_agent_runtime_catalog() -> tuple[StockAgentProviderCatalogEntry, .
                 is_default=True,
             ),
             StockAgentModelCatalogEntry(
+                model="gpt-5.5-fast",
+                reasoning_options=STOCK_AGENT_OPENAI_REASONING_OPTIONS,
+                default_reasoning="medium",
+                is_default=False,
+            ),
+            StockAgentModelCatalogEntry(
                 model="gpt-5.2",
                 reasoning_options=STOCK_AGENT_OPENAI_REASONING_OPTIONS,
                 default_reasoning="medium",
