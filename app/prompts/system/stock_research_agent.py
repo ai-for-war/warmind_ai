@@ -113,7 +113,7 @@ def get_stock_research_agent_system_prompt(
     reference_date: date | None = None,
 ) -> str:
     """Render the stock-research system prompt with current-date guidance."""
-    current_date = reference_date or datetime.now(ZoneInfo("Asia/Saigon")).date()
+    current_date = reference_date or datetime.now(ZoneInfo("Asia/Ho_Chi_Minh")).date()
     return STOCK_RESEARCH_AGENT_SYSTEM_PROMPT_TEMPLATE.format(
         current_date=current_date.isoformat(),
         current_year=current_date.year,

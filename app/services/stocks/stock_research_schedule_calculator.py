@@ -10,7 +10,7 @@ from app.domain.models.stock_research_schedule import (
     StockResearchScheduleWeekday,
 )
 
-STOCK_RESEARCH_SCHEDULE_TIMEZONE_NAME = "Asia/Saigon"
+STOCK_RESEARCH_SCHEDULE_TIMEZONE_NAME = "Asia/Ho_Chi_Minh"
 STOCK_RESEARCH_SCHEDULE_TIMEZONE = ZoneInfo(STOCK_RESEARCH_SCHEDULE_TIMEZONE_NAME)
 
 _WEEKDAY_INDEX: dict[StockResearchScheduleWeekday, int] = {

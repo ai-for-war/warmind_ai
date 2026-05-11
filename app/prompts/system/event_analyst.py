@@ -89,7 +89,7 @@ def get_event_analyst_system_prompt(
     reference_date: date | None = None,
 ) -> str:
     """Render the event analyst system prompt with current-date guidance."""
-    current_date = reference_date or datetime.now(ZoneInfo("Asia/Saigon")).date()
+    current_date = reference_date or datetime.now(ZoneInfo("Asia/Ho_Chi_Minh")).date()
     return EVENT_ANALYST_SYSTEM_PROMPT_TEMPLATE.format(
         current_date=current_date.isoformat(),
     )
@@ -140,4 +140,3 @@ Messages to summarize:
 def get_event_analyst_summarization_prompt() -> str:
     """Return the event analyst prompt used for context compaction."""
     return EVENT_ANALYST_SUMMARIZATION_PROMPT
-
